@@ -1,4 +1,7 @@
 """Discover and load entry points from installed packages."""
+# Copyright (c) Thomas Kluyver and contributors
+# Distributed under the terms of the MIT license; see LICENSE file.
+
 from contextlib import contextmanager
 import glob
 from importlib import import_module
@@ -23,7 +26,7 @@ entry_point_pattern = re.compile(r"""
 $
 """, re.VERBOSE)
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 class BadEntryPoint(Exception):
     """Raised when an entry point can't be parsed.

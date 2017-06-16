@@ -306,6 +306,25 @@ class TestNbConvertApp(TestsBase):
             assert os.path.isfile('empty.ipynb')
             assert not os.path.isfile('empty.nbconvert.ipynb')
             assert not os.path.isfile('empty.html')
+    
+    def test_no_prompt(self):
+        """
+        Verify that the notebook is converted in place
+        """
+        with self.create_temp_cwd(["notebook1.ipynb"]):
+            self.nbconvert('notebook1.ipynb --log-level 0 --no-prompt --to html')
+            assert os.path.isfile('notebook1.html')
+            with open("notebook1.html",'r') as f:
+                text = f.read()
+                assert "In&nbsp;[" not in text
+                assert "Out[" not in text
+            self.nbconvert('notebook1.ipynb --log-level 0 --to html')
+            assert os.path.isfile('notebook1.html')
+            with open("notebook1.html",'r') as f:
+                text2 = f.read()
+                print(text2)
+                assert "In&nbsp;[" in text2
+                assert "Out[" in text2
 
     def test_allow_errors(self):
         """
@@ -334,6 +353,17 @@ class TestNbConvertApp(TestsBase):
             # Executing the notebook should raise an exception if --allow-errors is not specified
             with assert_raises(OSError):
                 self.nbconvert('--execute --to markdown --stdout notebook3*.ipynb')
+
+    def test_errors_print_traceback(self):
+        """
+        Verify that the stderr output contains the traceback of the cell execution exception.
+        """
+        with self.create_temp_cwd(['notebook3_with_errors.ipynb']):
+            _, error_output = self.nbconvert('--execute --to markdown --stdout notebook3_with_errors.ipynb',
+                                             ignore_return_code=True)
+            assert_in('print("Some text before the error")', error_output)
+            assert_in('raise RuntimeError("This is a deliberate exception")', error_output)
+            assert_in('RuntimeError: This is a deliberate exception', error_output)
 
     def test_fenced_code_blocks_markdown(self):
         """

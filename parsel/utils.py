@@ -1,6 +1,6 @@
 import re
 import six
-from w3lib.html import replace_entities
+from w3lib.html import replace_entities as w3lib_replace_entities
 
 
 def flatten(x):
@@ -56,7 +56,7 @@ def _is_listlike(x):
     return hasattr(x, "__iter__") and not isinstance(x, (six.text_type, bytes))
 
 
-def extract_regex(regex, text):
+def extract_regex(regex, text, replace_entities=True):
     """Extract a list of unicode strings from the given text/encoding using the following policies:
     * if the regex contains a named group called "extract" that will be returned
     * if the regex contains multiple numbered groups, all those will be returned (flattened)
@@ -65,8 +65,19 @@ def extract_regex(regex, text):
     if isinstance(regex, six.string_types):
         regex = re.compile(regex, re.UNICODE)
 
-    try:
-        strings = [regex.search(text).group('extract')]   # named group
-    except:
-        strings = regex.findall(text)    # full regex or numbered groups
-    return [replace_entities(s, keep=['lt', 'amp']) for s in flatten(strings)]
+    if 'extract' in regex.groupindex:
+        # named group
+        try:
+            extracted = regex.search(text).group('extract')
+        except AttributeError:
+            strings = []
+        else:
+            strings = [extracted] if extracted is not None else []
+    else:
+        # full regex or numbered groups
+        strings = regex.findall(text)
+
+    strings = flatten(strings)
+    if not replace_entities:
+        return strings
+    return [w3lib_replace_entities(s, keep=['lt', 'amp']) for s in strings]

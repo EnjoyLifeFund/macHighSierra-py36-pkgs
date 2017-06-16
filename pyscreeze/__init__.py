@@ -10,7 +10,7 @@ https://stackoverflow.com/questions/7648200/pip-install-pil-e-tickets-1-no-jpeg-
 http://ubuntuforums.org/showthread.php?t=1751455
 """
 
-__version__ = '0.1.9'
+__version__ = '0.1.11'
 
 import datetime
 import os
@@ -47,10 +47,9 @@ GRAYSCALE_DEFAULT = False
 scrotExists = False
 try:
     if sys.platform not in ('java', 'darwin', 'win32'):
-        with open(os.devnull, 'w') as devnull:
-            whichProc = subprocess.Popen(
-                ['which', 'scrot'], stdout=devnull, stderr=devnull)
-            scrotExists = whichProc.wait() == 0
+        whichProc = subprocess.Popen(
+            ['which', 'scrot'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        scrotExists = whichProc.wait() == 0
 except OSError as ex:
     if ex.errno == errno.ENOENT:
         # if there is no "which" program to find scrot, then assume there
@@ -188,7 +187,7 @@ def _locateAll_python(needleImage, haystackImage, grayscale=None, limit=None, re
     needleWidth, needleHeight = needleImage.size
     haystackWidth, haystackHeight = haystackImage.size
 
-    needleImageData = tuple(needleImage.getdata()) # TODO - rename to needleImageData??
+    needleImageData = tuple(needleImage.getdata())
     haystackImageData = tuple(haystackImage.getdata())
 
     needleImageRows = [needleImageData[y * needleWidth:(y+1) * needleWidth] for y in range(needleHeight)] # LEFT OFF - check this
@@ -199,16 +198,17 @@ def _locateAll_python(needleImage, haystackImage, grayscale=None, limit=None, re
 
     numMatchesFound = 0
 
-    # NOTE: After running benchmark.py on the following code, it seem that having a step
+    # NOTE: After running tests/benchmarks.py on the following code, it seem that having a step
     # value greater than 1 does not give *any* significant performance improvements.
     # Since using a step higher than 1 makes for less accurate matches, it will be
     # set to 1.
-    #if step == 1:
-    #    firstFindFunc = _kmp
-    #else:
-    #    firstFindFunc = _steppingFind
-    firstFindFunc = _kmp
     step = 1 # hard-code step as 1 until a way to improve it can be figured out.
+
+    if step == 1:
+        firstFindFunc = _kmp
+    else:
+        firstFindFunc = _steppingFind
+
 
     for y in range(haystackHeight): # start at the leftmost column
         for matchx in firstFindFunc(needleImageFirstRow, haystackImageData[y * haystackWidth:(y+1) * haystackWidth], step):
@@ -402,11 +402,17 @@ def center(coords):
 
 
 def pixelMatchesColor(x, y, expectedRGBColor, tolerance=0):
-    r, g, b = screenshot().getpixel((x, y))
-    exR, exG, exB = expectedRGBColor
-
-    return (abs(r - exR) <= tolerance) and (abs(g - exG) <= tolerance) and (abs(b - exB) <= tolerance)
-
+    pixel = screenshot().getpixel((x, y))
+    if len(pixel) == 3 or len(expectedRGBColor) == 3: #RGB mode
+        r, g, b = pixel[:3]
+        exR, exG, exB = expectedRGBColor[:3]
+        return (abs(r - exR) <= tolerance) and (abs(g - exG) <= tolerance) and (abs(b - exB) <= tolerance)
+    elif len(pixel) == 4 and len(expectedRGBColor) == 4: #RGBA mode
+        r, g, b, a = pixel
+        exR, exG, exB, exA = expectedRGBColor
+        return (abs(r - exR) <= tolerance) and (abs(g - exG) <= tolerance) and (abs(b - exB) <= tolerance) and (abs(a - exA) <= tolerance)
+    else:
+        assert False, 'Color mode was expected to be length 3 (RGB) or 4 (RGBA), but pixel is length %s and expectedRGBColor is length %s' % (len(pixel), len(expectedRGBColor))
 
 def pixel(x, y):
     return screenshot().getpixel((x, y))

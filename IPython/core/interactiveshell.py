@@ -34,7 +34,6 @@ from IPython.core import oinspect
 from IPython.core import magic
 from IPython.core import page
 from IPython.core import prefilter
-from IPython.core import shadowns
 from IPython.core import ultratb
 from IPython.core.alias import Alias, AliasManager
 from IPython.core.autocall import ExitAutocall
@@ -56,6 +55,7 @@ from IPython.core.payload import PayloadManager
 from IPython.core.prefilter import PrefilterManager
 from IPython.core.profiledir import ProfileDir
 from IPython.core.usage import default_banner
+from IPython.display import display
 from IPython.testing.skipdoctest import skip_doctest
 from IPython.utils import PyColorize
 from IPython.utils import io
@@ -237,8 +237,8 @@ class InteractiveShell(SingletonConfigurable):
         """
         Set the size of the output cache.  The default is 1000, you can
         change it permanently in your config file.  Setting it to 0 completely
-        disables the caching system, and the minimum value accepted is 20 (if
-        you provide a value less than 20, it is reset to 0 and a warning is
+        disables the caching system, and the minimum value accepted is 3 (if
+        you provide a value less than 3, it is reset to 0 and a warning is
         issued).  This limit is defined because otherwise you'll spend more
         time re-flushing a too small cache than working
         """
@@ -618,6 +618,7 @@ class InteractiveShell(SingletonConfigurable):
         # removing on exit or representing the existence of more than one
         # IPython at a time.
         builtin_mod.__dict__['__IPYTHON__'] = True
+        builtin_mod.__dict__['display'] = display
 
         self.builtin_trap = BuiltinTrap(shell=self)
 
@@ -699,7 +700,14 @@ class InteractiveShell(SingletonConfigurable):
             p = os.path.normcase(os.path.join(os.path.dirname(p), os.readlink(p)))
             paths.append(p)
         p_venv = os.path.normcase(os.environ['VIRTUAL_ENV'])
-        if any(p.startswith(p_venv) for p in paths):
+        
+        # In Cygwin paths like "c:\..." and '\cygdrive\c\...' are possible
+        if p_venv.startswith('\\cygdrive'):
+            p_venv = p_venv[11:]
+        elif p_venv[1] == ':':
+            p_venv = p_venv[2:]
+
+        if any(p_venv in p for p in paths):
             # Running properly in the virtualenv, don't need to do anything
             return
         
@@ -880,7 +888,7 @@ class InteractiveShell(SingletonConfigurable):
             main_mod = self._main_mod_cache[filename]
         except KeyError:
             main_mod = self._main_mod_cache[filename] = types.ModuleType(
-                        py3compat.cast_bytes_py2(modname),
+                        modname,
                         doc="Module created for script run in IPython")
         else:
             main_mod.__dict__.clear()
@@ -1148,8 +1156,6 @@ class InteractiveShell(SingletonConfigurable):
         ns['_oh'] = self.history_manager.output_hist
         ns['_dh'] = self.history_manager.dir_hist
 
-        ns['_sh'] = shadowns
-
         # user aliases to input and output histories.  These shouldn't show up
         # in %who, as they can have very large reprs.
         ns['In']  = self.history_manager.input_hist_parsed
@@ -1365,10 +1371,9 @@ class InteractiveShell(SingletonConfigurable):
         Has special code to detect magic functions.
         """
         oname = oname.strip()
-        #print '1- oname: <%r>' % oname  # dbg
         if not oname.startswith(ESC_MAGIC) and \
-            not oname.startswith(ESC_MAGIC2) and \
-            not py3compat.isidentifier(oname, dotted=True):
+                not oname.startswith(ESC_MAGIC2) and \
+                not all(a.isidentifier() for a in oname.split(".")):
             return {'found': False}
 
         if namespaces is None:
@@ -1380,9 +1385,12 @@ class InteractiveShell(SingletonConfigurable):
                            ('Python builtin', builtin_mod.__dict__),
                            ]
 
-        # initialize results to 'null'
-        found = False; obj = None;  ospace = None;
-        ismagic = False; isalias = False; parent = None
+        ismagic = False
+        isalias = False
+        found = False
+        ospace = None
+        parent = None
+        obj = None
 
         # Look for the given name by splitting it in parts.  If the head is
         # found, then we look for all the remaining parts as members, and only
@@ -1395,7 +1403,6 @@ class InteractiveShell(SingletonConfigurable):
             except KeyError:
                 continue
             else:
-                #print 'oname_rest:', oname_rest  # dbg
                 for idx, part in enumerate(oname_rest):
                     try:
                         parent = obj
@@ -1443,8 +1450,14 @@ class InteractiveShell(SingletonConfigurable):
             found = True
             ospace = 'Interactive'
 
-        return {'found':found, 'obj':obj, 'namespace':ospace,
-                'ismagic':ismagic, 'isalias':isalias, 'parent':parent}
+        return {
+                'obj':obj,
+                'found':found,
+                'parent':parent,
+                'ismagic':ismagic,
+                'isalias':isalias,
+                'namespace':ospace
+               }
 
     @staticmethod
     def _getattr_property(obj, attrname):
@@ -1621,16 +1634,14 @@ class InteractiveShell(SingletonConfigurable):
         WARNING: by putting in your own exception handler into IPython's main
         execution loop, you run a very good chance of nasty crashes.  This
         facility should only be used if you really know what you are doing."""
-
-        assert type(exc_tuple)==type(()) , \
-               "The custom exceptions must be given AS A TUPLE."
+        if not isinstance(exc_tuple, tuple):
+            raise TypeError("The custom exceptions must be given as a tuple.")
 
         def dummy_handler(self, etype, value, tb, tb_offset=None):
             print('*** Simple custom exception handler ***')
-            print('Exception type :',etype)
-            print('Exception value:',value)
-            print('Traceback      :',tb)
-            #print 'Source code    :','\n'.join(self.buffer)
+            print('Exception type :', etype)
+            print('Exception value:', value)
+            print('Traceback      :', tb)
         
         def validate_stb(stb):
             """validate structured traceback return type
@@ -1756,7 +1767,7 @@ class InteractiveShell(SingletonConfigurable):
         return ''.join(msg)
 
     def showtraceback(self, exc_tuple=None, filename=None, tb_offset=None,
-                      exception_only=False):
+                      exception_only=False, running_compiled_code=False):
         """Display the exception that just occurred.
 
         If nothing is known about the exception, this is the method which
@@ -1774,11 +1785,11 @@ class InteractiveShell(SingletonConfigurable):
             except ValueError:
                 print('No traceback available to show.', file=sys.stderr)
                 return
-            
+
             if issubclass(etype, SyntaxError):
                 # Though this won't be called by syntax errors in the input
                 # line, there may be SyntaxError cases with imported code.
-                self.showsyntaxerror(filename)
+                self.showsyntaxerror(filename, running_compiled_code)
             elif etype is UsageError:
                 self.show_usage_error(value)
             else:
@@ -1817,7 +1828,7 @@ class InteractiveShell(SingletonConfigurable):
         """
         print(self.InteractiveTB.stb2text(stb))
 
-    def showsyntaxerror(self, filename=None):
+    def showsyntaxerror(self, filename=None, running_compiled_code=False):
         """Display the syntax error that just occurred.
 
         This doesn't display a stack trace because there isn't one.
@@ -1825,7 +1836,10 @@ class InteractiveShell(SingletonConfigurable):
         If a filename is given, it is stuffed in the exception instead
         of what was there before (because Python's parser always uses
         "<string>" when reading from a string).
-        """
+
+        If the syntax error occurred when running a compiled code (i.e. running_compile_code=True),
+        longer stack trace will be displayed.
+         """
         etype, value, last_traceback = self._get_exc_info()
 
         if filename and issubclass(etype, SyntaxError):
@@ -1834,8 +1848,10 @@ class InteractiveShell(SingletonConfigurable):
             except:
                 # Not the format we expect; leave it alone
                 pass
-        
-        stb = self.SyntaxTB.structured_traceback(etype, value, [])
+
+        # If the error occured when executing compiled code, we should provide full stacktrace.
+        elist = traceback.extract_tb(last_traceback) if running_compiled_code else []
+        stb = self.SyntaxTB.structured_traceback(etype, value, elist)
         self._showtraceback(etype, value, stb)
 
     # This is overridden in TerminalInteractiveShell to show a message about
@@ -1870,7 +1886,7 @@ class InteractiveShell(SingletonConfigurable):
             In [1]: _ip.set_next_input("Hello Word")
             In [2]: Hello Word_  # cursor is here
         """
-        self.rl_next_input = py3compat.cast_bytes_py2(s)
+        self.rl_next_input = s
 
     def _indent_current_str(self):
         """return the current level of indentation as a string"""
@@ -2501,13 +2517,12 @@ class InteractiveShell(SingletonConfigurable):
             """generator for sequence of code blocks to run"""
             if fname.endswith('.ipynb'):
                 from nbformat import read
-                with io_open(fname) as f:
-                    nb = read(f, as_version=4)
-                    if not nb.cells:
-                        return
-                    for cell in nb.cells:
-                        if cell.cell_type == 'code':
-                            yield cell.source
+                nb = read(fname, as_version=4)
+                if not nb.cells:
+                    return
+                for cell in nb.cells:
+                    if cell.cell_type == 'code':
+                        yield cell.source
             else:
                 with open(fname) as f:
                     yield f.read()
@@ -2546,7 +2561,7 @@ class InteractiveShell(SingletonConfigurable):
                 where.update(
                     runpy.run_module(str(mod_name), run_name="__main__",
                                      alter_sys=True)
-                    )
+                            )
             except SystemExit as status:
                 if status.code:
                     raise
@@ -2861,7 +2876,7 @@ class InteractiveShell(SingletonConfigurable):
         except:
             if result is not None:
                 result.error_in_exec = sys.exc_info()[1]
-            self.showtraceback()
+            self.showtraceback(running_compiled_code=True)
         else:
             outflag = False
         return outflag

@@ -4,6 +4,7 @@ from ._funcs import (
     asdict,
     assoc,
     astuple,
+    evolve,
     has,
 )
 from ._make import (
@@ -22,14 +23,15 @@ from ._config import (
 )
 from . import exceptions
 from . import filters
+from . import converters
 from . import validators
 
 
-__version__ = "16.3.0"
+__version__ = "17.2.0"
 
 __title__ = "attrs"
-__description__ = "Attributes Without Boilerplate"
-__uri__ = "https://attrs.readthedocs.io/"
+__description__ = "Classes Without Boilerplate"
+__uri__ = "http://www.attrs.org/"
 __doc__ = __description__ + " <" + __uri__ + ">"
 
 __author__ = "Hynek Schlawack"
@@ -47,12 +49,14 @@ __all__ = [
     "Factory",
     "NOTHING",
     "asdict",
-    "astuple",
     "assoc",
+    "astuple",
     "attr",
     "attrib",
     "attributes",
     "attrs",
+    "converters",
+    "evolve",
     "exceptions",
     "fields",
     "filters",

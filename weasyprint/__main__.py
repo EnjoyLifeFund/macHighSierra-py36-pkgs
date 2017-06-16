@@ -13,10 +13,11 @@
 # No __future__.unicode_literals here.
 # Native strings are fine with argparse, unicode makes --help crash on 2.6.
 
-import sys
 import argparse
+import logging
+import sys
 
-from . import VERSION, HTML
+from . import HTML, LOGGER, VERSION
 
 
 def main(argv=None, stdout=None, stdin=None):
@@ -29,23 +30,23 @@ def main(argv=None, stdout=None, stdin=None):
     The input is a filename or URL to an HTML document, or ``-`` to read
     HTML from stdin. The output is a filename, or ``-`` to write to stdout.
 
-    Options can be mixed anywhere before, between or after the input and
+    Options can be mixed anywhere before, between, or after the input and
     output:
 
     .. option:: -e <input_encoding>, --encoding <input_encoding>
 
-        Force the input character encoding (eg. ``-e utf8``).
+        Force the input character encoding (e.g. ``-e utf8``).
 
     .. option:: -f <output_format>, --format <output_format>
 
-        Choose the output file format among PDF and PNG (eg. ``-f png``).
+        Choose the output file format among PDF and PNG (e.g. ``-f png``).
         Required if the output is not a ``.pdf`` or ``.png`` filename.
 
     .. option:: -s <filename_or_URL>, --stylesheet <filename_or_URL>
 
         Filename or URL of a user CSS stylesheet (see
-        :ref:`stylesheet-origins`\.) to add to the document.
-        (eg. ``-s print.css``). Multiple stylesheets are allowed.
+        :ref:`stylesheet-origins`) to add to the document
+        (e.g. ``-s print.css``). Multiple stylesheets are allowed.
 
     .. option:: -r <dpi>, --resolution <dpi>
 
@@ -63,8 +64,9 @@ def main(argv=None, stdout=None, stdin=None):
 
     .. option:: -a <file>, --attachment <file>
 
-        Adds an attachment to the document which is included in the PDF output.
-        This option can be added multiple times to attach more files.
+        Adds an attachment to the document.  The attachment is
+        included in the PDF output.  This option can be used multiple
+        times.
 
     .. option:: -p, --presentational-hints
 
@@ -158,6 +160,12 @@ def main(argv=None, stdout=None, stdin=None):
             kwargs['attachments'] = args.attachment
         else:
             parser.error('--attachment only applies for the PDF format.')
+
+    # Default to logging to stderr.
+    LOGGER.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+    LOGGER.addHandler(handler)
 
     html = HTML(source, base_url=args.base_url, encoding=args.encoding,
                 media_type=args.media_type)

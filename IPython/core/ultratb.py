@@ -100,7 +100,6 @@ import sys
 import time
 import tokenize
 import traceback
-import types
 
 try:  # Python 2
     generate_tokens = tokenize.generate_tokens
@@ -328,7 +327,6 @@ def fix_frame_records_filenames(records):
         # Look inside the frame's globals dictionary for __file__,
         # which should be better. However, keep Cython filenames since
         # we prefer the source filenames over the compiled .so file.
-        filename = py3compat.cast_unicode_py2(filename, "utf-8")
         if not filename.endswith(('.pyx', '.pxd', '.pxi')):
             better_fn = frame.f_globals.get('__file__', None)
             if isinstance(better_fn, str):
@@ -652,9 +650,9 @@ class ListTB(TBTools):
         list = []
         for filename, lineno, name, line in extracted_list[:-1]:
             item = '  File %s"%s"%s, line %s%d%s, in %s%s%s\n' % \
-                   (Colors.filename, py3compat.cast_unicode_py2(filename, "utf-8"), Colors.Normal,
+                   (Colors.filename, filename, Colors.Normal,
                     Colors.lineno, lineno, Colors.Normal,
-                    Colors.name, py3compat.cast_unicode_py2(name, "utf-8"), Colors.Normal)
+                    Colors.name, name, Colors.Normal)
             if line:
                 item += '    %s\n' % line.strip()
             list.append(item)
@@ -662,9 +660,9 @@ class ListTB(TBTools):
         filename, lineno, name, line = extracted_list[-1]
         item = '%s  File %s"%s"%s, line %s%d%s, in %s%s%s%s\n' % \
                (Colors.normalEm,
-                Colors.filenameEm, py3compat.cast_unicode_py2(filename, "utf-8"), Colors.normalEm,
+                Colors.filenameEm, filename, Colors.normalEm,
                 Colors.linenoEm, lineno, Colors.normalEm,
-                Colors.nameEm, py3compat.cast_unicode_py2(name, "utf-8"), Colors.normalEm,
+                Colors.nameEm, name, Colors.normalEm,
                 Colors.Normal)
         if line:
             item += '%s    %s%s\n' % (Colors.line, line.strip(),
@@ -870,7 +868,7 @@ class VerboseTB(TBTools):
                     pass
 
         file = py3compat.cast_unicode(file, util_path.fs_encoding)
-        link = tpl_link % file
+        link = tpl_link % util_path.compress_user(file)
         args, varargs, varkw, locals = inspect.getargvalues(frame)
 
         if func == '?':

@@ -161,7 +161,7 @@ def recurrent_args_preprocessor(args, kwargs):
             kwargs.pop('forget_bias_init')
             warnings.warn('The `forget_bias_init` argument '
                           'has been ignored. Use `unit_forget_bias=True` '
-                          'instead to intialize with ones.', stacklevel=3)
+                          'instead to initialize with ones.', stacklevel=3)
     if 'input_dim' in kwargs:
         input_length = kwargs.pop('input_length', None)
         input_dim = kwargs.pop('input_dim')
@@ -461,7 +461,7 @@ def convlstm2d_args_preprocessor(args, kwargs):
         else:
             warnings.warn('The `forget_bias_init` argument '
                           'has been ignored. Use `unit_forget_bias=True` '
-                          'instead to intialize with ones.', stacklevel=3)
+                          'instead to initialize with ones.', stacklevel=3)
     args, kwargs, _converted = conv2d_args_preprocessor(args, kwargs)
     return args, kwargs, converted + _converted
 
@@ -602,3 +602,24 @@ legacy_model_constructor_support = generate_legacy_interface(
     allowed_positional_args=None,
     conversions=[('input', 'inputs'),
                  ('output', 'outputs')])
+
+legacy_input_support = generate_legacy_interface(
+    allowed_positional_args=None,
+    conversions=[('input_dtype', 'dtype')])
+
+
+def add_weight_args_preprocessing(args, kwargs):
+    if len(args) > 1:
+        if isinstance(args[1], (tuple, list)):
+            kwargs['shape'] = args[1]
+            args = (args[0],) + args[2:]
+            if len(args) > 1:
+                if isinstance(args[1], six.string_types):
+                    kwargs['name'] = args[1]
+                    args = (args[0],) + args[2:]
+    return args, kwargs, []
+
+
+legacy_add_weight_support = generate_legacy_interface(
+    allowed_positional_args=['name', 'shape'],
+    preprocessor=add_weight_args_preprocessing)

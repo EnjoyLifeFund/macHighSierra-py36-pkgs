@@ -54,6 +54,7 @@ def _button_value(base_name, mouse_button):
 class Button(enum.Enum):
     """The various buttons.
     """
+    unknown = None
     left = _button_value('kCGEventLeft', 0)
     middle = _button_value('kCGEventOther', 2)
     right = _button_value('kCGEventRight', 1)
@@ -197,7 +198,11 @@ class Listener(ListenerMixin, _base.Listener):
 
         else:
             for button in Button:
-                (press, release, drag), _ = button.value
+                try:
+                    (press, release, drag), _ = button.value
+                except TypeError:
+                    # Button.unknown cannot be enumerated
+                    continue
 
                 # Press and release generate click events, and drag
                 # generates move events

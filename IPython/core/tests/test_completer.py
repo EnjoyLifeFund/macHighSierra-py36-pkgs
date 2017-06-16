@@ -274,6 +274,37 @@ def test_local_file_completions():
         nt.assert_true(comp.issubset(set(c)))
 
 
+def test_quoted_file_completions():
+    ip = get_ipython()
+    with TemporaryWorkingDirectory():
+        name = "foo'bar"
+        open(name, 'w').close()
+
+        # Don't escape Windows
+        escaped = name if sys.platform == "win32" else "foo\\'bar"
+
+        # Single quote matches embedded single quote
+        text = "open('foo"
+        c = ip.Completer._complete(cursor_line=0,
+                                   cursor_pos=len(text),
+                                   full_text=text)[1]
+        nt.assert_equal(c, [escaped])
+
+        # Double quote requires no escape
+        text = 'open("foo'
+        c = ip.Completer._complete(cursor_line=0,
+                                   cursor_pos=len(text),
+                                   full_text=text)[1]
+        nt.assert_equal(c, [name])
+
+        # No quote requires an escape
+        text = '%ls foo'
+        c = ip.Completer._complete(cursor_line=0,
+                                   cursor_pos=len(text),
+                                   full_text=text)[1]
+        nt.assert_equal(c, [escaped])
+
+
 def test_jedi():
     """
     A couple of issue we had with Jedi
@@ -519,31 +550,81 @@ def test_line_cell_magics():
 
 
 def test_magic_completion_order():
-
     ip = get_ipython()
     c = ip.Completer
 
-    # Test ordering of magics and non-magics with the same name
-    # We want the non-magic first
+    # Test ordering of line and cell magics.
+    text, matches = c.complete("timeit")
+    nt.assert_equal(matches, ["%timeit", "%%timeit"])
 
-    # Before importing matplotlib, there should only be one option:
 
-    text, matches = c.complete('mat')
+def test_magic_completion_shadowing():
+    ip = get_ipython()
+    c = ip.Completer
+
+    # Before importing matplotlib, %matplotlib magic should be the only option.
+    text, matches = c.complete("mat")
+    nt.assert_equal(matches, ["%matplotlib"])
+
+    # The newly introduced name should shadow the magic.
+    ip.run_cell("matplotlib = 1")
+    text, matches = c.complete("mat")
+    nt.assert_equal(matches, ["matplotlib"])
+
+    # After removing matplotlib from namespace, the magic should again be
+    # the only option.
+    del ip.user_ns["matplotlib"]
+    text, matches = c.complete("mat")
     nt.assert_equal(matches, ["%matplotlib"])
 
 
-    ip.run_cell("matplotlib = 1")  # introduce name into namespace
+def test_magic_config():
+    ip = get_ipython()
+    c = ip.Completer
 
-    # After the import, there should be two options, ordered like this:
-    text, matches = c.complete('mat')
-    nt.assert_equal(matches, ["matplotlib", "%matplotlib"])
+    s, matches = c.complete(None, 'conf')
+    nt.assert_in('%config', matches)
+    s, matches = c.complete(None, 'conf')
+    nt.assert_not_in('AliasManager', matches)
+    s, matches = c.complete(None, 'config ')
+    nt.assert_in('AliasManager', matches)
+    s, matches = c.complete(None, '%config ')
+    nt.assert_in('AliasManager', matches)
+    s, matches = c.complete(None, 'config Ali')
+    nt.assert_list_equal(['AliasManager'], matches)
+    s, matches = c.complete(None, '%config Ali')
+    nt.assert_list_equal(['AliasManager'], matches)
+    s, matches = c.complete(None, 'config AliasManager')
+    nt.assert_list_equal(['AliasManager'], matches)
+    s, matches = c.complete(None, '%config AliasManager')
+    nt.assert_list_equal(['AliasManager'], matches)
+    s, matches = c.complete(None, 'config AliasManager.')
+    nt.assert_in('AliasManager.default_aliases', matches)
+    s, matches = c.complete(None, '%config AliasManager.')
+    nt.assert_in('AliasManager.default_aliases', matches)
+    s, matches = c.complete(None, 'config AliasManager.de')
+    nt.assert_list_equal(['AliasManager.default_aliases'], matches)
+    s, matches = c.complete(None, 'config AliasManager.de')
+    nt.assert_list_equal(['AliasManager.default_aliases'], matches)
 
 
-    ip.run_cell("timeit = 1")  # define a user variable called 'timeit'
+def test_magic_color():
+    ip = get_ipython()
+    c = ip.Completer
 
-    # Order of user variable and line and cell magics with same name:
-    text, matches = c.complete('timeit')
-    nt.assert_equal(matches, ["timeit", "%timeit", "%%timeit"])
+    s, matches = c.complete(None, 'colo')
+    nt.assert_in('%colors', matches)
+    s, matches = c.complete(None, 'colo')
+    nt.assert_not_in('NoColor', matches)
+    s, matches = c.complete(None, 'colors ')
+    nt.assert_in('NoColor', matches)
+    s, matches = c.complete(None, '%colors ')
+    nt.assert_in('NoColor', matches)
+    s, matches = c.complete(None, 'colors NoCo')
+    nt.assert_list_equal(['NoColor'], matches)
+    s, matches = c.complete(None, '%colors NoCo')
+    nt.assert_list_equal(['NoColor'], matches)
+
 
 def test_match_dict_keys():
     """
@@ -858,3 +939,11 @@ def test_from_module_completer():
     _, matches = ip.complete('B', 'from io import B', 16)
     nt.assert_in('BytesIO', matches)
     nt.assert_not_in('BaseException', matches)
+
+def test_snake_case_completion():
+    ip = get_ipython()
+    ip.user_ns['some_three'] = 3
+    ip.user_ns['some_four'] = 4
+    _, matches = ip.complete("s_", "print(s_f")
+    nt.assert_in('some_three', matches)
+    nt.assert_in('some_four', matches)

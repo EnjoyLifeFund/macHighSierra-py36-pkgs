@@ -283,8 +283,10 @@ class PKey(object):
 
         This is the Python equivalent of OpenSSL's ``RSA_check_key``.
 
-        :return: True if key is consistent.
-        :raise Error: if the key is inconsistent.
+        :return: ``True`` if key is consistent.
+
+        :raise OpenSSL.crypto.Error: if the key is inconsistent.
+
         :raise TypeError: if the key is of a type which cannot be checked.
             Only RSA keys can currently be checked.
         """
@@ -316,6 +318,8 @@ class PKey(object):
         :return: The number of bits of the key.
         """
         return _lib.EVP_PKEY_bits(self._pkey)
+
+
 PKeyType = PKey
 
 
@@ -353,17 +357,15 @@ class _EllipticCurve(object):
         :return: A :py:type:`set` of ``cls`` instances giving the names of the
             elliptic curves the underlying library supports.
         """
-        if lib.Cryptography_HAS_EC:
-            num_curves = lib.EC_get_builtin_curves(_ffi.NULL, 0)
-            builtin_curves = _ffi.new('EC_builtin_curve[]', num_curves)
-            # The return value on this call should be num_curves again.  We
-            # could check it to make sure but if it *isn't* then.. what could
-            # we do? Abort the whole process, I suppose...?  -exarkun
-            lib.EC_get_builtin_curves(builtin_curves, num_curves)
-            return set(
-                cls.from_nid(lib, c.nid)
-                for c in builtin_curves)
-        return set()
+        num_curves = lib.EC_get_builtin_curves(_ffi.NULL, 0)
+        builtin_curves = _ffi.new('EC_builtin_curve[]', num_curves)
+        # The return value on this call should be num_curves again.  We
+        # could check it to make sure but if it *isn't* then.. what could
+        # we do? Abort the whole process, I suppose...?  -exarkun
+        lib.EC_get_builtin_curves(builtin_curves, num_curves)
+        return set(
+            cls.from_nid(lib, c.nid)
+            for c in builtin_curves)
 
     @classmethod
     def _get_elliptic_curves(cls, lib):
@@ -680,7 +682,7 @@ class X509Extension(object):
         :param issuer: Optional X509 certificate to use as issuer.
         :type issuer: :py:class:`X509`
 
-        .. _extension: https://www.openssl.org/docs/manmaster/apps/
+        .. _extension: https://www.openssl.org/docs/manmaster/man5/
             x509v3_config.html#STANDARD-EXTENSIONS
         """
         ctx = _ffi.new("X509V3_CTX*")
@@ -972,11 +974,12 @@ class X509Req(object):
         """
         Verifies the signature on this certificate signing request.
 
-        :param key: A public key.
-        :type key: :py:class:`PKey`
-        :return: :py:data:`True` if the signature is correct.
-        :rtype: :py:class:`bool`
-        :raises Error: If the signature is invalid or there is a
+        :param PKey key: A public key.
+
+        :return: ``True`` if the signature is correct.
+        :rtype: bool
+
+        :raises OpenSSL.crypto.Error: If the signature is invalid or there is a
             problem verifying the signature.
         """
         if not isinstance(pkey, PKey):
@@ -1428,7 +1431,7 @@ class X509StoreFlags(object):
     See `OpenSSL Verification Flags`_ for details.
 
     .. _OpenSSL Verification Flags:
-        https://www.openssl.org/docs/manmaster/crypto/X509_VERIFY_PARAM_set_flags.html
+        https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_set_flags.html
     """
     CRL_CHECK = _lib.X509_V_FLAG_CRL_CHECK
     CRL_CHECK_ALL = _lib.X509_V_FLAG_CRL_CHECK_ALL
@@ -1469,8 +1472,12 @@ class X509Store(object):
         *trusted* certificate.
 
         :param X509 cert: The certificate to add to this store.
+
         :raises TypeError: If the certificate is not an :class:`X509`.
-        :raises Error: If OpenSSL was unhappy with your certificate.
+
+        :raises OpenSSL.crypto.Error: If OpenSSL was unhappy with your
+            certificate.
+
         :return: ``None`` if the certificate was added successfully.
         """
         if not isinstance(cert, X509):
@@ -1517,6 +1524,28 @@ class X509Store(object):
         :return: ``None`` if the verification flags were successfully set.
         """
         _openssl_assert(_lib.X509_STORE_set_flags(self._store, flags) != 0)
+
+    def set_time(self, vfy_time):
+        """
+        Set the time against which the certificates are verified.
+
+        Normally the current time is used.
+
+        .. note::
+
+          For example, you can determine if a certificate was valid at a given
+          time.
+
+        .. versionadded:: 17.0.0
+
+        :param datetime vfy_time: The verification time to set on this store.
+        :return: ``None`` if the verification time was successfully set.
+        """
+        param = _lib.X509_VERIFY_PARAM_new()
+        param = _ffi.gc(param, _lib.X509_VERIFY_PARAM_free)
+
+        _lib.X509_VERIFY_PARAM_set_time(param, int(vfy_time.strftime('%s')))
+        _openssl_assert(_lib.X509_STORE_set1_param(self._store, param) != 0)
 
 
 X509StoreType = X509Store
@@ -2180,6 +2209,7 @@ class PKCS7(object):
         string_type = _lib.OBJ_nid2sn(nid)
         return _ffi.string(string_type)
 
+
 PKCS7Type = PKCS7
 
 
@@ -2400,14 +2430,13 @@ class NetscapeSPKI(object):
         """
         Verifies a signature on a certificate request.
 
-        :param key: The public key that signature is supposedly from.
-        :type pkey: :py:class:`PKey`
+        :param PKey key: The public key that signature is supposedly from.
 
-        :return: :py:const:`True` if the signature is correct.
-        :rtype: :py:class:`bool`
+        :return: ``True`` if the signature is correct.
+        :rtype: bool
 
-        :raises Error: If the signature is invalid, or there was a problem
-            verifying the signature.
+        :raises OpenSSL.crypto.Error: If the signature is invalid, or there was
+            a problem verifying the signature.
         """
         answer = _lib.NETSCAPE_SPKI_verify(self._spki, key._pkey)
         if answer <= 0:
@@ -2474,7 +2503,9 @@ class _PassphraseHelper(object):
         elif callable(self._passphrase):
             return _ffi.callback("pem_password_cb", self._read_passphrase)
         else:
-            raise TypeError("Last argument must be string or callable")
+            raise TypeError(
+                "Last argument must be a byte string or a callable."
+            )
 
     @property
     def callback_args(self):
@@ -2485,16 +2516,20 @@ class _PassphraseHelper(object):
         elif callable(self._passphrase):
             return _ffi.NULL
         else:
-            raise TypeError("Last argument must be string or callable")
+            raise TypeError(
+                "Last argument must be a byte string or a callable."
+            )
 
     def raise_if_problem(self, exceptionType=Error):
-        try:
-            _exception_from_error_queue(exceptionType)
-        except exceptionType as e:
-            from_queue = e
         if self._problems:
-            raise self._problems[0]
-        return from_queue
+
+            # Flush the OpenSSL error queue
+            try:
+                _exception_from_error_queue(exceptionType)
+            except exceptionType:
+                pass
+
+            raise self._problems.pop(0)
 
     def _read_passphrase(self, buf, size, rwflag, userdata):
         try:

@@ -11,16 +11,22 @@
 """
 
 from __future__ import division
-# XXX No unicode_literals, cffi likes native strings
 
 import re
+import warnings
 
-import pyphen
-import cffi
 import cairocffi as cairo
+import cffi
+import pyphen
 
 from .compat import basestring
 from .logger import LOGGER
+
+# XXX No unicode_literals, cffi likes native strings
+
+
+if cairo.cairo_version() <= 11400:
+    warnings.warn('There are known rendering problems with Cairo <= 1.14.0')
 
 
 PANGO_ATTR_FONT_FEATURES_CACHE = {}
@@ -580,6 +586,9 @@ def first_line_metrics(first_line, text, layout, resume_at, space_collapse,
     if hyphenated:
         length -= len(hyphenation_character.encode('utf8'))
     elif resume_at:
+        # Set an infinite width as we don't want to break lines when drawing,
+        # the lines have already been split and the size may differ.
+        pango.pango_layout_set_width(layout.layout, -1)
         # Create layout with final text
         first_line_text = utf8_slice(text, slice(length))
         # Remove trailing spaces if spaces collapse
@@ -591,6 +600,8 @@ def first_line_metrics(first_line, text, layout, resume_at, space_collapse,
         length = first_line.length if first_line is not None else 0
         soft_hyphens = 0
         if u'\u00ad' in first_line_text:
+            if first_line_text[0] == u'\u00ad':
+                length += 2  # len(u'\u00ad'.encode('utf8'))
             for i in range(len(layout.text_bytes.decode('utf8'))):
                 while i + soft_hyphens + 1 < len(first_line_text):
                     if first_line_text[i + soft_hyphens + 1] == u'\u00ad':
@@ -682,7 +693,7 @@ class Layout(object):
             width, _ = get_size(line, style)
             width = int(round(width))
         else:
-            width = style.tab_size.value
+            width = int(style.tab_size.value)
         # TODO: 0 is not handled correctly by Pango
         array = ffi.gc(
             pango.pango_tab_array_new_with_positions(
@@ -916,14 +927,6 @@ def split_first_line(text, style, context, max_width, line_width):
 
     if text_wrap:
         max_width = None
-    elif max_width is not None:
-        # In some cases (shrink-to-fit result being the preferred width)
-        # this value is coming from Pango itself,
-        # but floating point errors have accumulated:
-        #   width2 = (width + X) - X   # in some cases, width2 < width
-        # Increase the value a bit to compensate and not introduce
-        # an unexpected line break. The 1e-9 value comes from PEP 485.
-        max_width *= 1 + 1e-9
 
     # Step #1: Get a draft layout with the first line
     layout = create_layout(text, style, context, max_width)

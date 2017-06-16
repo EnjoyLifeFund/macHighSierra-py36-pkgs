@@ -56,8 +56,8 @@ class NamedTests(unittest.TestCase):
         from zope.interface.declarations import named
 
         @named(u'foo')
-        def doFoo(object):
-            pass
+        def doFoo(o):
+            raise NotImplementedError()
 
         self.assertEqual(doFoo.__component_name__, u'foo')
 
@@ -290,7 +290,7 @@ class TestImplements(unittest.TestCase):
                 self._wrapped = wrapped
 
             def __getattr__(self, name):
-                return getattr(self._wrapped, name)
+                raise NotImplementedError()
 
             def __eq__(self, other):
                 return self._wrapped == other
@@ -339,10 +339,14 @@ class Test_implementedByFallback(unittest.TestCase):
 
     def test_dictless_wo_existing_Implements_cant_assign___implemented__(self):
         class Foo(object):
-            def _get_impl(self): return None
-            def _set_impl(self, val): raise TypeError
+            def _get_impl(self):
+                raise NotImplementedError()
+            def _set_impl(self, val):
+                raise TypeError
             __implemented__ = property(_get_impl, _set_impl)
-            def __call__(self): pass  #act like a factory
+            def __call__(self):
+                # act like a factory
+                raise NotImplementedError()
         foo = Foo()
         self.assertRaises(TypeError, self._callFUT, foo)
 
@@ -434,7 +438,8 @@ class Test_implementedByFallback(unittest.TestCase):
         class Foo(object):
             __implemented__ = None
             def __call__(self):
-                pass
+                raise NotImplementedError()
+
         foo = Foo()
         foo.__name__ = 'foo'
         spec = self._callFUT(foo)
@@ -684,7 +689,8 @@ class Test_implementer_only(unittest.TestCase):
         from zope.interface.interface import InterfaceClass
         IFoo = InterfaceClass('IFoo')
         decorator = self._makeOne(IFoo)
-        def _function(): pass
+        def _function():
+            raise NotImplementedError()
         self.assertRaises(ValueError, decorator, _function)
 
     def test_method(self):
@@ -692,7 +698,8 @@ class Test_implementer_only(unittest.TestCase):
         IFoo = InterfaceClass('IFoo')
         decorator = self._makeOne(IFoo)
         class Bar:
-            def _method(): pass
+            def _method():
+                raise NotImplementedError()
         self.assertRaises(ValueError, decorator, Bar._method)
 
     def test_oldstyle_class(self):
@@ -733,10 +740,6 @@ class Test_implementer_only(unittest.TestCase):
 
 class Test_implementsOnly(unittest.TestCase, _Py3ClassAdvice):
 
-    def _getFUT(self):
-        from zope.interface.declarations import implementsOnly
-        return implementsOnly
-
     def test_simple(self):
         import warnings
         from zope.interface.declarations import implementsOnly
@@ -756,8 +759,7 @@ class Test_implementsOnly(unittest.TestCase, _Py3ClassAdvice):
             try:
                 exec(CODE, globs, locs)
             except TypeError:
-                if not PYTHON3:
-                    raise
+                self.assertTrue(PYTHON3, "Must be Python 3")
             else:
                 if PYTHON3:
                     self.fail("Didn't raise TypeError")
@@ -791,10 +793,6 @@ class Test_implementsOnly(unittest.TestCase, _Py3ClassAdvice):
 
 
 class Test_implements(unittest.TestCase, _Py3ClassAdvice):
-
-    def _getFUT(self):
-        from zope.interface.declarations import implements
-        return implements
 
     def test_called_from_function(self):
         import warnings
@@ -968,11 +966,14 @@ class Test_directlyProvides(unittest.TestCase):
         from zope.interface.interface import InterfaceClass
         IFoo = InterfaceClass("IFoo")
         class MetaClass(type):
-            def __getattribute__(self, name):
+            def __getattribute__(cls, name):
                 # Emulate metaclass whose base is not the type object.
                 if name == '__class__':
-                    return self
-                return type.__getattribute__(self, name)
+                    return cls
+                # Under certain circumstances, the implementedByFallback
+                # can get here for __dict__
+                return type.__getattribute__(cls, name) # pragma: no cover
+
         class Foo(object):
             __metaclass__ = MetaClass
         obj = Foo()
@@ -988,10 +989,7 @@ class Test_directlyProvides(unittest.TestCase):
                 # Emulate object w/o any class
                 if name == '__class__':
                     return None
-                try:
-                    return the_dict[name]
-                except KeyError:
-                    raise AttributeError(name)
+                raise NotImplementedError(name)
             def __setattr__(self, name, value):
                 the_dict[name] = value
         obj = Foo()
@@ -1225,10 +1223,6 @@ class Test_directlyProvidedBy(unittest.TestCase):
 
 class Test_classProvides(unittest.TestCase, _Py3ClassAdvice):
 
-    def _getFUT(self):
-        from zope.interface.declarations import classProvides
-        return classProvides
-
     def test_called_from_function(self):
         import warnings
         from zope.interface.declarations import classProvides
@@ -1313,10 +1307,6 @@ class Test_provider(unittest.TestCase):
 
 class Test_moduleProvides(unittest.TestCase):
 
-    def _getFUT(self):
-        from zope.interface.declarations import moduleProvides
-        return moduleProvides
-
     def test_called_from_function(self):
         from zope.interface.declarations import moduleProvides
         from zope.interface.interface import InterfaceClass
@@ -1343,12 +1333,8 @@ class Test_moduleProvides(unittest.TestCase):
             'class Foo(object):',
             '    moduleProvides(IFoo)',
             ])
-        try:
+        with self.assertRaises(TypeError):
             exec(CODE, globs, locs)
-        except TypeError:
-            pass
-        else:
-            assert False, 'TypeError not raised'
 
     def test_called_once_from_module_scope(self):
         from zope.interface.declarations import moduleProvides
@@ -1374,12 +1360,8 @@ class Test_moduleProvides(unittest.TestCase):
             'moduleProvides(IFoo)',
             'moduleProvides(IFoo)',
             ])
-        try:
+        with self.assertRaises(TypeError):
             exec(CODE, globs)
-        except TypeError:
-            pass
-        else:
-            assert False, 'TypeError not raised'
 
 
 class Test_getObjectSpecificationFallback(unittest.TestCase):
@@ -1400,7 +1382,7 @@ class Test_getObjectSpecificationFallback(unittest.TestCase):
                 except KeyError:
                     raise AttributeError(name)
             def __setattr__(self, name, value):
-                the_dict[name] = value
+                raise NotImplementedError()
         foo = Foo()
         spec = self._callFUT(foo)
         self.assertEqual(list(spec), [])
@@ -1410,14 +1392,14 @@ class Test_getObjectSpecificationFallback(unittest.TestCase):
         from zope.interface.interface import InterfaceClass
         IFoo = InterfaceClass("IFoo")
         def foo():
-            pass
+            raise NotImplementedError()
         directlyProvides(foo, IFoo)
         spec = self._callFUT(foo)
         self.assertTrue(spec is foo.__provides__)
 
     def test_existing_provides_is_not_spec(self):
         def foo():
-            pass
+            raise NotImplementedError()
         foo.__provides__ = object() # not a valid spec
         spec = self._callFUT(foo)
         self.assertEqual(list(spec), [])
@@ -1674,36 +1656,3 @@ class _MonkeyDict(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.target.clear()
         self.target.update(self.to_restore)
-
-
-def test_suite():
-    return unittest.TestSuite((
-        unittest.makeSuite(DeclarationTests),
-        unittest.makeSuite(TestImplements),
-        unittest.makeSuite(Test_implementedByFallback),
-        unittest.makeSuite(Test_implementedBy),
-        unittest.makeSuite(Test_classImplementsOnly),
-        unittest.makeSuite(Test_classImplements),
-        unittest.makeSuite(Test__implements_advice),
-        unittest.makeSuite(Test_implementer),
-        unittest.makeSuite(Test_implementer_only),
-        unittest.makeSuite(Test_implements),
-        unittest.makeSuite(Test_implementsOnly),
-        unittest.makeSuite(ProvidesClassTests),
-        unittest.makeSuite(Test_Provides),
-        unittest.makeSuite(Test_directlyProvides),
-        unittest.makeSuite(Test_alsoProvides),
-        unittest.makeSuite(Test_noLongerProvides),
-        unittest.makeSuite(ClassProvidesBaseFallbackTests),
-        unittest.makeSuite(ClassProvidesTests),
-        unittest.makeSuite(Test_directlyProvidedBy),
-        unittest.makeSuite(Test_classProvides),
-        unittest.makeSuite(Test_provider),
-        unittest.makeSuite(Test_moduleProvides),
-        unittest.makeSuite(Test_getObjectSpecificationFallback),
-        unittest.makeSuite(Test_getObjectSpecification),
-        unittest.makeSuite(Test_providedByFallback),
-        unittest.makeSuite(Test_providedBy),
-        unittest.makeSuite(ObjectSpecificationDescriptorFallbackTests),
-        unittest.makeSuite(ObjectSpecificationDescriptorTests),
-    ))

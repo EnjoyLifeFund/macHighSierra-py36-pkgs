@@ -1,8 +1,9 @@
 # coding: utf-8
 import re
+import six
 from unicodedata import normalize, category
 
-from normality.constants import UNICODE_CATEGORIES, CONTROL_CODES
+from normality.constants import UNICODE_CATEGORIES, CONTROL_CODES, WS
 
 COLLAPSE_RE = re.compile(r'\s+', re.U)
 BOM_RE = re.compile(u'^\ufeff', re.U)
@@ -29,6 +30,8 @@ def decompose_nfkd(text):
     normalise them, while also separating characters and their diacritics into
     two separate codepoints.
     """
+    if text is None:
+        return None
     return _decompose_nfkd(text)
 
 
@@ -39,6 +42,8 @@ def category_replace(text, replacements=UNICODE_CATEGORIES):
     whitespace, marks and diacritics) from a piece of text by class, rather
     than specifying them individually.
     """
+    if text is None:
+        return None
     characters = []
     for character in decompose_nfkd(text):
         cat = category(character)
@@ -50,8 +55,7 @@ def category_replace(text, replacements=UNICODE_CATEGORIES):
 
 def remove_control_chars(text):
     """Remove just the control codes from a piece of text."""
-    text = category_replace(text, replacements=CONTROL_CODES)
-    return text
+    return category_replace(text, replacements=CONTROL_CODES)
 
 
 def remove_byte_order_mark(text):
@@ -61,4 +65,6 @@ def remove_byte_order_mark(text):
 
 def collapse_spaces(text):
     """Remove newlines, tabs and multiple spaces with single spaces."""
-    return COLLAPSE_RE.sub(' ', text).strip(' ')
+    if not isinstance(text, six.string_types):
+        return
+    return COLLAPSE_RE.sub(WS, text).strip(WS)

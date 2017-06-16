@@ -12,9 +12,9 @@
 
 from __future__ import division, unicode_literals
 
-from .testing_utils import assert_no_logs, capture_logs, requires
 from .test_boxes import render_pages as parse
 from .test_draw import assert_pixels
+from .testing_utils import assert_no_logs, capture_logs, requires
 
 
 @assert_no_logs
@@ -1528,16 +1528,16 @@ def test_table_row_height():
 def test_table_vertical_align():
     from .test_draw import _, r, B
     assert_pixels('table_vertical_align', 28, 10, [
-        r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r,
-        r+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+r,
-        r+B+r+B+B+_+B+B+_+B+B+_+B+B+_+B+B+r+r+B+B+r+r+B+B+_+B+r,
-        r+B+r+B+B+_+B+B+_+B+B+r+B+B+r+B+B+r+r+B+B+r+r+B+B+r+B+r,
-        r+B+_+B+B+r+B+B+_+B+B+r+B+B+r+B+B+r+r+B+B+r+r+B+B+r+B+r,
-        r+B+_+B+B+r+B+B+_+B+B+_+B+B+_+B+B+r+r+B+B+r+r+B+B+_+B+r,
-        r+B+_+B+B+_+B+B+r+B+B+_+B+B+_+B+B+_+_+B+B+_+_+B+B+_+B+r,
-        r+B+_+B+B+_+B+B+r+B+B+_+B+B+_+B+B+_+_+B+B+_+_+B+B+_+B+r,
-        r+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+r,
-        r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r,
+        r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r,  # noqa
+        r+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+r,  # noqa
+        r+B+r+B+B+_+B+B+_+B+B+_+B+B+_+B+B+r+r+B+B+r+r+B+B+_+B+r,  # noqa
+        r+B+r+B+B+_+B+B+_+B+B+r+B+B+r+B+B+r+r+B+B+r+r+B+B+r+B+r,  # noqa
+        r+B+_+B+B+r+B+B+_+B+B+r+B+B+r+B+B+r+r+B+B+r+r+B+B+r+B+r,  # noqa
+        r+B+_+B+B+r+B+B+_+B+B+_+B+B+_+B+B+r+r+B+B+r+r+B+B+_+B+r,  # noqa
+        r+B+_+B+B+_+B+B+r+B+B+_+B+B+_+B+B+_+_+B+B+_+_+B+B+_+B+r,  # noqa
+        r+B+_+B+B+_+B+B+r+B+B+_+B+B+_+B+B+_+_+B+B+_+_+B+B+_+B+r,  # noqa
+        r+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+B+r,  # noqa
+        r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r+r,  # noqa
     ], '''
       <style>
         @page { size: 28px 10px }
@@ -1581,12 +1581,12 @@ def test_table_vertical_align():
           </td>
 
           <!-- Test padding-top, auto height -->
-          <td style="vertical-align: top; padding-top: 0.5em !important">
+          <td style="vertical-align: top; padding-top: 1em !important">
             o o
           </td>
         </tr>
       </table>
-    ''')
+    ''')  # noqa
 
 
 @assert_no_logs

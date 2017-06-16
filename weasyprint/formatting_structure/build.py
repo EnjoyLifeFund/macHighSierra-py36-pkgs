@@ -18,14 +18,13 @@ from __future__ import division, unicode_literals
 
 import re
 
-from tinycss.color3 import COLOR_KEYWORDS
+import tinycss2.color3
 
 from . import boxes, counters
 from .. import html
+from ..compat import basestring, xrange
 from ..css import properties
 from ..css.computed_values import ZERO_PIXELS
-from ..compat import basestring, xrange
-
 
 # Maps values of the ``display`` CSS property to box types.
 BOX_TYPE_FROM_DISPLAY = {
@@ -657,6 +656,9 @@ def wrap_table(box, children):
     return wrapper
 
 
+TRANSPARENT = tinycss2.color3.parse_color('transparent')
+
+
 def collapse_table_borders(table, grid_width, grid_height):
     """Resolve border conflicts for a table in the collapsing border model.
 
@@ -673,7 +675,7 @@ def collapse_table_borders(table, grid_width, grid_height):
         'hidden', 'double', 'solid', 'dashed', 'dotted', 'ridge',
         'outset', 'groove', 'inset', 'none'])))
     style_map = {'inset': 'ridge', 'outset': 'groove'}
-    transparent = COLOR_KEYWORDS['transparent']
+    transparent = TRANSPARENT
     weak_null_border = (
         (0, 0, style_scores['none']), ('none', 0, transparent))
     vertical_borders = [[weak_null_border for x in xrange(grid_width + 1)]
@@ -765,11 +767,12 @@ def collapse_table_borders(table, grid_width, grid_height):
 
     def max_vertical_width(x, y, h):
         return max(
-            width for grid_row in vertical_borders[y:y+h]
+            width for grid_row in vertical_borders[y:y + h]
             for _, (_, width, _) in [grid_row[x]])
 
     def max_horizontal_width(x, y, w):
-        return max(width for _, (_, width, _) in horizontal_borders[y][x:x+w])
+        return max(
+            width for _, (_, width, _) in horizontal_borders[y][x:x + w])
 
     grid_y = 0
     for row_group in table.children:

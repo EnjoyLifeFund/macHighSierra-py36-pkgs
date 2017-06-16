@@ -1,12 +1,14 @@
 from __future__ import absolute_import
 import numpy as onp
 import operator as op
+from numpy.core.einsumfunc import _parse_einsum_input, einsum_symbols_set
 
 from autograd.core import primitive, getval, vspace
 from . import numpy_wrapper as anp
 from .numpy_extra import ArrayNode, take, array_types
 from builtins import range, zip
 from future.utils import string_types
+import string
 
 # ----- Functions that are constant w.r.t. continuous inputs -----
 
@@ -104,6 +106,8 @@ anp.triu.defvjp(   lambda g, ans, vs, gvs, x, k=0          : anp.triu(g, k=k))
 anp.tril.defvjp(   lambda g, ans, vs, gvs, x, k=0          : anp.tril(g, k=k))
 anp.clip.defvjp(   lambda g, ans, vs, gvs, x, a_min, a_max : g * anp.logical_and(ans != a_min, ans != a_max))
 anp.swapaxes.defvjp(lambda g, ans, vs, gvs, x, axis1, axis2: anp.swapaxes(g, axis2, axis1))
+anp.moveaxis.defvjp(lambda g, ans, vs, gvs, a, source, destination:
+                    anp.moveaxis(g, destination, source))
 anp.rollaxis.defvjp(lambda g, ans, vs, gvs, a, axis, start=0: anp.rollaxis(g, start - 1, axis) if start > axis
                                                  else anp.rollaxis(g, start, axis + 1))
 anp.real_if_close.defvjp(lambda g, ans, vs, gvs, x : match_complex(vs, g))
@@ -166,19 +170,20 @@ def grad_tile(g, ans, vs, gvs, x, reps):
     return anp.reshape(g, x.shape)
 anp.tile.defvjp(grad_tile)
 
-def grad_kron(argnum, G, ans, vs, gvs, A, B):
-    def blocks(G):
-        return map(lambda blockrow: anp.split(blockrow, A.shape[1], 1),
-                                    anp.split(G,        A.shape[0], 0))
-    flat = lambda lst: [item for sublist in lst for item in sublist]
-
+def grad_kron(argnum, G, ans, vs, gvs, orig_A, orig_B):
+    # kron has different promotion rules than dot. the reshapes are necessary if
+    # and only if (1) orig_B is 1D or (2) orig_A and/or orig_B are 0D
+    A, B = anp.atleast_2d(orig_A), anp.atleast_2d(orig_B)
+    shape = list(anp.shape(A) + anp.shape(B))
+    n = anp.ndim(A)
+    shape[n-1], shape[n] = shape[n], shape[n-1]
+    reshaped_G = anp.swapaxes(anp.reshape(G, shape), n-1, n)
     if argnum == 0:
-        Bflat = anp.ravel(B)
-        return anp.array([[anp.dot(Bflat, anp.ravel(Gij))
-                           for Gij in Gi] for Gi in blocks(G)])
+        return anp.reshape(anp.tensordot(reshaped_G, B, axes=anp.ndim(B)),
+                           anp.shape(orig_A))
     else:
-        Aflat = anp.ravel(A)
-        return sum(aij * Gij for aij, Gij in zip(Aflat, flat(blocks(G))))
+        return anp.reshape(anp.tensordot(A, reshaped_G, axes=anp.ndim(A)),
+                           anp.shape(orig_B))
 anp.kron.defvjps(grad_kron, [0, 1])
 
 def grad_transpose(g, ans, vs, gvs, x, axes=None):
@@ -190,26 +195,13 @@ anp.transpose.defvjp(grad_transpose)
 def repeat_to_match_shape(g, vs, axis, keepdims):
     """Returns the array g repeated along axis to fit vector space vs.
        Also returns the number of repetitions of the array."""
-    shape = vs.shape
-    if shape == ():
-        return g, 1
-    elif axis is None:
-        if keepdims:
-            g = anp.sum(g)
-        return anp.full(shape, g, dtype=vs.dtype), anp.prod(shape)
-    elif isinstance(axis, int):
-        if not keepdims:
-            g = anp.expand_dims(g, axis)
-        return anp.repeat(g, shape[axis], axis), shape[axis]
-    elif isinstance(axis, tuple):
-        repeats  = [shape[i] if i in axis else 1 for i in range(len(shape))]
-        expanded = [shape[i] if i not in axis else 1 for i in range(len(shape))]
-        num_reps = anp.prod(anp.array(shape)[list(axis)])
-        if not keepdims:
-            g = anp.reshape(g, expanded)
-        return anp.tile(g, repeats), num_reps
-    else:
-        raise Exception('Axis type {} not valid'.format(type(axis)))
+    if vs.shape == ():
+      return g, 1
+    axis = list(axis) if isinstance(axis, tuple) else axis
+    shape = onp.array(vs.shape)
+    shape[axis] = 1
+    num_reps = onp.prod(onp.array(vs.shape)[axis])
+    return anp.reshape(g, shape) + vs.zeros(), num_reps
 
 def grad_np_sum(g, ans, vs, gvs, x, axis=None, keepdims=False):
     return repeat_to_match_shape(g, vs, axis, keepdims)[0]
@@ -297,46 +289,46 @@ def grad_dot(argnum, g, ans, vs, gvs, A, B):
 anp.dot.defvjps(grad_dot, [0, 1])
 
 def grad_tensordot(argnum, g, ans, vs, gvs, A, B, axes=2):
+    if anp.size(A) == anp.size(B) == 0:
+        return g * B if argnum == 0 else g * A
+
     A_ndim = anp.ndim(A)
-    B_ndim = anp.ndim(B)
-    g_ndim = len(gvs.shape)
+    g_axes = onp.arange(anp.ndim(g))
     if type(axes) is int:
-        if axes > 0:
-            axes = (list(range(A_ndim))[-axes:],
-                    list(range(B_ndim))[:axes])
+        axes = max(axes, 0)
+        if argnum == 0:
+            B_axes = onp.arange(anp.ndim(B))
+            return anp.tensordot(g, B, [g_axes[A_ndim-axes:], B_axes[axes:]])
         else:
-            axes = [(), ()] # summing over zero axes
-
-        assert len(axes[0]) == len(axes[1])  # required by tensordot
-
-    def convert_negative_indices(a, axes_list):
-        axes = range(anp.ndim(a))
-        return [axes[i] for i in axes_list]
-
-    N_axes_summed = len(axes[0])
-    if argnum == 0:
-        X, Y = A, B
-        X_ndim, Y_ndim = A_ndim, B_ndim
-        X_axes_summed, Y_axes_summed = axes
-        g_axes_from_Y = list(range(g_ndim))[(X_ndim - N_axes_summed):]
+            A_axes = onp.arange(A_ndim)
+            return anp.tensordot(A, g, [A_axes[:A_ndim-axes], g_axes[:A_ndim-axes]])
+    elif type(axes[0]) is int:
+        B_ndim = anp.ndim(B)
+        axes = [axes[0] % A_ndim, axes[1] % B_ndim]
+        if argnum == 0:
+            B_axes = onp.arange(B_ndim)
+            return anp.tensordot(g, B, [g_axes[A_ndim-1:], onp.delete(B_axes, axes[1])])
+        else:
+            A_axes = onp.arange(A_ndim)
+            return anp.tensordot(A, g, [onp.delete(A_axes, axes[0]), g_axes[:A_ndim-1]])
     else:
-        X, Y = B, A
-        X_ndim, Y_ndim = B_ndim, A_ndim
-        X_axes_summed, Y_axes_summed = axes[::-1]
-        g_axes_from_Y = list(range(g_ndim))[:(Y_ndim - N_axes_summed)]
-
-    X_axes_summed, Y_axes_summed = map(
-        convert_negative_indices, [X, Y], [X_axes_summed, Y_axes_summed])
-
-    Y_axes_ignored = [i for i in range(Y_ndim) if i not in Y_axes_summed]
-    result = anp.tensordot(g, Y, axes=[g_axes_from_Y, Y_axes_ignored])
-    sorted_axes_pairs = sorted(zip(X_axes_summed, Y_axes_summed), key =lambda x : x[1])
-    forward_permutation = ([i for i in range(X_ndim) if i not in X_axes_summed]
-                         + [i for i, _ in sorted_axes_pairs])
-    reverse_permutation = list(anp.argsort(forward_permutation))
-    if result.ndim == 0:
-        result = result[()]
-    return anp.transpose(result, axes=reverse_permutation)
+        B_ndim = anp.ndim(B)
+        A_axes = onp.arange(A_ndim)
+        B_axes = onp.arange(B_ndim)
+        summed_axes = [onp.asarray(axes[0]) % A_ndim,
+                       onp.asarray(axes[1]) % B_ndim]
+        other_axes  = [onp.delete(A_axes, summed_axes[0]),
+                       onp.delete(B_axes, summed_axes[1])]
+        if argnum == 0:
+            out = anp.tensordot(g, B, [g_axes[len(other_axes[0]):], other_axes[1]])
+            perm = onp.argsort(onp.concatenate(
+                (other_axes[0], summed_axes[0][onp.argsort(summed_axes[1])])))
+            return anp.transpose(out, perm)
+        else:
+            out = anp.tensordot(A, g, [other_axes[0], g_axes[:len(other_axes[0])]])
+            perm = onp.argsort(onp.concatenate(
+                (summed_axes[1][onp.argsort(summed_axes[0])], other_axes[1])))
+            return anp.transpose(out, perm)
 anp.tensordot.defvjps(grad_tensordot, [0, 1])
 
 anp.outer.defvjp(lambda g, ans, vs, gvs, a, b : anp.dot(g, b.T))
@@ -392,28 +384,42 @@ anp.atleast_2d.defvjp(grad_reshape_list)
 anp.atleast_3d.defvjp(grad_reshape_list)
 
 def grad_einsum(argnum, g, ans, vs, gvs, operands, kwargs):
-    # Gradient of einsum is obtained by swapping outgrad with the argument
-    # being differentiated wrt.
     if isinstance(operands[0], string_types):  # using "ijk" convention.
-        subscripts, operands = operands[0], operands[1:]
-        if not '->' in subscripts:
-            raise NotImplementedError("Need indices on both sides.")
+        in_subs, out_subs, _ = _parse_einsum_input(tuple(map(getval, operands)))
+        operands = operands[1:]
+
+        in_subs_list = in_subs.split(',')
         op_num = argnum - 1
-        input_subs, output_subs = subscripts.split('->')
-        input_subs_list = input_subs.split(',')
-        subs_wrt = input_subs_list[op_num]
-        rest_of_ops = operands[:op_num] + operands[op_num + 1:]
-        rest_of_subs = input_subs_list[:op_num] + input_subs_list[op_num + 1:]
-        new_subscripts = ','.join([output_subs] + rest_of_subs) + '->' + subs_wrt
-        return unbroadcast_einsum(vs, gvs, anp.einsum(new_subscripts, *((g,) + rest_of_ops)),
-                                  subs_wrt)
-    else:  # Using (op0, sublist0, op1, sublist1..., sublistout) convention.
+        subs_wrt = in_subs_list[op_num]
+        rest_of_ops = operands[:op_num] + operands[op_num+1:]
+        rest_of_subs = in_subs_list[:op_num] + in_subs_list[op_num+1:]
+
+        # subscripts that only appear in subs_wrt (and not in other subscript lists
+        # or in the output) are implicitly being summed out, as if contracted
+        # against a tensor of ones. we make that tensor of ones explicit to handle
+        # the necessary vjp broadcasting inside einsum.
+        other_named_subs = set(''.join([out_subs] + rest_of_subs))
+        naked_summed = [(i, sub) for (i, sub) in enumerate(subs_wrt)
+                        if sub not in other_named_subs]
+        if naked_summed:
+            naked_summed_dims, ones_subs = zip(*naked_summed)
+            ones_subs = ''.join(ones_subs)
+            ones = onp.ones(onp.array(operands[op_num].shape)[naked_summed_dims])
+            new_input_subs = ','.join([out_subs, ones_subs] + rest_of_subs)
+            new_operands = (g, ones) + rest_of_ops
+        else:
+            new_input_subs = ','.join([out_subs] + rest_of_subs)
+            new_operands = (g,) + rest_of_ops
+
+        new_subscripts = new_input_subs + '->' + subs_wrt
+        return anp.einsum(new_subscripts, *new_operands)
+    else:  # using (op0, sublist0, op1, sublist1, ..., sublistout) convention
         if len(operands) % 2 == 0:
             raise NotImplementedError("Need sublistout argument")
         operands = list(operands)
-        rest_of_ops = [operands[-1]] + operands[:argnum] + operands[(argnum+2):-1] + [operands[argnum+1]]
+        rest_of_ops = [operands[-1]] + operands[:argnum] + \
+                operands[(argnum+2):-1] + [operands[argnum+1]]
         return unbroadcast_einsum(vs, gvs, anp.einsum(g, *rest_of_ops), operands[argnum + 1])
-
 anp.einsum.vjp = grad_einsum
 
 @primitive

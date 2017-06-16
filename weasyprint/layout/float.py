@@ -10,12 +10,12 @@
 
 from __future__ import division, unicode_literals
 
+from ..formatting_structure import boxes
 from .markers import list_marker_layout
 from .min_max import handle_min_max_width
 from .percentages import resolve_percentages, resolve_position_percentages
 from .preferred import shrink_to_fit
 from .tables import table_wrapper_width
-from ..formatting_structure import boxes
 
 
 @handle_min_max_width
@@ -86,7 +86,7 @@ def float_layout(context, box, containing_block, device_size, absolute_boxes,
 
 def find_float_position(context, box, containing_block):
     """Get the right position of the float ``box``."""
-    # See http://www.w3.org/TR/CSS2/visuren.html#dis-pos-flo
+    # See http://www.w3.org/TR/CSS2/visuren.html#float-position
 
     # Point 4 is already handled as box.position_y is set according to the
     # containing box top position, with collapsing margins handled

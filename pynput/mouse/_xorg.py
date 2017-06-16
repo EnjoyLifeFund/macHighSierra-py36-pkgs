@@ -40,6 +40,7 @@ from . import _base
 class Button(enum.Enum):
     """The various buttons.
     """
+    unknown = None
     left = 1
     middle = 2
     right = 3
@@ -47,6 +48,8 @@ class Button(enum.Enum):
     scroll_down = 5
     scroll_left = 6
     scroll_right = 7
+    button8 = 8
+    button9 = 9
 
 
 class Controller(_base.Controller):
@@ -63,11 +66,13 @@ class Controller(_base.Controller):
             return (qp.root_x, qp.root_y)
 
     def _position_set(self, pos):
+        self._check_bounds(*pos)
         px, py = pos
         with display_manager(self._display) as dm:
             Xlib.ext.xtest.fake_input(dm, Xlib.X.MotionNotify, x=px, y=py)
 
     def _scroll(self, dx, dy):
+        self._check_bounds(dx, dy)
         if dy:
             self.click(
                 button=Button.scroll_up if dy > 0 else Button.scroll_down,
@@ -85,6 +90,17 @@ class Controller(_base.Controller):
     def _release(self, button):
         with display_manager(self._display) as dm:
             Xlib.ext.xtest.fake_input(dm, Xlib.X.ButtonRelease, button.value)
+
+    def _check_bounds(self, *args):
+        """Checks the arguments and makes sure they are within the bounds of a
+        short integer.
+
+        :param args: The values to verify.
+        """
+        if not all(
+                (-0x7fff - 1) <= number <= 0x7fff
+                for number in args):
+            raise ValueError(args)
 
 
 class Listener(ListenerMixin, _base.Listener):
@@ -110,12 +126,28 @@ class Listener(ListenerMixin, _base.Listener):
             if scroll:
                 self.on_scroll(px, py, *scroll)
             else:
-                self.on_click(px, py, Button(event.detail), True)
+                self.on_click(px, py, self._button(event.detail), True)
 
         elif event.type == Xlib.X.ButtonRelease:
             # Send an event only if this was not a scroll event
             if event.detail not in self._SCROLL_BUTTONS:
-                self.on_click(px, py, Button(event.detail), False)
+                self.on_click(px, py, self._button(event.detail), False)
 
         else:
             self.on_move(px, py)
+
+    # pylint: disable=R0201
+    def _button(self, detail):
+        """Creates a mouse button from an event detail.
+
+        If the button is unknown, :attr:`Button.unknown` is returned.
+
+        :param detail: The event detail.
+
+        :return: a button
+        """
+        try:
+            return Button(detail)
+        except ValueError:
+            return Button.unknown
+    # pylint: enable=R0201

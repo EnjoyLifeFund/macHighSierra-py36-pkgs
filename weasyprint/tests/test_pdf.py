@@ -19,12 +19,11 @@ import os
 import cairocffi
 import pytest
 
-from .. import CSS, Attachment
-from .. import pdf
+from .. import CSS, Attachment, pdf
 from ..images import CAIRO_HAS_MIME_DATA
 from ..urls import path2url
 from .testing_utils import (
-    assert_no_logs, resource_filename, FakeHTML, capture_logs, temp_directory)
+    FakeHTML, assert_no_logs, capture_logs, resource_filename, temp_directory)
 
 
 @assert_no_logs
@@ -256,22 +255,20 @@ def test_links():
 
 @assert_no_logs
 def test_relative_links():
-    # Relative URI reference without a base URI: not allowed
-    with capture_logs() as logs:
-        links = get_links(
-            '<a href="../lipsum" style="display: block">',
-            base_url=None)
-    assert links == [[]]
-    assert len(logs) == 1
-    assert 'WARNING: Relative URI reference without a base URI' in logs[0]
+    # Relative URI reference without a base URI: allowed for anchors
+    links = get_links(
+        '<a href="../lipsum" style="display: block">',
+        base_url=None)
+    assert links == [[('external', '../lipsum', (50, 950, 450, 950))]]
 
+    # Relative URI reference without a base URI: not supported for -weasy-link
     with capture_logs() as logs:
         links = get_links(
             '<div style="-weasy-link: url(../lipsum)">',
             base_url=None)
     assert links == [[]]
     assert len(logs) == 1
-    assert 'WARNING: Ignored `-weasy-link: url(../lipsum)`' in logs[0]
+    assert 'WARNING: Ignored `-weasy-link: url("../lipsum")`' in logs[0]
     assert 'Relative URI reference without a base URI' in logs[0]
 
     # Internal URI reference without a base URI: OK

@@ -64,9 +64,9 @@ import itertools
 from ..compat import unichr, xrange
 from ..css.computed_values import ZERO_PIXELS
 
-
 # The *Box classes have many attributes and methods, but that's the way it is
 # pylint: disable=R0904,R0902
+
 
 class Box(object):
     """Abstract base class for all boxes."""
@@ -644,11 +644,11 @@ class PageBox(ParentBox):
 
 class MarginBox(BlockContainerBox):
     """Box in page margins, as defined in CSS3 Paged Media"""
-    def __init__(self, at_keyword, style, children=[]):
+    def __init__(self, at_keyword, style):
         self.at_keyword = at_keyword
         # Margin boxes are not linked to any element.
         super(MarginBox, self).__init__(
-            element_tag=None, sourceline=None, style=style, children=children)
+            element_tag=None, sourceline=None, style=style, children=[])
 
     def __repr__(self):
         return '<%s %s>' % (type(self).__name__, self.at_keyword)

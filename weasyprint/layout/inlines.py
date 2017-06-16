@@ -14,17 +14,17 @@ from __future__ import division, unicode_literals
 
 import unicodedata
 
-from .absolute import absolute_layout, AbsolutePlaceholder
-from .float import avoid_collisions, float_layout
-from .replaced import image_marker_layout
-from .min_max import handle_min_max_width, handle_min_max_height
-from .percentages import resolve_percentages, resolve_one_percentage
-from .preferred import (shrink_to_fit, inline_min_content_width,
-                        trailing_whitespace_size)
-from .tables import find_in_flow_baseline, table_wrapper_width
-from ..text import split_first_line
+from ..css.computed_values import ex_ratio, strut_layout
 from ..formatting_structure import boxes
-from ..css.computed_values import strut_layout, ex_ratio
+from ..text import split_first_line
+from .absolute import AbsolutePlaceholder, absolute_layout
+from .float import avoid_collisions, float_layout
+from .min_max import handle_min_max_height, handle_min_max_width
+from .percentages import resolve_one_percentage, resolve_percentages
+from .preferred import (
+    inline_min_content_width, shrink_to_fit, trailing_whitespace_size)
+from .replaced import image_marker_layout
+from .tables import find_in_flow_baseline, table_wrapper_width
 
 
 def iter_line_boxes(context, box, position_y, skip_stack, containing_block,
@@ -256,7 +256,7 @@ def first_letter_to_box(box, skip_stack, first_letter_style):
         child = box.children[0]
         if isinstance(child, boxes.TextBox):
             if child.element_tag.endswith('::first-letter'):
-                letter_box = boxes.Inbox(
+                letter_box = boxes.InlineBox(
                     '%s::first-letter' % box.element_tag,
                     box.sourceline, first_letter_style.inherit_from(),
                     [child])
@@ -378,19 +378,19 @@ def replaced_box_height(box, device_size):
     intrinsic_ratio = box.replacement.intrinsic_ratio
 
     # Test 'auto' on the computed width, not the used width
-    if box.style.height == 'auto' and box.style.width == 'auto':
+    if box.height == 'auto' and box.width == 'auto':
         box.height = intrinsic_height
-    elif box.style.height == 'auto' and intrinsic_ratio:
+    elif box.height == 'auto' and intrinsic_ratio:
         box.height = box.width / intrinsic_ratio
 
-    if (box.style.height == 'auto' and box.style.width == 'auto' and
+    if (box.height == 'auto' and box.width == 'auto' and
             intrinsic_height is not None):
         box.height = intrinsic_height
-    elif intrinsic_ratio is not None and box.style.height == 'auto':
+    elif intrinsic_ratio is not None and box.height == 'auto':
         box.height = box.width / intrinsic_ratio
-    elif box.style.height == 'auto' and intrinsic_height is not None:
+    elif box.height == 'auto' and intrinsic_height is not None:
         box.height = intrinsic_height
-    elif box.style.height == 'auto':
+    elif box.height == 'auto':
         device_width, _device_height = device_size
         box.height = min(150, device_width / 2)
 
@@ -600,6 +600,15 @@ def split_inline_box(context, box, position_x, max_x, skip_stack,
                      containing_block, device_size, absolute_boxes,
                      fixed_boxes, line_placeholders, waiting_floats):
     """Same behavior as split_inline_level."""
+
+    # In some cases (shrink-to-fit result being the preferred width)
+    # max_x is coming from Pango itself,
+    # but floating point errors have accumulated:
+    #   width2 = (width + X) - X   # in some cases, width2 < width
+    # Increase the value a bit to compensate and not introduce
+    # an unexpected line break. The 1e-9 value comes from PEP 485.
+    max_x *= 1 + 1e-9
+
     is_start = skip_stack is None
     initial_position_x = position_x
     assert isinstance(box, (boxes.LineBox, boxes.InlineBox))
@@ -661,13 +670,13 @@ def split_inline_box(context, box, position_x, max_x, skip_stack,
                     if not old_child.is_in_normal_flow():
                         continue
                     if child.style.float == 'left':  # and direction is ltr
-                        old_child.translate(dx=child.margin_width())
+                        old_child.translate(dx=max(child.margin_width(), 0))
                     # elif child.style.float == 'right' and direction is rtl:
                     #    old_child.translate(dx=-child.margin_width())
                 if child.style.float == 'left':
-                    position_x += child.margin_width()
+                    position_x += max(child.margin_width(), 0)
                 elif child.style.float == 'right':
-                    max_x -= child.margin_width()
+                    max_x -= max(child.margin_width(), 0)
             continue
 
         new_child, resume_at, preserved = split_inline_level(
@@ -760,10 +769,11 @@ def split_text_box(context, box, available_width, line_width, skip):
     # resume_at is not set). One code point is one or more byte, so
     # UTF-8 indexes are always bigger or equal to Unicode indexes.
     new_text = layout.text_bytes.decode('utf8')
+    encoded = text.encode('utf8')
     if resume_at is not None:
-        between = text.encode('utf8')[length:resume_at].decode('utf8')
-        resume_at = len(text.encode('utf8')[:resume_at].decode('utf8'))
-    length = len(text.encode('utf8')[:length].decode('utf8'))
+        between = encoded[length:resume_at].decode('utf8')
+        resume_at = len(encoded[:resume_at].decode('utf8'))
+    length = len(encoded[:length].decode('utf8'))
 
     if length > 0:
         box = box.copy_with_text(new_text)
@@ -1017,8 +1027,9 @@ def add_word_spacing(context, box, extra_word_spacing, x_advance):
         box.position_x += x_advance
         previous_x_advance = x_advance
         for child in box.children:
-            x_advance = add_word_spacing(
-                context, child, extra_word_spacing, x_advance)
+            if child.is_in_normal_flow():
+                x_advance = add_word_spacing(
+                    context, child, extra_word_spacing, x_advance)
         box.width += x_advance - previous_x_advance
     else:
         # Atomic inline-level box

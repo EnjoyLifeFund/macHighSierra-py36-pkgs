@@ -11,11 +11,11 @@
 """
 
 from __future__ import division
-# XXX No unicode_literals, cffi likes native strings
 
 import os
 import sys
 import tempfile
+import warnings
 
 from .compat import FILESYSTEM_ENCODING
 from .logger import LOGGER
@@ -23,8 +23,7 @@ from .text import (
     cairo, dlopen, ffi, get_font_features, gobject, pango, pangocairo)
 from .urls import fetch
 
-if cairo.cairo_version() <= 11400:
-    LOGGER.warning('There are known rendering problems with Cairo <= 1.14.0')
+# XXX No unicode_literals, cffi likes native strings
 
 
 class FontConfiguration:
@@ -42,9 +41,9 @@ class FontConfiguration:
 
 
 if sys.platform.startswith('win'):
-    LOGGER.warning('@font-face is currently not supported on Windows')
+    warnings.warn('@font-face is currently not supported on Windows')
 elif pango.pango_version() < 13800:
-    LOGGER.warning('@font-face support needs Pango >= 1.38')
+    warnings.warn('@font-face support needs Pango >= 1.38')
 else:
     ffi.cdef('''
         // FontConfig
@@ -259,16 +258,16 @@ else:
                         <edit name="fontfeatures"
                               mode="assign_replace">%s</edit>
                       </match>
-                  </fontconfig>''' % (
-                      filename,
-                      rule_descriptors['font_family'],
-                      FONTCONFIG_STYLE_CONSTANTS[
-                          rule_descriptors.get('font_style', 'normal')],
-                      FONTCONFIG_WEIGHT_CONSTANTS[
-                          rule_descriptors.get('font_weight', 'normal')],
-                      FONTCONFIG_STRETCH_CONSTANTS[
-                          rule_descriptors.get('font_stretch', 'normal')],
-                      filename, features_string)
+                    </fontconfig>''' % (
+                        filename,
+                        rule_descriptors['font_family'],
+                        FONTCONFIG_STYLE_CONSTANTS[
+                            rule_descriptors.get('font_style', 'normal')],
+                        FONTCONFIG_WEIGHT_CONSTANTS[
+                            rule_descriptors.get('font_weight', 'normal')],
+                        FONTCONFIG_STRETCH_CONSTANTS[
+                            rule_descriptors.get('font_stretch', 'normal')],
+                        filename, features_string)
                     fd, conf_filename = tempfile.mkstemp()
                     # TODO: coding is OK for <test> but what about <edit>?
                     os.write(fd, xml.encode(FILESYSTEM_ENCODING))
@@ -286,7 +285,7 @@ else:
                     else:
                         LOGGER.warning('Failed to load font at "%s"', url)
             LOGGER.warning(
-                'Font-face "%s" cannot be loaded' %
+                'Font-face "%s" cannot be loaded',
                 rule_descriptors['font_family'])
 
         def clean(self):

@@ -68,8 +68,16 @@ class Automaton(object):
 
     def addTransition(self, inState, inputSymbol, outState, outputSymbols):
         """
-        Add the given transition to the outputSymbol.
+        Add the given transition to the outputSymbol. Raise ValueError if
+        there is already a transition with the same inState and inputSymbol.
         """
+        # keeping self._transitions in a flat list makes addTransition
+        # O(n^2), but state machines don't tend to have hundreds of
+        # transitions.
+        for (anInState, anInputSymbol, anOutState, _) in self._transitions:
+            if (anInState == inState and anInputSymbol == inputSymbol):
+                raise ValueError(
+                    "already have transition from {} via {}".format(inState, inputSymbol))
         self._transitions.add(
             (inState, inputSymbol, outState, tuple(outputSymbols))
         )
@@ -137,7 +145,10 @@ class Transitioner(object):
     def __init__(self, automaton, initialState):
         self._automaton = automaton
         self._state = initialState
+        self._tracer = None
 
+    def setTrace(self, tracer):
+        self._tracer = tracer
 
     def transition(self, inputSymbol):
         """
@@ -145,5 +156,10 @@ class Transitioner(object):
         """
         outState, outputSymbols = self._automaton.outputForInput(self._state,
                                                                  inputSymbol)
+        outTracer = None
+        if self._tracer:
+            outTracer = self._tracer(self._state._name(),
+                                     inputSymbol._name(),
+                                     outState._name())
         self._state = outState
-        return outputSymbols
+        return (outputSymbols, outTracer)

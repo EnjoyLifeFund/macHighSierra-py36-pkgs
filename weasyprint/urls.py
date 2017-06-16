@@ -12,24 +12,23 @@
 
 from __future__ import division, unicode_literals
 
-import io
-import re
-import sys
-import os.path
-import mimetypes
 import contextlib
 import gzip
-import zlib
+import io
+import mimetypes
+import os.path
+import re
+import sys
 import traceback
+import zlib
 
 from . import VERSION_STRING
-from .logger import LOGGER
 from .compat import (
-    urljoin, urlsplit, quote, unquote, unquote_to_bytes, urlopen,
-    urllib_get_content_type, urllib_get_charset, urllib_get_filename, Request,
-    parse_email, pathname2url, unicode, base64_decode, StreamingGzipFile,
-    FILESYSTEM_ENCODING)
-
+    FILESYSTEM_ENCODING, Request, StreamingGzipFile, base64_decode,
+    parse_email, pathname2url, quote, unicode, unquote, unquote_to_bytes,
+    urljoin, urllib_get_charset, urllib_get_content_type, urllib_get_filename,
+    urlopen, urlsplit)
+from .logger import LOGGER
 
 # Unlinke HTML, CSS and PNG, the SVG MIME type is not always builtin
 # in some Python version and therefore not reliable.
@@ -98,36 +97,37 @@ def element_base_url(element):
     return element.getroottree().docinfo.URL
 
 
-def get_url_attribute(element, attr_name):
+def get_url_attribute(element, attr_name, allow_relative=False):
     """Get the URI corresponding to the ``attr_name`` attribute.
 
     Return ``None`` if:
 
     * the attribute is empty or missing or,
-    * the value is a relative URI but the document has no base URI.
+    * the value is a relative URI but the document has no base URI and
+      ``allow_relative`` is ``False``.
 
-    Otherwise, return an absolute URI.
+    Otherwise return an URI, absolute if possible.
 
     """
     value = element.get(attr_name, '').strip()
     if value:
-        return url_join(element_base_url(element), value,
-                        '<%s %s="%s"> at line %s', element.tag, attr_name,
-                        value, element.sourceline)
+        return url_join(
+            element_base_url(element), value, allow_relative,
+            '<%s %s="%s"> at line %s',
+            (element.tag, attr_name, value, element.sourceline))
 
 
-def url_join(base_url, url, context, *args):
-    """Like urllib.urljoin, but issue a warning and return None if base_url
-    is required but missing.
-
-    """
+def url_join(base_url, url, allow_relative, context, context_args):
+    """Like urllib.urljoin, but warn if base_url is required but missing."""
     if url_is_absolute(url):
         return iri_to_uri(url)
     elif base_url:
         return iri_to_uri(urljoin(base_url, url))
+    elif allow_relative:
+        return iri_to_uri(url)
     else:
         LOGGER.warning('Relative URI reference without a base URI: ' + context,
-                       *args)
+                       *context_args)
         return None
 
 
@@ -140,7 +140,7 @@ def get_link_attribute(element, attr_name):
     if attr_value.startswith('#') and len(attr_value) > 1:
         # Do not require a base_url when the value is just a fragment.
         return 'internal', unquote(attr_value[1:])
-    uri = get_url_attribute(element, attr_name)
+    uri = get_url_attribute(element, attr_name, allow_relative=True)
     if uri:
         document_url = element_base_url(element)
         if document_url:
@@ -235,26 +235,25 @@ def default_url_fetcher(url):
     (See :ref:`url-fetchers`.)
 
     :type url: Unicode string
-    :param url: The URL of the resource to fetch
-    :raises: any exception to indicate failure. Failures are logged
-        as warnings, with the string representation of the exception
-        in the message.
-    :returns: In case of success, a dict with the following keys:
+    :param url: The URL of the resource to fetch.
+    :raises: An exception indicating failure, e.g. ``ValueError`` on
+        syntactically invalid URL.
+    :returns: A dict with the following keys:
 
         * One of ``string`` (a byte string) or ``file_obj``
           (a file-like object)
-        * Optionally: ``mime_type``, a MIME type extracted eg. from a
+        * Optionally: ``mime_type``, a MIME type extracted e.g. from a
           *Content-Type* header. If not provided, the type is guessed from the
           file extension in the URL.
-        * Optionally: ``encoding``, a character encoding extracted eg. from a
+        * Optionally: ``encoding``, a character encoding extracted e.g. from a
           *charset* parameter in a *Content-Type* header
         * Optionally: ``redirected_url``, the actual URL of the resource
-          in case there were eg. HTTP redirects.
+          if there were e.g. HTTP redirects.
         * Optionally: ``filename``, the filename of the resource. Usually
           derived from the *filename* parameter in a *Content-Disposition*
           header
 
-        If a ``file_obj`` key is given, it is the caller’s responsability
+        If a ``file_obj`` key is given, it is the caller’s responsibility
         to call ``file_obj.close()``.
 
     """

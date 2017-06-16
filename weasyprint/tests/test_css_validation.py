@@ -14,16 +14,17 @@ from __future__ import division, unicode_literals
 
 import math
 
-from .testing_utils import assert_no_logs, capture_logs, almost_equal
-from ..css import PARSER, preprocess_declarations
+import tinycss2
+
+from ..css import preprocess_declarations
 from ..css.properties import INITIAL_VALUES
 from ..images import LinearGradient, RadialGradient
+from .testing_utils import almost_equal, assert_no_logs, capture_logs
 
 
 def expand_to_dict(css, expected_error=None):
     """Helper to test shorthand properties expander functions."""
-    declarations, errors = PARSER.parse_style_attr(css)
-    assert not errors
+    declarations = tinycss2.parse_declaration_list(css)
 
     with capture_logs() as logs:
         base_url = 'http://weasyprint.org/foo/'
@@ -518,21 +519,20 @@ def test_font_variant():
         'font_variant_alternates': 'historical-forms',
         'font_variant_caps': 'petite-caps',
     }
-    assert expand_to_dict('font-variant: lining-nums '
-                          'contextual small-caps common-ligatures') == {
-            'font_variant_ligatures': ['contextual', 'common-ligatures'],
-            'font_variant_numeric': ['lining-nums'],
-            'font_variant_caps': 'small-caps',
-        }
     assert expand_to_dict(
-        'font-variant: jis78 ruby proportional-width') == {
-            'font_variant_east_asian': ['jis78', 'ruby', 'proportional-width'],
-        }
+        'font-variant: lining-nums contextual small-caps common-ligatures'
+    ) == {
+        'font_variant_ligatures': ['contextual', 'common-ligatures'],
+        'font_variant_numeric': ['lining-nums'],
+        'font_variant_caps': 'small-caps',
+    }
+    assert expand_to_dict('font-variant: jis78 ruby proportional-width') == {
+        'font_variant_east_asian': ['jis78', 'ruby', 'proportional-width'],
+    }
     # CSS2-style font-variant
-    assert expand_to_dict(
-        'font-variant: small-caps') == {
-            'font_variant_caps': 'small-caps',
-        }
+    assert expand_to_dict('font-variant: small-caps') == {
+        'font_variant_caps': 'small-caps',
+    }
     assert_invalid('font-variant: normal normal')
     assert_invalid('font-variant: 2')
     assert_invalid('font-variant: ""')

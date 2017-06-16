@@ -4,7 +4,7 @@ except ImportError:
     import chardet
 
 
-def guess_encoding(text, default=None):
+def guess_encoding(text, default='utf-8'):
     """Guess string encoding.
 
     Given a piece of text, apply character encoding detection to
@@ -13,8 +13,8 @@ def guess_encoding(text, default=None):
     result = chardet.detect(text)
     if result:
         encoding = result.get('encoding')
-        encoding = encoding.lower().strip()
-        if encoding == 'ascii':
-            encoding = 'utf-8'
-        return encoding
+        if encoding is not None:
+            encoding = encoding.lower().strip()
+            if encoding != 'ascii':
+                return encoding
     return default

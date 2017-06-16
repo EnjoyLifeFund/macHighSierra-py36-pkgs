@@ -6,6 +6,7 @@
 
 from __future__ import unicode_literals
 
+import io
 import json
 import logging
 import os.path
@@ -24,7 +25,7 @@ try:
 except ImportError:
     from yaml import SafeLoader
 
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 
 absolute_url_re = re.compile(r'^(f|ht)tps?://')
 
@@ -46,7 +47,14 @@ def get_configurable_nbextensions(
     valid_types = {'IPython Notebook Extension', 'Jupyter Notebook Extension'}
 
     # Traverse through nbextension subdirectories to find all yaml files
+    # However, don't check directories twice. See
+    #   github.com/Jupyter-contrib/jupyter_nbextensions_configurator/issues/25
+    already_checked = set()
     for root_nbext_dir in nbextension_dirs:
+        if root_nbext_dir in already_checked:
+            continue
+        else:
+            already_checked.add(root_nbext_dir)
         if log:
             log.debug(
                 'Looking for nbextension yaml descriptor files in {}'.format(
@@ -59,7 +67,7 @@ def get_configurable_nbextensions(
                     continue
                 yaml_path = os.path.join(direct, filename)
                 yaml_relpath = os.path.relpath(yaml_path, root_nbext_dir)
-                with open(yaml_path, 'r') as stream:
+                with io.open(yaml_path, 'r', encoding='utf-8') as stream:
                     try:
                         extension = yaml.load(stream, Loader=SafeLoader)
                     except yaml.YAMLError:

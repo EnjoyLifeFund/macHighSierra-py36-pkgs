@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import warnings
 import functools
 import locale
 import weakref
@@ -65,6 +66,7 @@ class CodeLibrary(object):
 
     _finalized = False
     _object_caching_enabled = False
+    _disable_inspection = False
 
     def __init__(self, codegen, name):
         self._codegen = codegen
@@ -73,8 +75,6 @@ class CodeLibrary(object):
         self._final_module = llvmts.parse_assembly(
             str(self._codegen._create_empty_module(self._name)))
         self._final_module.name = cgutils.normalize_ir_text(self._name)
-        # Remember this on the module, for the object cache hooks
-        self._final_module.__library = weakref.proxy(self)
         self._shared_module = None
         # Track names of the dynamic globals
         self._dynamic_globals = []
@@ -121,6 +121,7 @@ class CodeLibrary(object):
         Internal: optimize this library's final module.
         """
         self._codegen._mpm.run(self._final_module)
+        self._final_module = remove_redundant_nrt_refct(self._final_module)
 
     def _get_module_for_linking(self):
         """
@@ -237,6 +238,9 @@ class CodeLibrary(object):
         """
         Make the underlying LLVM module ready to use.
         """
+        # Remember this on the module, for the object cache hooks
+        self._final_module.__library = weakref.proxy(self)
+
         # It seems add_module() must be done only here and not before
         # linking in other modules, otherwise get_pointer_to_function()
         # could fail.
@@ -270,22 +274,30 @@ class CodeLibrary(object):
     def get_function(self, name):
         return self._final_module.get_function(name)
 
+    def _sentry_cache_disable_inspection(self):
+        if self._disable_inspection:
+            warnings.warn('Inspection disabled for cached code. '
+                          'Invalid result is returned.')
+
     def get_llvm_str(self):
         """
         Get the human-readable form of the LLVM module.
         """
+        self._sentry_cache_disable_inspection()
         return str(self._final_module)
 
     def get_asm_str(self):
         """
         Get the human-readable assembly.
         """
+        self._sentry_cache_disable_inspection()
         return str(self._codegen._tm.emit_assembly(self._final_module))
 
     def get_function_cfg(self, name):
         """
         Get control-flow graph of the LLVM function
         """
+        self._sentry_cache_disable_inspection()
         fn = self.get_function(name)
         dot = ll.get_function_cfg(fn)
         return _CFG(dot)
@@ -312,6 +324,7 @@ class CodeLibrary(object):
         if self._compiled:
             raise ValueError("library already compiled: %s" % (self,))
         self._compiled_object = value
+        self._disable_inspection = True
 
     @classmethod
     def _dump_elf(cls, buf):
@@ -709,16 +722,19 @@ class JITCPUCodegen(BaseCPUCodegen):
 
     def _customize_tm_features(self):
         # For JIT target, we will use LLVM to get the feature map
-        features = ll.get_host_cpu_features()
+        try:
+            features = ll.get_host_cpu_features()
+        except RuntimeError:
+            return ''
+        else:
+            if not config.ENABLE_AVX:
+                # Disable all features with name starting with 'avx'
+                for k in features:
+                    if k.startswith('avx'):
+                        features[k] = False
 
-        if not config.ENABLE_AVX:
-            # Disable all features with name starting with 'avx'
-            for k in features:
-                if k.startswith('avx'):
-                    features[k] = False
-
-        # Set feature attributes
-        return features.flatten()
+            # Set feature attributes
+            return features.flatten()
 
     def _add_module(self, module):
         self._engine.add_module(module)

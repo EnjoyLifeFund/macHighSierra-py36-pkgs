@@ -31,7 +31,7 @@ def _keywords_only(f):
     return g
 
 
-@attr.s
+@attr.s(frozen=True)
 class MethodicalState(object):
     """
     A state for a L{MethodicalMachine}.
@@ -61,6 +61,9 @@ class MethodicalState(object):
                 ))
         self.machine._oneTransition(self, input, enter, outputs, collector)
 
+    def _name(self):
+        return self.method.__name__
+
 
 def _transitionerFromInstance(oself, symbol, automaton):
     """
@@ -76,13 +79,36 @@ def _transitionerFromInstance(oself, symbol, automaton):
     return transitioner
 
 
+def _empty():
+    pass
+
+def _docstring():
+    """docstring"""
+
+def assertNoCode(inst, attribute, f):
+    # The function body must be empty, i.e. "pass" or "return None", which
+    # both yield the same bytecode: LOAD_CONST (None), RETURN_VALUE. We also
+    # accept functions with only a docstring, which yields slightly different
+    # bytecode, because the "None" is put in a different constant slot.
+
+    # Unfortunately, this does not catch function bodies that return a
+    # constant value, e.g. "return 1", because their code is identical to a
+    # "return None". They differ in the contents of their constant table, but
+    # checking that would require us to parse the bytecode, find the index
+    # being returned, then making sure the table has a None at that index.
+
+    if f.__code__.co_code not in (_empty.__code__.co_code,
+                                  _docstring.__code__.co_code):
+        raise ValueError("function body must be empty")
+
+
 @attr.s(cmp=False, hash=False)
 class MethodicalInput(object):
     """
     An input for a L{MethodicalMachine}.
     """
     automaton = attr.ib(repr=False)
-    method = attr.ib()
+    method = attr.ib(validator=assertNoCode)
     symbol = attr.ib(repr=False)
     collectors = attr.ib(default=attr.Factory(dict), repr=False)
 
@@ -100,14 +126,22 @@ class MethodicalInput(object):
         def doInput(*args, **kwargs):
             self.method(oself, *args, **kwargs)
             previousState = transitioner._state
-            outputs = transitioner.transition(self)
+            (outputs, outTracer) = transitioner.transition(self)
             collector = self.collectors[previousState]
-            return collector(output(oself, *args, **kwargs)
-                             for output in outputs)
+            values = []
+            for output in outputs:
+                if outTracer:
+                    outTracer(output._name())
+                value = output(oself, *args, **kwargs)
+                values.append(value)
+            return collector(values)
         return doInput
 
+    def _name(self):
+        return self.method.__name__
 
-@attr.s
+
+@attr.s(frozen=True)
 class MethodicalOutput(object):
     """
     An output for a L{MethodicalMachine}.
@@ -133,6 +167,22 @@ class MethodicalOutput(object):
         Call the underlying method.
         """
         return self.method(oself, *args, **kwargs)
+
+    def _name(self):
+        return self.method.__name__
+
+@attr.s(cmp=False, hash=False)
+class MethodicalTracer(object):
+    automaton = attr.ib(repr=False)
+    symbol = attr.ib(repr=False)
+
+
+    def __get__(self, oself, type=None):
+        transitioner = _transitionerFromInstance(oself, self.symbol,
+                                                 self.automaton)
+        def setTrace(tracer):
+            transitioner.setTrace(tracer)
+        return setTrace
 
 
 
@@ -289,6 +339,9 @@ class MethodicalMachine(object):
             return unserialize
         return decorator
 
+    @property
+    def _setTrace(self):
+        return MethodicalTracer(self._automaton, self._symbol)
 
     def asDigraph(self):
         """

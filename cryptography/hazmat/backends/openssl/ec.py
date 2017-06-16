@@ -86,7 +86,6 @@ def _ecdsa_sig_verify(backend, public_key, signature, data):
     if res != 1:
         backend._consume_errors()
         raise InvalidSignature
-    return True
 
 
 @utils.register_interface(AsymmetricSignatureContext)
@@ -118,7 +117,7 @@ class _ECDSAVerificationContext(object):
 
     def verify(self):
         digest = self._digest.finalize()
-        return _ecdsa_sig_verify(
+        _ecdsa_sig_verify(
             self._backend, self._public_key, self._signature, digest
         )
 
@@ -135,6 +134,10 @@ class _EllipticCurvePrivateKey(object):
         self._curve = _sn_to_elliptic_curve(backend, sn)
 
     curve = utils.read_only_property("_curve")
+
+    @property
+    def key_size(self):
+        return self.curve.key_size
 
     def signer(self, signature_algorithm):
         _check_signature_algorithm(signature_algorithm)
@@ -232,6 +235,10 @@ class _EllipticCurvePublicKey(object):
 
     curve = utils.read_only_property("_curve")
 
+    @property
+    def key_size(self):
+        return self.curve.key_size
+
     def verifier(self, signature, signature_algorithm):
         if not isinstance(signature, bytes):
             raise TypeError("signature must be bytes.")
@@ -283,4 +290,4 @@ class _EllipticCurvePublicKey(object):
         data, algorithm = _calculate_digest_and_algorithm(
             self._backend, data, signature_algorithm._algorithm
         )
-        return _ecdsa_sig_verify(self._backend, self, signature, data)
+        _ecdsa_sig_verify(self._backend, self, signature, data)

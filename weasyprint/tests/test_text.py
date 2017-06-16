@@ -15,9 +15,8 @@ from __future__ import division, unicode_literals
 from ..css import StyleDict
 from ..css.properties import INITIAL_VALUES
 from ..text import split_first_line
-from .test_layout import parse, body_children
+from .test_layout import body_children, parse
 from .testing_utils import FONTS, assert_no_logs
-
 
 FONTS = FONTS.split(', ')
 
@@ -712,13 +711,14 @@ def test_white_space():
 @assert_no_logs
 def test_tab_size():
     """Test the ``tab-size`` property."""
-    for value, width in (
-            (8, 144),  # (2 + (8 - 1)) * 16
-            (4, 80),  # (2 + (4 - 1)) * 16
-            ('3em', 64),  # (2 + (3 - 1)) * 16
-            ('25px', 41),  # 2 * 16 + 25 - 1 * 16
-            # (0, 32),  # See Layout.set_tabs
-            ):
+    values = (
+        (8, 144),  # (2 + (8 - 1)) * 16
+        (4, 80),  # (2 + (4 - 1)) * 16
+        ('3em', 64),  # (2 + (3 - 1)) * 16
+        ('25px', 41),  # 2 * 16 + 25 - 1 * 16
+        # (0, 32),  # See Layout.set_tabs
+    )
+    for value, width in values:
         page, = parse('''
             <style>
                 pre { tab-size: %s; font-family: ahem }

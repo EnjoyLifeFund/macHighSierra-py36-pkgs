@@ -31,6 +31,7 @@ class Error(Exception):
     See :manpage:`err(3)` for more information.
     """
 
+
 _raise_current_error = partial(_exception_from_error_queue, Error)
 
 _unspecified = object()
@@ -107,7 +108,7 @@ def status():
     """
     Check whether the PRNG has been seeded with enough data.
 
-    :return: :obj:`True` if the PRNG is seeded enough, :obj:`False` otherwise.
+    :return: 1 if the PRNG is seeded enough, 0 otherwise.
     """
     return _lib.RAND_status()
 
@@ -201,6 +202,7 @@ def screen():
     :return: None
     """
     _lib.RAND_screen()
+
 
 if getattr(_lib, 'RAND_screen', None) is None:
     del screen

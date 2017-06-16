@@ -6,6 +6,7 @@ Needs to be run by nose (to make ipython session available).
 
 import io
 import os
+import re
 import sys
 import warnings
 from unittest import TestCase
@@ -14,13 +15,15 @@ from io import StringIO
 
 import nose.tools as nt
 
+import shlex
+
 from IPython import get_ipython
 from IPython.core import magic
 from IPython.core.error import UsageError
 from IPython.core.magic import (Magics, magics_class, line_magic,
                                 cell_magic,
                                 register_line_magic, register_cell_magic)
-from IPython.core.magics import execution, script, code
+from IPython.core.magics import execution, script, code, logging
 from IPython.testing import decorators as dec
 from IPython.testing import tools as tt
 from IPython.utils import py3compat
@@ -79,6 +82,27 @@ def test_config():
     """
     ## should not raise.
     _ip.magic('config')
+
+def test_config_available_configs():
+    """ test that config magic prints available configs in unique and
+    sorted order. """
+    with capture_output() as captured:
+        _ip.magic('config')
+
+    stdout = captured.stdout
+    config_classes = stdout.strip().split('\n')[1:]
+    nt.assert_list_equal(config_classes, sorted(set(config_classes)))
+
+def test_config_print_class():
+    """ test that config with a classname prints the class's options. """
+    with capture_output() as captured:
+        _ip.magic('config TerminalInteractiveShell')
+
+    stdout = captured.stdout
+    if not re.match("TerminalInteractiveShell.* options", stdout.splitlines()[0]):
+        print(stdout)
+        raise AssertionError("1st line of stdout not like "
+                             "'TerminalInteractiveShell.* options'")
 
 def test_rehashx():
     # clear up everything
@@ -867,6 +891,11 @@ def test_alias_magic():
     nt.assert_equal(ip.run_line_magic('env', ''),
                     ip.run_line_magic('env_alias', ''))
 
+    # Test that line alias with parameters passed in is created successfully.
+    ip.run_line_magic('alias_magic', '--line history_alias history --params ' + shlex.quote('3'))
+    nt.assert_in('history_alias', mm.magics['line'])
+
+
 def test_save():
     """Test %save."""
     ip = get_ipython()
@@ -977,3 +1006,35 @@ def test_strip_initial_indent():
     nt.assert_equal(sii("  a = 1\nb = 2"), "a = 1\nb = 2")
     nt.assert_equal(sii("  a\n    b\nc"), "a\n  b\nc")
     nt.assert_equal(sii("a\n  b"), "a\n  b")
+
+def test_logging_magic_quiet_from_arg():
+    _ip.config.LoggingMagics.quiet = False
+    lm = logging.LoggingMagics(shell=_ip)
+    with TemporaryDirectory() as td:
+        try:
+            with tt.AssertNotPrints(re.compile("Activating.*")):
+                lm.logstart('-q {}'.format(
+                        os.path.join(td, "quiet_from_arg.log")))
+        finally:
+            _ip.logger.logstop()
+
+def test_logging_magic_quiet_from_config():
+    _ip.config.LoggingMagics.quiet = True
+    lm = logging.LoggingMagics(shell=_ip)
+    with TemporaryDirectory() as td:
+        try:
+            with tt.AssertNotPrints(re.compile("Activating.*")):
+                lm.logstart(os.path.join(td, "quiet_from_config.log"))
+        finally:
+            _ip.logger.logstop()
+    
+def test_logging_magic_not_quiet():
+    _ip.config.LoggingMagics.quiet = False
+    lm = logging.LoggingMagics(shell=_ip)
+    with TemporaryDirectory() as td:
+        try:
+            with tt.AssertPrints(re.compile("Activating.*")):
+                lm.logstart(os.path.join(td, "not_quiet.log"))
+        finally:
+            _ip.logger.logstop()
+    

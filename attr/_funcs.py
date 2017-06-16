@@ -164,7 +164,13 @@ def assoc(inst, **changes):
         be found on *cls*.
     :raise attr.exceptions.NotAnAttrsClassError: If *cls* is not an ``attrs``
         class.
+
+    ..  deprecated:: 17.1.0
+        Use :func:`evolve` instead.
     """
+    import warnings
+    warnings.warn("assoc is deprecated and will be removed after 2018/01.",
+                  DeprecationWarning)
     new = copy.copy(inst)
     attrs = fields(inst.__class__)
     for k, v in iteritems(changes):
@@ -176,3 +182,31 @@ def assoc(inst, **changes):
             )
         _obj_setattr(new, k, v)
     return new
+
+
+def evolve(inst, **changes):
+    """
+    Create a new instance, based on *inst* with *changes* applied.
+
+    :param inst: Instance of a class with ``attrs`` attributes.
+    :param changes: Keyword changes in the new copy.
+
+    :return: A copy of inst with *changes* incorporated.
+
+    :raise TypeError: If *attr_name* couldn't be found in the class
+        ``__init__``.
+    :raise attr.exceptions.NotAnAttrsClassError: If *cls* is not an ``attrs``
+        class.
+
+    ..  versionadded:: 17.1.0
+    """
+    cls = inst.__class__
+    attrs = fields(cls)
+    for a in attrs:
+        if not a.init:
+            continue
+        attr_name = a.name  # To deal with private attributes.
+        init_name = attr_name if attr_name[0] != "_" else attr_name[1:]
+        if init_name not in changes:
+            changes[init_name] = getattr(inst, attr_name)
+    return cls(**changes)

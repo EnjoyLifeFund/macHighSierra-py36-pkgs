@@ -63,7 +63,7 @@ def _find_modules(arg, dirname, files):
 
 class LocalBuildDoc(setup_command.BuildDoc):
 
-    builders = ['html', 'man']
+    builders = ['html']
     command_name = 'build_sphinx'
     sphinx_initialized = False
 
@@ -134,16 +134,14 @@ class LocalBuildDoc(setup_command.BuildDoc):
         if self.sphinx_initialized:
             confoverrides['suppress_warnings'] = [
                 'app.add_directive', 'app.add_role',
-                'app.add_generic_role', 'app.add_node']
+                'app.add_generic_role', 'app.add_node',
+                'image.nonlocal_uri',
+            ]
         app = application.Sphinx(
             self.source_dir, self.config_dir,
             self.builder_target_dir, self.doctree_dir,
             self.builder, confoverrides, status_stream,
             freshenv=self.fresh_env, warningiserror=self.warning_is_error)
-        sphinx_config = app.config
-        if self.builder == 'man' and len(
-                getattr(sphinx_config, 'man_pages', '')) == 0:
-            return
         self.sphinx_initialized = True
 
         try:
@@ -185,6 +183,14 @@ class LocalBuildDoc(setup_command.BuildDoc):
                         "autodoc_exclude_modules",
                         [None, ""])[1].split()))
 
+        # TODO(stephenfin): Deprecate this functionality once we depend on
+        # Sphinx 1.6, which includes a similar feature, in g-r
+        # https://github.com/sphinx-doc/sphinx/pull/3476
+        self.finalize_options()
+        if hasattr(self, "builder_target_dirs"):
+            # Sphinx >= 1.6.1
+            return setup_command.BuildDoc.run(self)
+        # Sphinx < 1.6
         for builder in self.builders:
             self.builder = builder
             self.finalize_options()
@@ -225,8 +231,3 @@ class LocalBuildDoc(setup_command.BuildDoc):
         # handle Sphinx < 1.5.0
         if not hasattr(self, 'warning_is_error'):
             self.warning_is_error = False
-
-
-class LocalBuildLatex(LocalBuildDoc):
-    builders = ['latex']
-    command_name = 'build_sphinx_latex'

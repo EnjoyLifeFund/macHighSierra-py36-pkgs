@@ -12,32 +12,31 @@
 
 from __future__ import division, unicode_literals
 
-import os
-import io
-import sys
-import math
 import contextlib
-import threading
 import gzip
+import io
+import math
+import os
+import sys
+import threading
 import unicodedata
 import zlib
 
-import lxml.html
-import lxml.etree
 import cairocffi as cairo
+import lxml.etree
+import lxml.html
 import pytest
+import tinycss2
 
-from .testing_utils import (
-    resource_filename, assert_no_logs, capture_logs, FakeHTML,
-    http_server, temp_directory)
-from .test_draw import image_to_pixels
-from ..compat import urljoin, urlencode, urlparse_uses_relative, iteritems
-from ..urls import path2url
-from .. import HTML, CSS, default_url_fetcher
-from .. import __main__
-from .. import navigator
+from .. import CSS, HTML, __main__, default_url_fetcher, navigator
+from ..compat import iteritems, urlencode, urljoin, urlparse_uses_relative
+from ..css.validation import remove_whitespace
 from ..document import _TaggedTuple
-
+from ..urls import path2url
+from .test_draw import image_to_pixels
+from .testing_utils import (
+    FakeHTML, assert_no_logs, capture_logs, http_server, resource_filename,
+    temp_directory)
 
 CHDIR_LOCK = threading.Lock()
 
@@ -135,16 +134,17 @@ def test_css_parsing():
         """Check that a parsed stylsheet looks like resources/utf8-test.css"""
         # Using 'encoding' adds a CSSCharsetRule
         rule = css.rules[-1][0]
-        assert rule.selector.as_css() == 'h1::before'
-        content, background = rule.declarations
+        assert tinycss2.serialize(rule.prelude) == 'h1::before '
+        content, background = tinycss2.parse_declaration_list(
+            rule.content, skip_whitespace=True)
 
         assert content.name == 'content'
-        string, = content.value
+        string, = remove_whitespace(content.value)
         assert string.value == 'I løvë Unicode'
 
         assert background.name == 'background-image'
-        url_value, = background.value
-        assert url_value.type == 'URI'
+        url_value, = remove_whitespace(background.value)
+        assert url_value.type == 'url'
         url = urljoin(css.base_url, url_value.value)
         assert url.startswith('file:')
         assert url.endswith('weasyprint/tests/resources/pattern.png')
@@ -157,58 +157,58 @@ def check_png_pattern(png_bytes, x2=False, blank=False, rotated=False):
     from .test_draw import _, r, B, assert_pixels_equal
     if blank:
         expected_pixels = [
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
         ]
         size = 8
     elif x2:
         expected_pixels = [
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+r+r+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+r+r+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+B+B+B+B+B+B+B+B+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_+_+_+_+_+_+_+_+_,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + r + r + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + r + r + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + B + B + B + B + B + B + B + B + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _ + _,
         ]
         size = 16
     elif rotated:
         expected_pixels = [
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+r+B+B+B+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + r + B + B + B + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
         ]
         size = 8
     else:
         expected_pixels = [
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+r+B+B+B+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+B+B+B+B+_+_,
-            _+_+_+_+_+_+_+_,
-            _+_+_+_+_+_+_+_,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + r + B + B + B + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + B + B + B + B + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
+            _ + _ + _ + _ + _ + _ + _ + _,
         ]
         size = 8
     surface = cairo.ImageSurface.create_from_png(io.BytesIO(png_bytes))
@@ -761,16 +761,23 @@ def test_links():
                  (5, 10, 190, 0))]],
         base_url='http://weasyprint.org/foo/bar/')
 
-    # Relative URI reference without a base URI: not allowed
+    # Relative URI reference without a base URI: allowed for links
     assert_links(
-        '<a href="../lipsum">',
-        [[]], [{}], [[]], base_url=None, warnings=[
-            'WARNING: Relative URI reference without a base URI'])
+        '''
+            <body style="width: 200px">
+            <a href="../lipsum" style="display: block; margin: 10px 5px">
+        ''', [[('external', '../lipsum', (5, 10, 190, 0))]], [{}],
+        [[('external', '../lipsum', (5, 10, 190, 0))]], base_url=None)
+
+    # Relative URI reference without a base URI: not supported for -weasy-link
     assert_links(
-        '<div style="-weasy-link: url(../lipsum)">',
-        [[]], [{}], [[]], base_url=None, warnings=[
-            "WARNING: Ignored `-weasy-link: url(../lipsum)` at 1:1, "
-            "Relative URI reference without a base URI: '../lipsum'."])
+        '''
+            <body style="width: 200px">
+            <div style="-weasy-link: url(../lipsum);
+                        display: block; margin: 10px 5px">
+        ''', [[]], [{}], [[]], base_url=None, warnings=[
+            'WARNING: Ignored `-weasy-link: url("../lipsum")` at 1:1, '
+            'Relative URI reference without a base URI'])
 
     # Internal or absolute URI reference without a base URI: OK
     assert_links(

@@ -472,7 +472,7 @@ def connect(user, host, port, cache, seek_gateway=True):
                 sock=sock,
             )
             for suffix in ('auth', 'deleg_creds', 'kex'):
-                name = 'gss_{0}'.format(suffix)
+                name = "gss_" + suffix
                 val = env.get(name, None)
                 if val is not None:
                     kwargs[name] = val
@@ -501,8 +501,12 @@ def connect(user, host, port, cache, seek_gateway=True):
             # If we get SSHExceptionError and the exception message indicates
             # SSH protocol banner read failures, assume it's caused by the
             # server load and try again.
-            if e.__class__ is ssh.SSHException \
-                and msg == 'Error reading SSH protocol banner':
+            #
+            # If we are using a gateway, we will get a ChannelException if
+            # connection to the downstream host fails. We should retry.
+            if (e.__class__ is ssh.SSHException \
+                and msg == 'Error reading SSH protocol banner') \
+                or e.__class__ is ssh.ChannelException:
                 if _tried_enough(tries):
                     raise NetworkError(msg, e)
                 continue
