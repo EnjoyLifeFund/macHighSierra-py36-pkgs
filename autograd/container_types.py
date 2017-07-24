@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from autograd.core import (primitive, Node, VSpace, register_node, vspace,
-                           register_vspace, getval, SparseObject)
+                           register_vspace, SparseObject)
 from builtins import zip
 from future.utils import iteritems
 from functools import partial
@@ -8,10 +8,10 @@ import numpy as np
 
 class SequenceNode(Node):
     __slots__ = []
-    def __getitem__(self, idx):
-        return sequence_take(self, idx)
-    def __len__(self):
-        return len(self.value)
+    def __getitem__(self, idx): return sequence_take(self, idx)
+    def __len__(self): return len(self.value)
+    def __add__(self, other): return sequence_extend_right(self, *other)
+    def __radd__(self, other): return sequence_extend_left(self, *other)
 
 register_node(SequenceNode, tuple)
 register_node(SequenceNode, list)
@@ -20,8 +20,24 @@ register_node(SequenceNode, list)
 def sequence_take(A, idx):
     return A[idx]
 def grad_sequence_take(g, ans, vs, gvs, A, idx):
-    return sequence_untake(g, idx, vspace(getval(A)))
+    return sequence_untake(g, idx, vs)
 sequence_take.defvjp(grad_sequence_take)
+
+@primitive
+def sequence_extend_right(seq, *elts):
+    return seq + type(seq)(elts)
+def grad_sequence_extend_right(argnum, g, ans, vs, gvs, args, kwargs):
+    seq, elts = args[0], args[1:]
+    return g[:len(seq)] if argnum == 0 else g[len(seq) + argnum - 1]
+sequence_extend_right.vjp = grad_sequence_extend_right
+
+@primitive
+def sequence_extend_left(seq, *elts):
+    return type(seq)(elts) + seq
+def grad_sequence_extend_left(argnum, g, ans, vs, gvs, args, kwargs):
+    seq, elts = args[0], args[1:]
+    return g[len(elts):] if argnum == 0 else g[argnum - 1]
+sequence_extend_left.vjp = grad_sequence_extend_left
 
 @primitive
 def sequence_untake(x, idx, vs):
@@ -35,7 +51,7 @@ def sequence_untake(x, idx, vs):
         result[idx] = accum(result[idx])
         return vs.sequence_type(result)
     return SparseObject(vs, mut_add)
-sequence_untake.defvjp(lambda g, ans, vs, gvs, x, idx, template : sequence_take(g, idx))
+sequence_untake.defvjp(lambda g, ans, vs, gvs, x, idx, _: sequence_take(g, idx))
 sequence_untake.defvjp_is_zero(argnums=(1, 2))
 
 @primitive
@@ -62,17 +78,16 @@ class SequenceVSpace(VSpace):
     def flatten(self, value, covector=False):
         if self.shape:
             return np.concatenate(
-                [s.flatten(v, covector) for s, v in zip(self.shape, value)])
+                [vs.flatten(v, covector) for vs, v in zip(self.shape, value)])
         else:
             return np.zeros((0,))
 
     def unflatten(self, value, covector=False):
         result = []
         start = 0
-        for s in self.shape:
-            N = s.size
-
-            result.append(s.unflatten(value[start:start + N], covector))
+        for vs in self.shape:
+            N = vs.size
+            result.append(vs.unflatten(value[start:start + N], covector))
             start += N
         return self.sequence_type(result)
 
@@ -97,17 +112,16 @@ register_node(DictNode, dict)
 def dict_take(A, idx):
     return A[idx]
 def grad_dict_take(g, ans, vs, gvs, A, idx):
-    return dict_untake(g, idx, A)
+    return dict_untake(g, idx, vs)
 dict_take.defvjp(grad_dict_take)
 
 @primitive
-def dict_untake(x, idx, template):
+def dict_untake(x, idx, vs):
     def mut_add(A):
          A[idx] = vs.shape[idx].mut_add(A[idx], x)
          return A
-    vs = vspace(template)
     return SparseObject(vs, mut_add)
-dict_untake.defvjp(lambda g, ans, vs, gvs, x, idx, template : dict_take(g, idx))
+dict_untake.defvjp(lambda g, ans, vs, gvs, x, idx, _: dict_take(g, idx))
 dict_untake.defvjp_is_zero(argnums=(1, 2))
 
 def make_dict(pairs):

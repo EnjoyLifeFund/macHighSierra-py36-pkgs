@@ -22,13 +22,14 @@ from . import Nodes
 from . import Options
 from . import TypeSlots
 from . import PyrexTypes
+from . import Pythran
 
 from .Errors import error, warning
 from .PyrexTypes import py_object_type
 from ..Utils import open_new_file, replace_suffix, decode_filename
 from .Code import UtilityCode
 from .StringEncoding import EncodedString
-
+from .Pythran import has_np_pythran
 
 def check_c_declarations_pxd(module_node):
     module_node.scope.check_c_classes_pxd()
@@ -103,6 +104,8 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             self.scope.merge_in(scope)
 
     def analyse_declarations(self, env):
+        if has_np_pythran(env):
+            Pythran.include_pythran_generic(env)
         if self.directives:
             env.old_style_globals = self.directives['old_style_globals']
         if not Options.docstrings:
@@ -115,6 +118,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         else:
             env.doc = self.doc
         env.directives = self.directives
+
         self.body.analyse_declarations(env)
 
     def prepare_utility_code(self):
@@ -214,8 +218,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
     def generate_public_declaration(self, entry, h_code, i_code):
         h_code.putln("%s %s;" % (
             Naming.extern_c_macro,
-            entry.type.declaration_code(
-                entry.cname, dll_linkage="DL_IMPORT")))
+            entry.type.declaration_code(entry.cname)))
         if i_code:
             i_code.putln("cdef extern %s" % (
                 entry.type.declaration_code(entry.cname, pyrex=1)))
@@ -698,10 +701,12 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         PyrexTypes.c_int_type.create_from_py_utility_code(env)
 
         code.put(Nodes.branch_prediction_macros)
+        code.putln('static CYTHON_INLINE void __Pyx_pretend_to_initialize(void* ptr) { (void)ptr; }')
         code.putln('')
         code.putln('static PyObject *%s;' % env.module_cname)
         code.putln('static PyObject *%s;' % env.module_dict_cname)
         code.putln('static PyObject *%s;' % Naming.builtins_cname)
+        code.putln('static PyObject *%s;' % Naming.cython_runtime_cname)
         code.putln('static PyObject *%s;' % Naming.empty_tuple)
         code.putln('static PyObject *%s;' % Naming.empty_bytes)
         code.putln('static PyObject *%s;' % Naming.empty_unicode)
@@ -711,6 +716,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln('static int %s = 0;' % Naming.clineno_cname)
         code.putln('static const char * %s= %s;' % (Naming.cfilenm_cname, Naming.file_c_macro))
         code.putln('static const char *%s;' % Naming.filename_cname)
+
+        if has_np_pythran(env):
+            env.use_utility_code(UtilityCode.load_cached("PythranConversion", "CppSupport.cpp"))
 
     def generate_extern_c_macro_definition(self, code):
         name = Naming.extern_c_macro
@@ -739,27 +747,15 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln_openmp("#include <omp.h>")
 
     def generate_filename_table(self, code):
-        import os.path as path
-
-        full_module_path = path.join(*self.full_module_name.split('.'))
-        module_abspath = path.splitext(path.abspath(
-            self.compilation_source.source_desc.get_filenametable_entry()))[0]
-        root_path = module_abspath[:-len(full_module_path)]
-        workdir = path.abspath(os.getcwd()) + os.sep
-        if root_path.startswith(workdir):
-            # prefer relative paths to current directory (which is most likely the project root)
-            root_path = workdir
-
+        from os.path import isabs, basename
         code.putln("")
         code.putln("static const char *%s[] = {" % Naming.filetable_cname)
         if code.globalstate.filename_list:
             for source_desc in code.globalstate.filename_list:
-                file_abspath = path.abspath(source_desc.get_filenametable_entry())
-                if file_abspath.startswith(root_path):
-                    filename = file_abspath[len(root_path):]
-                else:
-                    filename = path.basename(file_abspath)
-                escaped_filename = filename.replace("\\", "\\\\").replace('"', r'\"')
+                file_path = source_desc.get_filenametable_entry()
+                if isabs(file_path):
+                    file_path = basename(file_path)  # never include absolute paths
+                escaped_filename = file_path.replace("\\", "\\\\").replace('"', r'\"')
                 code.putln('"%s",' % escaped_filename)
         else:
             # Some C compilers don't like an empty array
@@ -909,7 +905,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                     has_destructor = True
                 code.putln("%s;" % attr.type.declaration_code(attr.cname))
             if has_virtual_methods and not has_destructor:
-                code.put("virtual ~%s() { }" % type.cname)
+                code.putln("virtual ~%s() { }" % type.cname)
             code.putln("};")
 
     def generate_enum_definition(self, entry, code):
@@ -1361,8 +1357,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             else:
                 finalised_check = (
                     '(!PyType_IS_GC(Py_TYPE(o)) || !_PyGC_FINALIZED(o))')
-            code.putln("if (unlikely(Py_TYPE(o)->tp_finalize) && %s) {" %
-                       finalised_check)
+            code.putln(
+                "if (unlikely(PyType_HasFeature(Py_TYPE(o), Py_TPFLAGS_HAVE_FINALIZE)"
+                " && Py_TYPE(o)->tp_finalize) && %s) {" % finalised_check)
             # if instance was resurrected by finaliser, return
             code.putln("if (PyObject_CallFinalizerFromDealloc(o)) return;")
             code.putln("}")
@@ -1507,10 +1504,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
 
         for entry in py_attrs:
             var_code = "p->%s" % entry.cname
+            var_as_pyobject = PyrexTypes.typecast(py_object_type, entry.type, var_code)
             code.putln("if (%s) {" % var_code)
-            if entry.type.is_extension_type:
-                var_code = "((PyObject*)%s)" % var_code
-            code.putln("e = (*v)(%s, a); if (e) return e;" % var_code)
+            code.putln("e = (*v)(%s, a); if (e) return e;" % var_as_pyobject)
             code.putln("}")
 
         # Traverse buffer exporting objects.
@@ -2255,9 +2251,10 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.put_label(code.error_label)
         for cname, type in code.funcstate.all_managed_temps():
             code.put_xdecref(cname, type)
+        # module state might not be ready for traceback generation with C-line handling yet
         code.putln('if (%s) {' % env.module_cname)
         code.putln('if (%s) {' % env.module_dict_cname)
-        code.put_add_traceback("init %s" % env.qualified_name)
+        code.put_add_traceback("init %s" % env.qualified_name, include_cline=False)
         code.globalstate.use_utility_code(Nodes.traceback_utility_code)
         # Module reference and module dict are in global variables which might still be needed
         # for cleanup, atexit code, etc., so leaking is better than crashing.
@@ -2489,6 +2486,10 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             '%s = PyImport_AddModule(__Pyx_BUILTIN_MODULE_NAME); %s' % (
                 Naming.builtins_cname,
                 code.error_goto_if_null(Naming.builtins_cname, self.pos)))
+        code.putln(
+            '%s = PyImport_AddModule((char *) "cython_runtime"); %s' % (
+                Naming.cython_runtime_cname,
+                code.error_goto_if_null(Naming.cython_runtime_cname, self.pos)))
         code.putln('#if CYTHON_COMPILING_IN_PYPY')
         code.putln('Py_INCREF(%s);' % Naming.builtins_cname)
         code.putln('#endif')
@@ -2814,6 +2815,15 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                             weakref_entry.cname))
                     else:
                         error(weakref_entry.pos, "__weakref__ slot must be of type 'object'")
+                if scope.lookup_here("__reduce_cython__"):
+                    # Unfortunately, we cannot reliably detect whether a
+                    # superclass defined __reduce__ at compile time, so we must
+                    # do so at runtime.
+                    code.globalstate.use_utility_code(
+                        UtilityCode.load_cached('SetupReduce', 'ExtensionTypes.c'))
+                    code.putln('if (__Pyx_setup_reduce((PyObject*)&%s) < 0) %s' % (
+                                  typeobj_cname,
+                                  code.error_goto(entry.pos)))
 
     def generate_exttype_vtable_init_code(self, entry, code):
         # Generate code to initialise the C method table of an
@@ -2862,7 +2872,7 @@ def generate_cfunction_declaration(entry, env, code, definition):
             dll_linkage = "DL_IMPORT"
         elif entry.visibility == 'public':
             storage_class = Naming.extern_c_macro
-            dll_linkage = "DL_EXPORT"
+            dll_linkage = None
         elif entry.visibility == 'private':
             storage_class = "static"
             dll_linkage = None

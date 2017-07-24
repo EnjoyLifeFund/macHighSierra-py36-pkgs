@@ -356,16 +356,23 @@ class _CategoricalPlotter(object):
     def hue_offsets(self):
         """A list of center positions for plots when hue nesting is used."""
         n_levels = len(self.hue_names)
-        each_width = self.width / n_levels
-        offsets = np.linspace(0, self.width - each_width, n_levels)
-        offsets -= offsets.mean()
+        if self.dodge:
+            each_width = self.width / n_levels
+            offsets = np.linspace(0, self.width - each_width, n_levels)
+            offsets -= offsets.mean()
+        else:
+            offsets = np.zeros(n_levels)
 
         return offsets
 
     @property
     def nested_width(self):
         """A float with the width of plot elements when hue nesting is used."""
-        return self.width / len(self.hue_names) * .98
+        if self.dodge:
+            width = self.width / len(self.hue_names) * .98
+        else:
+            width = self.width
+        return width
 
     def annotate_axes(self, ax):
         """Add descriptive labels to an Axes object."""
@@ -421,11 +428,12 @@ class _BoxPlotter(_CategoricalPlotter):
 
     def __init__(self, x, y, hue, data, order, hue_order,
                  orient, color, palette, saturation,
-                 width, fliersize, linewidth):
+                 width, dodge, fliersize, linewidth):
 
         self.establish_variables(x, y, hue, data, orient, order, hue_order)
         self.establish_colors(color, palette, saturation)
 
+        self.dodge = dodge
         self.width = width
         self.fliersize = fliersize
 
@@ -535,7 +543,7 @@ class _ViolinPlotter(_CategoricalPlotter):
 
     def __init__(self, x, y, hue, data, order, hue_order,
                  bw, cut, scale, scale_hue, gridsize,
-                 width, inner, split, orient, linewidth,
+                 width, inner, split, dodge, orient, linewidth,
                  color, palette, saturation):
 
         self.establish_variables(x, y, hue, data, orient, order, hue_order)
@@ -544,6 +552,7 @@ class _ViolinPlotter(_CategoricalPlotter):
 
         self.gridsize = gridsize
         self.width = width
+        self.dodge = dodge
 
         if inner is not None:
             if not any([inner.startswith("quart"),
@@ -555,7 +564,8 @@ class _ViolinPlotter(_CategoricalPlotter):
         self.inner = inner
 
         if split and self.hue_names is not None and len(self.hue_names) != 2:
-            raise ValueError("Cannot use `split` with more than 2 hue levels.")
+            msg = "There must be exactly two hue levels to use `split`.'"
+            raise ValueError(msg)
         self.split = split
 
         if linewidth is None:
@@ -768,7 +778,7 @@ class _ViolinPlotter(_CategoricalPlotter):
     @property
     def dwidth(self):
 
-        if self.hue_names is None:
+        if self.hue_names is None or not self.dodge:
             return self.width / 2
         elif self.split:
             return self.width / 2
@@ -839,7 +849,7 @@ class _ViolinPlotter(_CategoricalPlotter):
                 for j, hue_level in enumerate(self.hue_names):
 
                     support, density = self.support[i][j], self.density[i][j]
-                    kws["color"] = self.colors[j]
+                    kws["facecolor"] = self.colors[j]
 
                     # Add legend data, but just for one set of violins
                     if not i:
@@ -1107,20 +1117,20 @@ class _CategoricalScatterPlotter(_CategoricalPlotter):
 class _StripPlotter(_CategoricalScatterPlotter):
     """1-d scatterplot with categorical organization."""
     def __init__(self, x, y, hue, data, order, hue_order,
-                 jitter, split, orient, color, palette):
+                 jitter, dodge, orient, color, palette):
         """Initialize the plotter."""
         self.establish_variables(x, y, hue, data, orient, order, hue_order)
         self.establish_colors(color, palette, 1)
 
         # Set object attributes
-        self.split = split
+        self.dodge = dodge
         self.width = .8
 
         if jitter == 1:  # Use a good default for `jitter = True`
             jlim = 0.1
         else:
             jlim = float(jitter)
-        if self.hue_names is not None and split:
+        if self.hue_names is not None and dodge:
             jlim /= len(self.hue_names)
         self.jitterer = stats.uniform(-jlim, jlim * 2).rvs
 
@@ -1129,7 +1139,7 @@ class _StripPlotter(_CategoricalScatterPlotter):
         # Set the default zorder to 2.1, so that the points
         # will be drawn on top of line elements (like in a boxplot)
         for i, group_data in enumerate(self.plot_data):
-            if self.plot_hues is None or not self.split:
+            if self.plot_hues is None or not self.dodge:
 
                 if self.hue_names is None:
                     hue_mask = np.ones(group_data.size, np.bool)
@@ -1178,20 +1188,14 @@ class _StripPlotter(_CategoricalScatterPlotter):
 class _SwarmPlotter(_CategoricalScatterPlotter):
 
     def __init__(self, x, y, hue, data, order, hue_order,
-                 split, orient, color, palette):
+                 dodge, orient, color, palette):
         """Initialize the plotter."""
         self.establish_variables(x, y, hue, data, orient, order, hue_order)
         self.establish_colors(color, palette, 1)
 
         # Set object attributes
-        self.split = split
+        self.dodge = dodge
         self.width = .8
-
-    def overlap(self, xy_i, xy_j, d):
-        """Return True if two circles with the same diameter will overlap."""
-        x_i, y_i = xy_i
-        x_j, y_j = xy_j
-        return ((x_i - x_j) ** 2 + (y_i - y_j) ** 2) < (d ** 2)
 
     def could_overlap(self, xy_i, swarm, d):
         """Return a list of all swarm points that could overlap with target.
@@ -1206,7 +1210,7 @@ class _SwarmPlotter(_CategoricalScatterPlotter):
                 neighbors.append(xy_j)
             else:
                 break
-        return list(reversed(neighbors))
+        return np.array(list(reversed(neighbors)))
 
     def position_candidates(self, xy_i, neighbors, d):
         """Return a list of (x, y) coordinates that might be valid."""
@@ -1223,19 +1227,41 @@ class _SwarmPlotter(_CategoricalScatterPlotter):
                 new_candidates = [cr, cl]
             candidates.extend(new_candidates)
             left_first = not left_first
-        return candidates
+        return np.array(candidates)
 
-    def prune_candidates(self, candidates, neighbors, d):
+    def first_non_overlapping_candidate(self, candidates, neighbors, d):
         """Remove candidates from the list if they overlap with the swarm."""
-        good_candidates = []
+
+        # IF we have no neighbours, all candidates are good.
+        if len(neighbors) == 0:
+            return candidates[0]
+
+        neighbors_x = neighbors[:, 0]
+        neighbors_y = neighbors[:, 1]
+
+        d_square = d ** 2
+
         for xy_i in candidates:
-            good_candidate = True
-            for xy_j in neighbors:
-                if self.overlap(xy_i, xy_j, d):
-                    good_candidate = False
+            x_i, y_i = xy_i
+
+            dx = neighbors_x - x_i
+            dy = neighbors_y - y_i
+
+            sq_distances = np.power(dx, 2.0) + np.power(dy, 2.0)
+
+            # good candidate does not overlap any of neighbors
+            # which means that squared distance between candidate
+            # and any of the neighbours has to be at least
+            # square of the diameter
+            good_candidate = np.all(sq_distances >= d_square)
+
             if good_candidate:
-                good_candidates.append(xy_i)
-        return np.array(good_candidates)
+                return xy_i
+
+        # If `position_candidates` works well
+        # this should never happen
+        raise Exception('No non-overlapping candidates found. '
+                        'This should not happen.')
 
     def beeswarm(self, orig_xy, d):
         """Adjust x position of points to avoid overlaps."""
@@ -1257,14 +1283,15 @@ class _SwarmPlotter(_CategoricalScatterPlotter):
             # with respect to each of the swarm neighbors
             candidates = self.position_candidates(xy_i, neighbors, d)
 
-            # Remove the positions that overlap with any of the
-            # other neighbors
-            candidates = self.prune_candidates(candidates, neighbors, d)
-
-            # Find the most central of the remaining positions
+            # Sort candidates by their centrality
             offsets = np.abs(candidates[:, 0] - midline)
-            best_index = np.argmin(offsets)
-            new_xy_i = candidates[best_index]
+            candidates = candidates[np.argsort(offsets)]
+
+            # Find the first candidate that doesn't overlap any neighbours
+            new_xy_i = self.first_non_overlapping_candidate(candidates,
+                                                            neighbors, d)
+
+            # Place it into the swarm
             swarm.append(new_xy_i)
 
         return np.array(swarm)
@@ -1287,7 +1314,8 @@ class _SwarmPlotter(_CategoricalScatterPlotter):
         # Convert from point size (area) to diameter
         default_lw = mpl.rcParams["patch.linewidth"]
         lw = kws.get("linewidth", kws.get("lw", default_lw))
-        d = np.sqrt(s) + lw
+        dpi = ax.figure.dpi
+        d = (np.sqrt(s) + lw) * (dpi / 72)
 
         # Transform the data coordinates to point coordinates.
         # We'll figure out the swarm positions in the latter
@@ -1331,7 +1359,7 @@ class _SwarmPlotter(_CategoricalScatterPlotter):
         # Plot each swarm
         for i, group_data in enumerate(self.plot_data):
 
-            if self.plot_hues is None or not self.split:
+            if self.plot_hues is None or not self.dodge:
 
                 width = self.width
 
@@ -1406,7 +1434,11 @@ class _CategoricalStatPlotter(_CategoricalPlotter):
     @property
     def nested_width(self):
         """A float with the width of plot elements when hue nesting is used."""
-        return self.width / len(self.hue_names)
+        if self.dodge:
+            width = self.width / len(self.hue_names)
+        else:
+            width = self.width
+        return width
 
     def estimate_statistic(self, estimator, ci, n_boot):
 
@@ -1446,10 +1478,18 @@ class _CategoricalStatPlotter(_CategoricalPlotter):
                         confint.append([np.nan, np.nan])
                         continue
 
-                    boots = bootstrap(stat_data, func=estimator,
-                                      n_boot=n_boot,
-                                      units=unit_data)
-                    confint.append(utils.ci(boots, ci))
+                    if ci == "sd":
+
+                        estimate = estimator(stat_data)
+                        sd = np.std(stat_data)
+                        confint.append((estimate - sd, estimate + sd))
+
+                    else:
+
+                        boots = bootstrap(stat_data, func=estimator,
+                                          n_boot=n_boot,
+                                          units=unit_data)
+                        confint.append(utils.ci(boots, ci))
 
             # Option 2: we are grouping by a hue layer
             # ----------------------------------------
@@ -1488,19 +1528,22 @@ class _CategoricalStatPlotter(_CategoricalPlotter):
                             confint[i].append([np.nan, np.nan])
                             continue
 
-                        boots = bootstrap(stat_data, func=estimator,
-                                          n_boot=n_boot,
-                                          units=unit_data)
-                        confint[i].append(utils.ci(boots, ci))
+                        if ci == "sd":
+
+                            estimate = estimator(stat_data)
+                            sd = np.std(stat_data)
+                            confint[i].append((estimate - sd, estimate + sd))
+
+                        else:
+
+                            boots = bootstrap(stat_data, func=estimator,
+                                              n_boot=n_boot,
+                                              units=unit_data)
+                            confint[i].append(utils.ci(boots, ci))
 
         # Save the resulting values for plotting
         self.statistic = np.array(statistic)
         self.confint = np.array(confint)
-
-        # Rename the value label to reflect the estimation
-        if self.value_label is not None:
-            self.value_label = "{}({})".format(estimator.__name__,
-                                               self.value_label)
 
     def draw_confints(self, ax, at_group, confint, colors,
                       errwidth=None, capsize=None, **kws):
@@ -1536,13 +1579,15 @@ class _BarPlotter(_CategoricalStatPlotter):
 
     def __init__(self, x, y, hue, data, order, hue_order,
                  estimator, ci, n_boot, units,
-                 orient, color, palette, saturation, errcolor, errwidth=None,
-                 capsize=None):
+                 orient, color, palette, saturation, errcolor,
+                 errwidth, capsize, dodge):
         """Initialize the plotter."""
         self.establish_variables(x, y, hue, data, orient,
                                  order, hue_order, units)
         self.establish_colors(color, palette, saturation)
         self.estimate_statistic(estimator, ci, n_boot)
+
+        self.dodge = dodge
 
         self.errcolor = errcolor
         self.errwidth = errwidth
@@ -1642,8 +1687,11 @@ class _PointPlotter(_CategoricalStatPlotter):
     @property
     def hue_offsets(self):
         """Offsets relative to the center position for each hue level."""
-        offset = np.linspace(0, self.dodge, len(self.hue_names))
-        offset -= offset.mean()
+        if self.dodge:
+            offset = np.linspace(0, self.dodge, len(self.hue_names))
+            offset -= offset.mean()
+        else:
+            offset = np.zeros(len(self.hue_names))
         return offset
 
     def draw_points(self, ax):
@@ -1739,11 +1787,14 @@ class _LVPlotter(_CategoricalPlotter):
 
     def __init__(self, x, y, hue, data, order, hue_order,
                  orient, color, palette, saturation,
-                 width, k_depth, linewidth, scale, outlier_prop):
+                 width, dodge, k_depth, linewidth, scale, outlier_prop):
 
+        # TODO assigning variables for None is unceccesary
         if width is None:
             width = .8
         self.width = width
+
+        self.dodge = dodge
 
         if saturation is None:
             saturation = .75
@@ -2026,10 +2077,11 @@ _categorical_docs = dict(
     stat_api_params=dedent("""\
     estimator : callable that maps vector -> scalar, optional
         Statistical function to estimate within each categorical bin.
-    ci : float or None, optional
-        Size of confidence intervals to draw around estimated values. If
-        ``None``, no bootstrapping will be performed, and error bars will
-        not be drawn.
+    ci : float or "sd" or None, optional
+        Size of confidence intervals to draw around estimated values.  If
+        "sd", skip bootstrapping and draw the standard deviation of the
+        observerations. If ``None``, no bootstrapping will be performed, and
+        error bars will not be drawn.
     n_boot : int, optional
         Number of bootstrap iterations to use when computing confidence
         intervals.
@@ -2074,6 +2126,11 @@ _categorical_docs = dict(
     width : float, optional
         Width of a full element when not using hue nesting, or width of all the
         elements for one level of the major grouping variable.\
+    """),
+    dodge=dedent("""\
+    dodge : bool, optional
+        When hue nesting is used, whether elements should be shifted along the
+        categorical axis.\
     """),
     linewidth=dedent("""\
     linewidth : float, optional
@@ -2127,52 +2184,12 @@ _categorical_docs.update(_facet_docs)
 
 def boxplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
             orient=None, color=None, palette=None, saturation=.75,
-            width=.8, fliersize=5, linewidth=None, whis=1.5, notch=False,
-            ax=None, **kwargs):
-
-    # Try to handle broken backwards-compatability
-    # This should help with the lack of a smooth deprecation,
-    # but won't catch everything
-    warn = False
-    if isinstance(x, pd.DataFrame):
-        data = x
-        x = None
-        warn = True
-
-    if "vals" in kwargs:
-        x = kwargs.pop("vals")
-        warn = True
-
-    if "groupby" in kwargs:
-        y = x
-        x = kwargs.pop("groupby")
-        warn = True
-
-    if "vert" in kwargs:
-        vert = kwargs.pop("vert", True)
-        if not vert:
-            x, y = y, x
-        orient = "v" if vert else "h"
-        warn = True
-
-    if "names" in kwargs:
-        kwargs.pop("names")
-        warn = True
-
-    if "join_rm" in kwargs:
-        kwargs.pop("join_rm")
-        warn = True
-
-    msg = ("The boxplot API has been changed. Attempting to adjust your "
-           "arguments for the new API (which might not work). Please update "
-           "your code. See the version 0.6 release notes for more info.")
-
-    if warn:
-        warnings.warn(msg, UserWarning)
+            width=.8, dodge=True, fliersize=5, linewidth=None,
+            whis=1.5, notch=False, ax=None, **kwargs):
 
     plotter = _BoxPlotter(x, y, hue, data, order, hue_order,
                           orient, color, palette, saturation,
-                          width, fliersize, linewidth)
+                          width, dodge, fliersize, linewidth)
 
     if ax is None:
         ax = plt.gca()
@@ -2203,6 +2220,7 @@ boxplot.__doc__ = dedent("""\
     {palette}
     {saturation}
     {width}
+    {dodge}
     fliersize : float, optional
         Size of the markers used to indicate outlier observations.
     {linewidth}
@@ -2282,6 +2300,15 @@ boxplot.__doc__ = dedent("""\
         >>> iris = sns.load_dataset("iris")
         >>> ax = sns.boxplot(data=iris, orient="h", palette="Set2")
 
+    Use ``hue`` without changing box position or width:
+
+    .. plot::
+        :context: close-figs
+
+        >>> tips["weekend"] = tips["day"].isin(["Sat", "Sun"])
+        >>> ax = sns.boxplot(x="day", y="total_bill", hue="weekend",
+        ...                  data=tips, dodge=False)
+
     Use :func:`swarmplot` to show the datapoints on top of the boxes:
 
     .. plot::
@@ -2290,60 +2317,31 @@ boxplot.__doc__ = dedent("""\
         >>> ax = sns.boxplot(x="day", y="total_bill", data=tips)
         >>> ax = sns.swarmplot(x="day", y="total_bill", data=tips, color=".25")
 
-    Draw a box plot on to a :class:`FacetGrid` to group within an additional
-    categorical variable:
+    Use :func:`factorplot` to combine a :func:`boxplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
 
     .. plot::
         :context: close-figs
 
-        >>> g = sns.FacetGrid(tips, col="time", size=4, aspect=.7)
-        >>> (g.map(sns.boxplot, "sex", "total_bill", "smoker")
-        ...   .despine(left=True)
-        ...   .add_legend(title="smoker"))  #doctest: +ELLIPSIS
-        <seaborn.axisgrid.FacetGrid object at 0x...>
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="box",
+        ...                    size=4, aspect=.7);
 
     """).format(**_categorical_docs)
 
 
 def violinplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                bw="scott", cut=2, scale="area", scale_hue=True, gridsize=100,
-               width=.8, inner="box", split=False, orient=None, linewidth=None,
-               color=None, palette=None, saturation=.75, ax=None, **kwargs):
-
-    # Try to handle broken backwards-compatability
-    # This should help with the lack of a smooth deprecation,
-    # but won't catch everything
-    warn = False
-    if isinstance(x, pd.DataFrame):
-        data = x
-        x = None
-        warn = True
-
-    if "vals" in kwargs:
-        x = kwargs.pop("vals")
-        warn = True
-
-    if "groupby" in kwargs:
-        y = x
-        x = kwargs.pop("groupby")
-        warn = True
-
-    if "vert" in kwargs:
-        vert = kwargs.pop("vert", True)
-        if not vert:
-            x, y = y, x
-        orient = "v" if vert else "h"
-        warn = True
-
-    msg = ("The violinplot API has been changed. Attempting to adjust your "
-           "arguments for the new API (which might not work). Please update "
-           "your code. See the version 0.6 release notes for more info.")
-    if warn:
-        warnings.warn(msg, UserWarning)
+               width=.8, inner="box", split=False, dodge=True, orient=None,
+               linewidth=None, color=None, palette=None, saturation=.75,
+               ax=None, **kwargs):
 
     plotter = _ViolinPlotter(x, y, hue, data, order, hue_order,
                              bw, cut, scale, scale_hue, gridsize,
-                             width, inner, split, orient, linewidth,
+                             width, inner, split, dodge, orient, linewidth,
                              color, palette, saturation)
 
     if ax is None:
@@ -2407,6 +2405,7 @@ violinplot.__doc__ = dedent("""\
         When using hue nesting with a variable that takes two levels, setting
         ``split`` to True will draw half of a violin for each level. This can
         make it easier to directly compare the distributions.
+    {dodge}
     {orient}
     {linewidth}
     {color}
@@ -2524,27 +2523,51 @@ violinplot.__doc__ = dedent("""\
         ...                     data=planets[planets.orbital_period < 1000],
         ...                     scale="width", palette="Set3")
 
-    Draw a violin plot on to a :class:`FacetGrid` to group within an additional
-    categorical variable:
+    Don't let density extend past extreme values in the data:
 
     .. plot::
         :context: close-figs
 
-        >>> g = sns.FacetGrid(tips, col="time", size=4, aspect=.7)
-        >>> (g.map(sns.violinplot, "sex", "total_bill", "smoker", split=True)
-        ...   .despine(left=True)
-        ...   .add_legend(title="smoker"))  # doctest: +ELLIPSIS
-        <seaborn.axisgrid.FacetGrid object at 0x...>
+        >>> ax = sns.violinplot(x="orbital_period", y="method",
+        ...                     data=planets[planets.orbital_period < 1000],
+        ...                     cut=0, scale="width", palette="Set3")
+
+    Use ``hue`` without changing violin position or width:
+
+    .. plot::
+        :context: close-figs
+
+        >>> tips["weekend"] = tips["day"].isin(["Sat", "Sun"])
+        >>> ax = sns.violinplot(x="day", y="total_bill", hue="weekend",
+        ...                     data=tips, dodge=False)
+
+    Use :func:`factorplot` to combine a :func:`violinplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="violin", split=True,
+        ...                    size=4, aspect=.7);
 
     """).format(**_categorical_docs)
 
 
 def stripplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
-              jitter=False, split=False, orient=None, color=None, palette=None,
+              jitter=False, dodge=False, orient=None, color=None, palette=None,
               size=5, edgecolor="gray", linewidth=0, ax=None, **kwargs):
 
+    if "split" in kwargs:
+        dodge = kwargs.pop("split")
+        msg = "The `split` parameter has been renamed to `dodge`."
+        warnings.warn(msg, UserWarning)
+
     plotter = _StripPlotter(x, y, hue, data, order, hue_order,
-                            jitter, split, orient, color, palette)
+                            jitter, dodge, orient, color, palette)
     if ax is None:
         ax = plt.gca()
 
@@ -2677,7 +2700,7 @@ stripplot.__doc__ = dedent("""\
 
         >>> ax = sns.stripplot(x="day", y="total_bill", hue="smoker",
         ...                    data=tips, jitter=True,
-        ...                    palette="Set2", split=True)
+        ...                    palette="Set2", dodge=True)
 
     Control strip order by passing an explicit order:
 
@@ -2714,15 +2737,34 @@ stripplot.__doc__ = dedent("""\
         ...                     inner=None, color=".8")
         >>> ax = sns.stripplot(x="day", y="total_bill", data=tips, jitter=True)
 
+    Use :func:`factorplot` to combine a :func:`stripplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="strip",
+        ...                    jitter=True,
+        ...                    size=4, aspect=.7);
+
     """).format(**_categorical_docs)
 
 
 def swarmplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
-              split=False, orient=None, color=None, palette=None,
+              dodge=False, orient=None, color=None, palette=None,
               size=5, edgecolor="gray", linewidth=0, ax=None, **kwargs):
 
+    if "split" in kwargs:
+        dodge = kwargs.pop("split")
+        msg = "The `split` parameter has been renamed to `dodge`."
+        warnings.warn(msg, UserWarning)
+
     plotter = _SwarmPlotter(x, y, hue, data, order, hue_order,
-                            split, orient, color, palette)
+                            dodge, orient, color, palette)
     if ax is None:
         ax = plt.gca()
 
@@ -2836,7 +2878,7 @@ swarmplot.__doc__ = dedent("""\
         :context: close-figs
 
         >>> ax = sns.swarmplot(x="day", y="total_bill", hue="smoker",
-        ...                    data=tips, palette="Set2", split=True)
+        ...                    data=tips, palette="Set2", dodge=True)
 
     Control swarm order by passing an explicit order:
 
@@ -2853,14 +2895,13 @@ swarmplot.__doc__ = dedent("""\
 
         >>> ax = sns.swarmplot(x="time", y="tip", data=tips, size=6)
 
-
     Draw swarms of observations on top of a box plot:
 
     .. plot::
         :context: close-figs
 
         >>> ax = sns.boxplot(x="tip", y="day", data=tips, whis=np.inf)
-        >>> ax = sns.swarmplot(x="tip", y="day", data=tips)
+        >>> ax = sns.swarmplot(x="tip", y="day", data=tips, color=".2")
 
     Draw swarms of observations on top of a violin plot:
 
@@ -2871,32 +2912,32 @@ swarmplot.__doc__ = dedent("""\
         >>> ax = sns.swarmplot(x="day", y="total_bill", data=tips,
         ...                    color="white", edgecolor="gray")
 
+    Use :func:`factorplot` to combine a :func:`swarmplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="swarm",
+        ...                    size=4, aspect=.7);
+
     """).format(**_categorical_docs)
 
 
 def barplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
             estimator=np.mean, ci=95, n_boot=1000, units=None,
             orient=None, color=None, palette=None, saturation=.75,
-            errcolor=".26", errwidth=None, capsize=None, ax=None, **kwargs):
-
-    # Handle some deprecated arguments
-    if "hline" in kwargs:
-        kwargs.pop("hline")
-        warnings.warn("The `hline` parameter has been removed", UserWarning)
-
-    if "dropna" in kwargs:
-        kwargs.pop("dropna")
-        warnings.warn("The `dropna` parameter has been removed", UserWarning)
-
-    if "x_order" in kwargs:
-        order = kwargs.pop("x_order")
-        warnings.warn("The `x_order` parameter has been renamed `order`",
-                      UserWarning)
+            errcolor=".26", errwidth=None, capsize=None, dodge=True,
+            ax=None, **kwargs):
 
     plotter = _BarPlotter(x, y, hue, data, order, hue_order,
                           estimator, ci, n_boot, units,
                           orient, color, palette, saturation,
-                          errcolor, errwidth, capsize)
+                          errcolor, errwidth, capsize, dodge)
 
     if ax is None:
         ax = plt.gca()
@@ -2942,6 +2983,7 @@ barplot.__doc__ = dedent("""\
     {ax_in}
     {errwidth}
     {capsize}
+    {dodge}
     kwargs : key, value mappings
         Other keyword arguments are passed through to ``plt.bar`` at draw
         time.
@@ -3006,6 +3048,13 @@ barplot.__doc__ = dedent("""\
 
         >>> ax = sns.barplot(x="day", y="tip", data=tips, ci=68)
 
+    Show standard deviation of observations instead of a confidence interval:
+
+    .. plot::
+        :context: close-figs
+
+        >>> ax = sns.barplot(x="day", y="tip", data=tips, ci="sd")
+
     Add "caps" to the error bars:
 
     .. plot::
@@ -3020,6 +3069,15 @@ barplot.__doc__ = dedent("""\
 
         >>> ax = sns.barplot("size", y="total_bill", data=tips,
         ...                  palette="Blues_d")
+
+    Use ``hue`` without changing bar position or width:
+
+    .. plot::
+        :context: close-figs
+
+        >>> tips["weekend"] = tips["day"].isin(["Sat", "Sun"])
+        >>> ax = sns.barplot(x="day", y="total_bill", hue="weekend",
+        ...                  data=tips, dodge=False)
 
     Plot all bars in a single color:
 
@@ -3038,28 +3096,27 @@ barplot.__doc__ = dedent("""\
         ...                  linewidth=2.5, facecolor=(1, 1, 1, 0),
         ...                  errcolor=".2", edgecolor=".2")
 
+    Use :func:`factorplot` to combine a :func:`barplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="bar",
+        ...                    size=4, aspect=.7);
+
     """).format(**_categorical_docs)
 
 
 def pointplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
               estimator=np.mean, ci=95, n_boot=1000, units=None,
               markers="o", linestyles="-", dodge=False, join=True, scale=1,
-              orient=None, color=None, palette=None, ax=None, errwidth=None,
-              capsize=None, **kwargs):
-
-    # Handle some deprecated arguments
-    if "hline" in kwargs:
-        kwargs.pop("hline")
-        warnings.warn("The `hline` parameter has been removed", UserWarning)
-
-    if "dropna" in kwargs:
-        kwargs.pop("dropna")
-        warnings.warn("The `dropna` parameter has been removed", UserWarning)
-
-    if "x_order" in kwargs:
-        order = kwargs.pop("x_order")
-        warnings.warn("The `x_order` parameter has been renamed `order`",
-                      UserWarning)
+              orient=None, color=None, palette=None, errwidth=None,
+              capsize=None, ax=None, **kwargs):
 
     plotter = _PointPlotter(x, y, hue, data, order, hue_order,
                             estimator, ci, n_boot, units,
@@ -3118,6 +3175,8 @@ pointplot.__doc__ = dedent("""\
     {orient}
     {color}
     {palette}
+    {errwidth}
+    {capsize}
     {ax_in}
 
     Returns
@@ -3221,6 +3280,13 @@ pointplot.__doc__ = dedent("""\
 
         >>> ax = sns.pointplot(x="day", y="tip", data=tips, ci=68)
 
+    Show standard deviation of observations instead of a confidence interval:
+
+    .. plot::
+        :context: close-figs
+
+        >>> ax = sns.pointplot(x="day", y="tip", data=tips, ci="sd")
+
     Add "caps" to the error bars:
 
     .. plot::
@@ -3228,18 +3294,34 @@ pointplot.__doc__ = dedent("""\
 
         >>> ax = sns.pointplot(x="day", y="tip", data=tips, capsize=.2)
 
+    Use :func:`factorplot` to combine a :func:`barplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="point",
+        ...                    dodge=True,
+        ...                    size=4, aspect=.7);
+
     """).format(**_categorical_docs)
 
 
 def countplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
               orient=None, color=None, palette=None, saturation=.75,
-              ax=None, **kwargs):
+              dodge=True, ax=None, **kwargs):
 
     estimator = len
     ci = None
     n_boot = 0
     units = None
     errcolor = None
+    errwidth = None
+    capsize = None
 
     if x is None and y is not None:
         orient = "h"
@@ -3255,7 +3337,7 @@ def countplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     plotter = _BarPlotter(x, y, hue, data, order, hue_order,
                           estimator, ci, n_boot, units,
                           orient, color, palette, saturation,
-                          errcolor)
+                          errcolor, errwidth, capsize, dodge)
 
     plotter.value_label = "count"
 
@@ -3284,6 +3366,7 @@ countplot.__doc__ = dedent("""\
     {color}
     {palette}
     {saturation}
+    {dodge}
     {ax_in}
     kwargs : key, value mappings
         Other keyword arguments are passed to ``plt.bar``.
@@ -3341,6 +3424,18 @@ countplot.__doc__ = dedent("""\
         ...                    linewidth=5,
         ...                    edgecolor=sns.color_palette("dark", 3))
 
+    Use :func:`factorplot` to combine a :func:`countplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
+
+    .. plot::
+        :context: close-figs
+
+        >>> g = sns.factorplot(x="class", hue="who", col="survived",
+        ...                    data=titanic, kind="count",
+        ...                    size=4, aspect=.7);
+
     """).format(**_categorical_docs)
 
 
@@ -3351,20 +3446,6 @@ def factorplot(x=None, y=None, hue=None, data=None, row=None, col=None,
                orient=None, color=None, palette=None,
                legend=True, legend_out=True, sharex=True, sharey=True,
                margin_titles=False, facet_kws=None, **kwargs):
-
-    # Handle some deprecated arguments
-    if "hline" in kwargs:
-        kwargs.pop("hline")
-        warnings.warn("The `hline` parameter has been removed", UserWarning)
-
-    if "dropna" in kwargs:
-        kwargs.pop("dropna")
-        warnings.warn("The `dropna` parameter has been removed", UserWarning)
-
-    if "x_order" in kwargs:
-        order = kwargs.pop("x_order")
-        warnings.warn("The `x_order` parameter has been renamed `order`",
-                      UserWarning)
 
     # Determine the plotting function
     try:
@@ -3437,7 +3518,7 @@ def factorplot(x=None, y=None, hue=None, data=None, row=None, col=None,
             g.set_axis_labels(y_var="count")
 
     if legend and (hue is not None) and (hue not in [x, row, col]):
-        hue_order = list(map(str, hue_order))
+        hue_order = list(map(utils.to_utf8, hue_order))
         g.add_legend(title=hue, label_order=hue_order)
 
     return g
@@ -3566,7 +3647,7 @@ factorplot.__doc__ = dedent("""\
         ...                    hue="sex", row="class",
         ...                    data=titanic[titanic.embark_town.notnull()],
         ...                    orient="h", size=2, aspect=3.5, palette="Set3",
-        ...                    kind="violin", split=True, cut=0, bw=.2)
+        ...                    kind="violin", dodge=True, cut=0, bw=.2)
 
     Use methods on the returned :class:`FacetGrid` to tweak the presentation:
 
@@ -3588,12 +3669,12 @@ factorplot.__doc__ = dedent("""\
 
 def lvplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
            orient=None, color=None, palette=None, saturation=.75,
-           width=.8, k_depth='proportion', linewidth=None, scale='exponential',
-           outlier_prop=None, ax=None, **kwargs):
+           width=.8, dodge=True, k_depth='proportion', linewidth=None,
+           scale='exponential', outlier_prop=None, ax=None, **kwargs):
 
     plotter = _LVPlotter(x, y, hue, data, order, hue_order,
                          orient, color, palette, saturation,
-                         width, k_depth, linewidth, scale, outlier_prop)
+                         width, dodge, k_depth, linewidth, scale, outlier_prop)
 
     if ax is None:
         ax = plt.gca()
@@ -3602,7 +3683,7 @@ def lvplot(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     return ax
 
 lvplot.__doc__ = dedent("""\
-    Create a letter value plot
+    Draw a letter value plot to show distributions of large datasets.
 
     Letter value (LV) plots are non-parametric estimates of the distribution of
     a dataset, similar to boxplots. LV plots are also similar to violin plots
@@ -3626,6 +3707,7 @@ lvplot.__doc__ = dedent("""\
     {palette}
     {saturation}
     {width}
+    {dodge}
     k_depth : "proportion" | "tukey" | "trustworthy", optional
         The number of boxes, and by extension number of percentiles, to draw.
         All methods are detailed in Wickham's paper. Each makes different
@@ -3714,18 +3796,19 @@ lvplot.__doc__ = dedent("""\
 
         >>> ax = sns.lvplot(x="day", y="total_bill", data=tips)
         >>> ax = sns.stripplot(x="day", y="total_bill", data=tips,
-        ...                    size=4, jitter=True, edgecolor="gray")
+        ...                    size=4, jitter=True, color="gray")
 
-    Draw a letter value plot on to a :class:`FacetGrid` to group within an
-    additional categorical variable:
+    Use :func:`factorplot` to combine a :func:`lvplot` and a
+    :class:`FacetGrid`. This allows grouping within additional categorical
+    variables. Using :func:`factorplot` is safer than using :class:`FacetGrid`
+    directly, as it ensures synchronization of variable order across facets:
 
     .. plot::
         :context: close-figs
 
-        >>> g = sns.FacetGrid(tips, col="time", size=4, aspect=.7)
-        >>> (g.map(sns.lvplot, "sex", "total_bill", "smoker")
-        ...   .despine(left=True)
-        ...   .add_legend(title="smoker"))  #doctest: +ELLIPSIS
-        <seaborn.axisgrid.FacetGrid object at 0x...>
+        >>> g = sns.factorplot(x="sex", y="total_bill",
+        ...                    hue="smoker", col="time",
+        ...                    data=tips, kind="lv",
+        ...                    size=4, aspect=.7);
 
     """).format(**_categorical_docs)

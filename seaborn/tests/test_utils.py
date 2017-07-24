@@ -11,12 +11,14 @@ import nose
 import nose.tools as nt
 from nose.tools import assert_equal, raises
 import numpy.testing as npt
-import pandas.util.testing as pdt
+try:
+    import pandas.testing as pdt
+except ImportError:
+    import pandas.util.testing as pdt
 
 from distutils.version import LooseVersion
 pandas_has_categoricals = LooseVersion(pd.__version__) >= "0.15"
 
-from pandas.util.testing import network
 
 try:
     from bs4 import BeautifulSoup
@@ -25,7 +27,7 @@ except ImportError:
 
 from . import PlotTestCase
 from .. import utils, rcmod
-from ..utils import get_dataset_names, load_dataset
+from ..utils import get_dataset_names, load_dataset, _network
 
 
 a_norm = np.random.randn(100)
@@ -174,6 +176,19 @@ class TestSpineUtils(PlotTestCase):
             else:
                 nt.assert_equal(new_position, self.original_position)
 
+    def test_despine_side_specific_offset(self):
+
+        f, ax = plt.subplots()
+        utils.despine(ax=ax, offset=dict(left=self.offset))
+
+        for side in self.sides:
+            is_visible = ax.spines[side].get_visible()
+            new_position = ax.spines[side].get_position()
+            if is_visible and side == "left":
+                nt.assert_equal(new_position, self.offset_position)
+            else:
+                nt.assert_equal(new_position, self.original_position)
+
     def test_despine_with_offset_specific_axes(self):
         f, (ax1, ax2) = plt.subplots(2, 1)
 
@@ -218,43 +233,6 @@ class TestSpineUtils(PlotTestCase):
         ax.set_yticks([])
         utils.despine(trim=True)
         nt.assert_equal(ax.get_yticks().size, 0)
-
-    def test_offset_spines_warns(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always", category=UserWarning)
-
-            f, ax = plt.subplots()
-            utils.offset_spines(offset=self.offset)
-            nt.assert_true('deprecated' in str(w[0].message))
-            nt.assert_true(issubclass(w[0].category, UserWarning))
-
-    def test_offset_spines(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always", category=UserWarning)
-            f, ax = plt.subplots()
-
-            for side in self.sides:
-                nt.assert_equal(ax.spines[side].get_position(),
-                                self.original_position)
-
-            utils.offset_spines(offset=self.offset)
-
-            for side in self.sides:
-                nt.assert_equal(ax.spines[side].get_position(),
-                                self.offset_position)
-
-    def test_offset_spines_specific_axes(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always", category=UserWarning)
-            f, (ax1, ax2) = plt.subplots(2, 1)
-
-            utils.offset_spines(offset=self.offset, ax=ax2)
-
-            for side in self.sides:
-                nt.assert_equal(ax1.spines[side].get_position(),
-                                self.original_position)
-                nt.assert_equal(ax2.spines[side].get_position(),
-                                self.offset_position)
 
 
 def test_ticklabels_overlap():
@@ -346,7 +324,7 @@ if LooseVersion(pd.__version__) >= "0.15":
         finally:
             shutil.rmtree(tmpdir)
 
-    @network(url="https://github.com/mwaskom/seaborn-data")
+    @_network(url="https://github.com/mwaskom/seaborn-data")
     def test_get_dataset_names():
         if not BeautifulSoup:
             raise nose.SkipTest("No BeautifulSoup available for parsing html")
@@ -354,7 +332,7 @@ if LooseVersion(pd.__version__) >= "0.15":
         assert(len(names) > 0)
         assert(u"titanic" in names)
 
-    @network(url="https://github.com/mwaskom/seaborn-data")
+    @_network(url="https://github.com/mwaskom/seaborn-data")
     def test_load_datasets():
         if not BeautifulSoup:
             raise nose.SkipTest("No BeautifulSoup available for parsing html")
@@ -366,7 +344,7 @@ if LooseVersion(pd.__version__) >= "0.15":
             # yield check_load_dataset, name
             check_load_dataset(name)
 
-    @network(url="https://github.com/mwaskom/seaborn-data")
+    @_network(url="https://github.com/mwaskom/seaborn-data")
     def test_load_cached_datasets():
         if not BeautifulSoup:
             raise nose.SkipTest("No BeautifulSoup available for parsing html")

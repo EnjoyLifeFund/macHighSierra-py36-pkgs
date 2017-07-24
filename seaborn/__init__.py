@@ -6,7 +6,7 @@ _orig_rc_params = mpl.rcParams.copy()
 from .rcmod import *
 from .utils import *
 from .palettes import *
-from .linearmodels import *
+from .regression import *
 from .categorical import *
 from .distributions import *
 from .timeseries import *
@@ -16,8 +16,6 @@ from .axisgrid import *
 from .widgets import *
 from .xkcd_rgb import xkcd_rgb
 from .crayons import crayons
+from . import cm
 
-# Set default aesthetics
-set()
-
-__version__ = "0.7.1"
+__version__ = "0.8.0"

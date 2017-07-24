@@ -15,6 +15,7 @@ from distutils.version import LooseVersion
 pandas_has_categoricals = LooseVersion(pd.__version__) >= "0.15"
 mpl_ge_150 = LooseVersion(mpl.__version__) >= "1.5.0"
 from .external.six.moves.urllib.request import urlopen, urlretrieve
+from .external.six.moves.http_client import HTTPException
 
 
 __all__ = ["desaturate", "saturate", "set_hls_values",
@@ -173,11 +174,13 @@ def despine(fig=None, ax=None, top=True, right=True, left=False,
         Specific axes object to despine.
     top, right, left, bottom : boolean, optional
         If True, remove that spine.
-    offset : int or None  (default), optional
+    offset : int or dict, optional
         Absolute distance, in points, spines should be moved away
-        from the axes (negative values move spines inward).
+        from the axes (negative values move spines inward). A single value
+        applies to all spines; a dict can be used to set offset values per
+        side.
     trim : bool, optional
-        If true, limit spines to the smallest and largest major tick
+        If True, limit spines to the smallest and largest major tick
         on each non-despined axis.
 
     Returns
@@ -199,7 +202,11 @@ def despine(fig=None, ax=None, top=True, right=True, left=False,
             is_visible = not locals()[side]
             ax_i.spines[side].set_visible(is_visible)
             if offset is not None and is_visible:
-                _set_spine_position(ax_i.spines[side], ('outward', offset))
+                try:
+                    val = offset.get(side, 0)
+                except AttributeError:
+                    val = offset
+                _set_spine_position(ax_i.spines[side], ('outward', val))
 
         # Set the ticks appropriately
         if bottom:
@@ -236,44 +243,6 @@ def despine(fig=None, ax=None, top=True, right=True, left=False,
                 newticks = yticks.compress(yticks <= lasttick)
                 newticks = newticks.compress(newticks >= firsttick)
                 ax_i.set_yticks(newticks)
-
-
-def offset_spines(offset=10, fig=None, ax=None):
-    """Simple function to offset spines away from axes.
-
-    Use this immediately after creating figure and axes objects.
-    Offsetting spines after plotting or manipulating the axes
-    objects may result in loss of labels, ticks, and formatting.
-
-    Parameters
-    ----------
-    offset : int, optional
-        Absolute distance, in points, spines should be moved away
-        from the axes (negative values move spines inward).
-    fig : matplotlib figure, optional
-        Figure to despine all axes of, default uses current figure.
-    ax : matplotlib axes, optional
-        Specific axes object to despine
-
-    Returns
-    -------
-    None
-
-    """
-    warn_msg = "`offset_spines` is deprecated and will be removed in v0.5"
-    warnings.warn(warn_msg, UserWarning)
-
-    # Get references to the axes we want
-    if fig is None and ax is None:
-        axes = plt.gcf().axes
-    elif fig is not None:
-        axes = fig.axes
-    elif ax is not None:
-        axes = [ax]
-
-    for ax_i in axes:
-        for spine in ax_i.spines.values():
-            _set_spine_position(spine, ('outward', offset))
 
 
 def _set_spine_position(spine, position):
@@ -409,12 +378,13 @@ def load_dataset(name, cache=True, data_home=None, **kws):
     cache : boolean, optional
         If True, then cache data locally and use the cache on subsequent calls
     data_home : string, optional
-        The directory in which to cache data. By default, uses ~/seaborn_data/
+        The directory in which to cache data. By default, uses ~/seaborn-data/
     kws : dict, optional
         Passed to pandas.read_csv
 
     """
-    path = "https://github.com/mwaskom/seaborn-data/raw/master/{0}.csv"
+    path = ("https://raw.githubusercontent.com/"
+            "mwaskom/seaborn-data/master/{}.csv")
     full_path = path.format(name)
 
     if cache:
@@ -617,3 +587,29 @@ def to_utf8(obj):
             return obj.decode("utf-8")
         else:
             return obj.__str__()
+
+
+def _network(t=None, url='http://google.com'):
+    """
+    Decorator that will skip a test if `url` is unreachable.
+
+    Parameters
+    ----------
+    t : function, optional
+    url : str, optional
+    """
+    import nose
+
+    if t is None:
+        return lambda x: _network(x, url=url)
+
+    def wrapper(*args, **kwargs):
+        # attempt to connect
+        try:
+            f = urlopen(url)
+        except (IOError, HTTPException):
+            raise nose.SkipTest()
+        else:
+            f.close()
+            return t(*args, **kwargs)
+    return wrapper

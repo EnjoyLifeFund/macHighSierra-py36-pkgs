@@ -1,12 +1,12 @@
 """Convenience functions built on top of `make_vjp`."""
 from __future__ import absolute_import
-from functools import partial
 import autograd.numpy as np
-from autograd.core import make_vjp, getval, isnode, vspace, primitive
+from autograd.core import (make_vjp, getval, vspace, primitive,
+                           unbox_if_possible)
+from autograd.container_types import make_tuple
 from .errors import add_error_hints
 from collections import OrderedDict
 from inspect import getargspec
-import itertools as it
 import warnings
 
 def grad(fun, argnum=0):
@@ -15,17 +15,13 @@ def grad(fun, argnum=0):
     positional argument number `argnum`. The returned function takes the same
     arguments as `fun`, but returns the gradient instead. The function `fun`
     should be scalar-valued. The gradient has the same type as the argument."""
-
-    def scalar_fun(*args, **kwargs):
-        return as_scalar(fun(*args, **kwargs))
-
     @attach_name_and_doc(fun, argnum, 'Gradient')
     @add_error_hints
     def gradfun(*args,**kwargs):
         args = list(args)
         args[argnum] = safe_type(args[argnum])
-        vjp, ans = make_vjp(scalar_fun, argnum)(*args, **kwargs)
-        return vjp(cast_to_same_dtype(1.0, ans))
+        vjp, ans = make_vjp(fun, argnum)(*args, **kwargs)
+        return vjp(vspace(getval(ans)).ones())
 
     return gradfun
 
@@ -38,28 +34,14 @@ def jacobian(fun, argnum=0):
     If the input to `fun` has shape (in1, in2, ...) and the output has shape
     (out1, out2, ...) then the Jacobian has shape (out1, out2, ..., in1, in2, ...).
     """
-    def getshape(val):
-        val = getval(val)
-        assert np.isscalar(val) or isinstance(val, np.ndarray), \
-            'Jacobian requires input and output to be scalar- or array-valued'
-        return np.shape(val)
-
-    def unit_vectors(shape):
-        for idxs in it.product(*map(range, shape)):
-            vect = np.zeros(shape)
-            vect[idxs] = 1
-            yield vect
-
-    concatenate = lambda lst: np.concatenate(map(np.atleast_1d, lst))
-
     @attach_name_and_doc(fun, argnum, 'Jacobian')
     @add_error_hints
     def jacfun(*args, **kwargs):
         vjp, ans = make_vjp(fun, argnum)(*args, **kwargs)
-        outshape = getshape(ans)
-        grads = map(vjp, unit_vectors(outshape))
-        jacobian_shape = outshape + getshape(args[argnum])
-        return np.reshape(concatenate(grads), jacobian_shape)
+        ans_vspace = vspace(getval(ans))
+        jacobian_shape = ans_vspace.shape + vspace(getval(args[argnum])).shape
+        grads = map(vjp, ans_vspace.standard_basis())
+        return np.reshape(np.stack(grads), jacobian_shape)
 
     return jacfun
 
@@ -69,59 +51,93 @@ def grad_named(fun, argname):
     arg_index = getargspec(fun).args.index(argname)
     return grad(fun, arg_index)
 
-def multigrad(fun, argnums=[0]):
-    """Takes gradients wrt multiple arguments simultaneously."""
+def value_and_multigrad(fun, argnums=[0]):
+    """Returns a function that returns both value and gradients wrt multiple
+    arguments simultaneously."""
     def combined_arg_fun(multi_arg, *args, **kwargs):
         extra_args_list = list(args)
         for argnum_ix, arg_ix in enumerate(argnums):
             extra_args_list[arg_ix] = multi_arg[argnum_ix]
         return fun(*extra_args_list, **kwargs)
-    gradfun = grad(combined_arg_fun, argnum=0)
+    gradfun = value_and_grad(combined_arg_fun, argnum=0)
     def gradfun_rearranged(*args, **kwargs):
         multi_arg = tuple([args[i] for i in argnums])
         return gradfun(multi_arg, *args, **kwargs)
     return gradfun_rearranged
 
-def elementwise_grad(fun, argnum=0):
-    """Like `jacobian`, but produces a function which computes just the diagonal
-    of the Jacobian, and does the computation in one pass rather than in a loop.
-    Note: this is only valid if the Jacobian is diagonal. Only arrays are
-    currently supported. Can be used for broadcasting."""
-    def sum_output(*args, **kwargs):
-        return np.sum(fun(*args, **kwargs))
-    return grad(sum_output, argnum=argnum)
+def multigrad(fun, argnums=[0]):
+    """Returns a function that returns gradients wrt multiple arguments
+    simultaneously."""
+    double_val_fun = value_and_multigrad(fun, argnums=argnums)
+    def multigrad_fun(*args, **kwargs):
+        return double_val_fun(*args, **kwargs)[1]
+    return multigrad_fun
+
+elementwise_grad = grad  # backward compatibility
 
 def hessian(fun, argnum=0):
     "Returns a function that computes the exact Hessian."
     return jacobian(jacobian(fun, argnum), argnum)
 
-def hessian_vector_product(fun, argnum=0):
-    """Builds a function that returns the exact Hessian-vector product.
-    The returned function has arguments (*args, vector, **kwargs), and takes
-    roughly 4x as long to evaluate as the original function."""
+def make_hvp(fun, argnum=0):
+    """Builds a function for evaluating the Hessian-vector product at a point,
+    which may be useful when evaluating many Hessian-vector products at the same
+    point while caching the results of the forward pass."""
+    def hvp_maker(*args, **kwargs):
+        return make_vjp(grad(fun, argnum), argnum)(*args, **kwargs)[0]
+    return hvp_maker
+
+def hessian_tensor_product(fun, argnum=0):
+    """Builds a function that returns the exact Hessian-tensor product.
+    The returned function has arguments (*args, tensor, **kwargs), and for
+    vectors takes roughly 4x as long to evaluate as the original function."""
     fun_grad = grad(fun, argnum)
     def vector_dot_grad(*args, **kwargs):
         args, vector = args[:-1], args[-1]
         return np.tensordot(fun_grad(*args, **kwargs), vector, np.ndim(vector))
-    return grad(vector_dot_grad, argnum)  # Grad wrt original input.
+    return grad(vector_dot_grad, argnum)
+hessian_vector_product = hessian_tensor_product
 
-def vector_jacobian_product(fun, argnum=0):
-    """Builds a function that returns the exact vector-Jacobian product, that
-    is the Jacobian matrix left-multiplied by vector. The returned function
-    has arguments (*args, vector, **kwargs)."""
+def tensor_jacobian_product(fun, argnum=0):
+    """Builds a function that returns the exact tensor-Jacobian product, that
+    is the Jacobian matrix left-multiplied by tensor. The returned function
+    has arguments (*args, tensor, **kwargs)."""
     def vector_dot_fun(*args, **kwargs):
         args, vector = args[:-1], args[-1]
         return np.tensordot(vector, fun(*args, **kwargs), axes=np.ndim(vector))
-    return jacobian(vector_dot_fun, argnum)  # Grad wrt original input.
+    return jacobian(vector_dot_fun, argnum)
+vector_jacobian_product = tensor_jacobian_product
+
+def make_jvp(fun, argnum=0):
+    """Builds a function for evaluating the Jacobian-vector product at a
+    point. Roughly 1.5x more FLOPs than forward-mode, plus memory requirements
+    that scale with the number of primitives applied in the evaluation of f, as
+    well as other overheads. See github.com/BB-UCL/autograd-forward."""
+    def jvp_maker(*args, **kwargs):
+        vjp, y = make_vjp(fun, argnum)(*args, **kwargs)
+        vjp_vjp, _ = make_vjp(vjp)(vspace(getval(y)).zeros())
+        return vjp_vjp  # vjp_vjp is just jvp by linearity
+    return jvp_maker
+
+def make_ggnvp(f, g=lambda x: 1./2*np.sum(x**2, axis=-1), f_argnum=0):
+    """Builds a function for evaluating generalized-Gauss-Newton-vector products
+    at a point. Slightly more expensive than mixed-mode."""
+    def ggnvp_maker(*args, **kwargs):
+        f_vjp, f_x = make_vjp(f, f_argnum)(*args, **kwargs)
+        g_hvp, grad_g_x = make_vjp(grad(g))(f_x)
+        f_vjp_vjp, _ = make_vjp(f_vjp)(vspace(getval(grad_g_x)).zeros())
+        def ggnvp(v): return f_vjp(g_hvp(f_vjp_vjp(v)))
+        return ggnvp
+    return ggnvp_maker
 
 def value_and_grad(fun, argnum=0):
     """Returns a function that returns both value and gradient. Suitable for use
     in scipy.optimize"""
     def double_val_fun(*args, **kwargs):
         val = fun(*args, **kwargs)
-        return val, getval(val)
+        return make_tuple(val, unbox_if_possible(val))
     gradval_and_val = grad_and_aux(double_val_fun, argnum)
-    flip = lambda x, y: (y, x)
+    flip = lambda x, y: make_tuple(y, x)
     return lambda *args, **kwargs: flip(*gradval_and_val(*args, **kwargs))
 
 def grad_and_aux(fun, argnum=0):
@@ -214,20 +230,6 @@ def safe_type(value):
         return float(value)
     else:
         return value
-
-def as_scalar(x):
-    vs = vspace(getval(x))
-    if vs.iscomplex:
-        x = np.real(x)
-    if vs.shape == ():
-        return x
-    elif vs.size == 1:
-        return x.reshape(())
-    else:
-        raise TypeError(
-            "Output {} can't be cast to float. "
-            "Function grad requires a scalar-valued function. "
-            "Try jacobian or elementwise_grad.".format(getval(x)))
 
 def cast_to_same_dtype(value, example):
     if hasattr(example, 'dtype') and example.dtype.type is not np.float64:

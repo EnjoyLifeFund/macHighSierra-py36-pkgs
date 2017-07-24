@@ -529,6 +529,48 @@ static void __Pyx_WriteUnraisable(const char *name, CYTHON_UNUSED int clineno,
 #endif
 }
 
+/////////////// CLineInTraceback.proto ///////////////
+
+static int __Pyx_CLineForTraceback(int c_line);
+
+/////////////// CLineInTraceback ///////////////
+//@requires: ObjectHandling.c::PyObjectGetAttrStr
+//@substitute: naming
+
+static int __Pyx_CLineForTraceback(int c_line) {
+#ifdef CYTHON_CLINE_IN_TRACEBACK  /* 0 or 1 to disable/enable C line display in tracebacks at C compile time */
+    return ((CYTHON_CLINE_IN_TRACEBACK)) ? c_line : 0;
+#else
+    PyObject **cython_runtime_dict;
+    PyObject *use_cline;
+
+    cython_runtime_dict = _PyObject_GetDictPtr(${cython_runtime_cname});
+    if (unlikely(!cython_runtime_dict)) {
+      PyObject *ptype, *pvalue, *ptraceback;
+      PyObject *use_cline_obj;
+      PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+      use_cline_obj = __Pyx_PyObject_GetAttrStr(${cython_runtime_cname}, PYIDENT("cline_in_traceback"));
+      if (use_cline_obj) {
+        use_cline = PyObject_Not(use_cline_obj) ? Py_False : Py_True;
+        Py_DECREF(use_cline_obj);
+      } else {
+        use_cline = NULL;
+      }
+      PyErr_Restore(ptype, pvalue, ptraceback);
+    } else {
+      use_cline = PyDict_GetItem(*_PyObject_GetDictPtr(${cython_runtime_cname}), PYIDENT("cline_in_traceback"));
+    }
+    if (!use_cline) {
+        c_line = 0;
+        PyObject_SetAttr(${cython_runtime_cname}, PYIDENT("cline_in_traceback"), Py_False);
+    }
+    else if (PyObject_Not(use_cline) != 0) {
+        c_line = 0;
+    }
+    return c_line;
+#endif
+}
+
 /////////////// AddTraceback.proto ///////////////
 
 static void __Pyx_AddTraceback(const char *funcname, int c_line,
@@ -536,6 +578,7 @@ static void __Pyx_AddTraceback(const char *funcname, int c_line,
 
 /////////////// AddTraceback ///////////////
 //@requires: ModuleSetupCode.c::CodeObjectCache
+//@requires: CLineInTraceback
 //@substitute: naming
 
 #include "compile.h"
@@ -601,12 +644,17 @@ static void __Pyx_AddTraceback(const char *funcname, int c_line,
     PyCodeObject *py_code = 0;
     PyFrameObject *py_frame = 0;
 
-    py_code = $global_code_object_cache_find(c_line ? c_line : py_line);
+    if (c_line) {
+        c_line = __Pyx_CLineForTraceback(c_line);
+    }
+
+    // Negate to avoid collisions between py and c lines.
+    py_code = $global_code_object_cache_find(c_line ? -c_line : py_line);
     if (!py_code) {
         py_code = __Pyx_CreateCodeObjectForTraceback(
             funcname, c_line, py_line, filename);
         if (!py_code) goto bad;
-        $global_code_object_cache_insert(c_line ? c_line : py_line, py_code);
+        $global_code_object_cache_insert(c_line ? -c_line : py_line, py_code);
     }
     py_frame = PyFrame_New(
         PyThreadState_GET(), /*PyThreadState *tstate,*/

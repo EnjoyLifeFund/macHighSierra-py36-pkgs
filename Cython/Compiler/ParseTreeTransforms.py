@@ -7,6 +7,7 @@ cython.declare(PyrexTypes=object, Naming=object, ExprNodes=object, Nodes=object,
                error=object, warning=object, copy=object, _unicode=object)
 
 import copy
+import hashlib
 
 from . import PyrexTypes
 from . import Naming
@@ -22,7 +23,6 @@ from .TreeFragment import TreeFragment
 from .StringEncoding import EncodedString, _unicode
 from .Errors import error, warning, CompileError, InternalError
 from .Code import UtilityCode
-
 
 class NameNodeCollector(TreeVisitor):
     """Collect all NameNodes of a (sub-)tree in the ``name_nodes``
@@ -600,6 +600,22 @@ class PxdPostParse(CythonTransform, SkipDeclarations):
         else:
             return node
 
+class TrackNumpyAttributes(CythonTransform, SkipDeclarations):
+    def __init__(self, context):
+        super(TrackNumpyAttributes, self).__init__(context)
+        self.numpy_module_names = set()
+
+    def visit_CImportStatNode(self, node):
+        if node.module_name == u"numpy":
+            self.numpy_module_names.add(node.as_name or u"numpy")
+        return node
+
+    def visit_AttributeNode(self, node):
+        self.visitchildren(node)
+        if node.obj.is_name and node.obj.name in self.numpy_module_names:
+            node.is_numpy_attribute = True
+        return node
+
 class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
     """
     After parsing, directives can be stored in a number of places:
@@ -858,7 +874,8 @@ class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
             if optname:
                 directivetype = Options.directive_types.get(optname)
                 if directivetype is bool:
-                    return [(optname, True)]
+                    arg = ExprNodes.BoolNode(node.pos, value=True)
+                    return [self.try_to_parse_directive(optname, [arg], None, node.pos)]
                 elif directivetype is None:
                     return [(optname, None)]
                 else:
@@ -868,6 +885,8 @@ class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
 
     def try_to_parse_directive(self, optname, args, kwds, pos):
         directivetype = Options.directive_types.get(optname)
+        if optname == 'np_pythran' and not self.context.cpp:
+            raise PostParseError(pos, 'The %s directive can only be used in C++ mode.' % optname)
         if len(args) == 1 and isinstance(args[0], ExprNodes.NoneNode):
             return optname, Options.get_directive_defaults()[optname]
         elif directivetype is bool:
@@ -1336,8 +1355,18 @@ class DecoratorTransform(ScopeTrackingTransform, SkipDeclarations):
                         return self._reject_decorated_property(node, decorator_node)
                     return self._add_to_property(properties, node, handler_name, decorator_node)
 
+        # we clear node.decorators, so we need to set the
+        # is_staticmethod/is_classmethod attributes now
+        for decorator in node.decorators:
+            func = decorator.decorator
+            if func.is_name:
+                node.is_classmethod |= func.name == 'classmethod'
+                node.is_staticmethod |= func.name == 'staticmethod'
+
         # transform normal decorators
-        return self.chain_decorators(node, node.decorators, node.name)
+        decs = node.decorators
+        node.decorators = None
+        return self.chain_decorators(node, decs, node.name)
 
     @staticmethod
     def _reject_decorated_property(node, decorator_node):
@@ -1535,10 +1564,13 @@ if VALUE is not None:
         return node
 
     def visit_ModuleNode(self, node):
+        # Pickling support requires injecting module-level nodes.
+        self.extra_module_declarations = []
         self.seen_vars_stack.append(set())
         node.analyse_declarations(self.current_env())
         self.visitchildren(node)
         self.seen_vars_stack.pop()
+        node.body.stats.extend(self.extra_module_declarations)
         return node
 
     def visit_LambdaNode(self, node):
@@ -1560,7 +1592,138 @@ if VALUE is not None:
                     stats.append(property)
             if stats:
                 node.body.stats += stats
+            if (node.visibility != 'extern'
+                and not node.scope.lookup('__reduce__')
+                and not node.scope.lookup('__reduce_ex__')):
+                self._inject_pickle_methods(node)
         return node
+
+    def _inject_pickle_methods(self, node):
+        env = self.current_env()
+        if node.scope.directives['auto_pickle'] is False:   # None means attempt it.
+            # Old behavior of not doing anything.
+            return
+        auto_pickle_forced = node.scope.directives['auto_pickle'] is True
+
+        all_members = []
+        cls = node.entry.type
+        cinit = None
+        inherited_reduce = None
+        while cls is not None:
+            all_members.extend(e for e in cls.scope.var_entries if e.name not in ('__weakref__', '__dict__'))
+            cinit = cinit or cls.scope.lookup('__cinit__')
+            inherited_reduce = inherited_reduce or cls.scope.lookup('__reduce__') or cls.scope.lookup('__reduce_ex__')
+            cls = cls.base_type
+        all_members.sort(key=lambda e: e.name)
+
+        if inherited_reduce:
+            # This is not failsafe, as we may not know whether a cimported class defines a __reduce__.
+            # This is why we define __reduce_cython__ and only replace __reduce__
+            # (via ExtensionTypes.SetupReduce utility code) at runtime on class creation.
+            return
+
+        non_py = [
+            e for e in all_members
+            if not e.type.is_pyobject and (not e.type.can_coerce_to_pyobject(env)
+                                           or not e.type.can_coerce_from_pyobject(env))
+        ]
+
+        structs = [e for e in all_members if e.type.is_struct_or_union]
+
+        if cinit or non_py or (structs and not auto_pickle_forced):
+            if cinit:
+                # TODO(robertwb): We could allow this if __cinit__ has no require arguments.
+                msg = 'no default __reduce__ due to non-trivial __cinit__'
+            elif non_py:
+                msg = "%s cannot be converted to a Python object for pickling" % ','.join("self.%s" % e.name for e in non_py)
+            else:
+                # Extern structs may be only partially defined.
+                # TODO(robertwb): Limit the restriction to extern
+                # (and recursively extern-containing) structs.
+                msg = ("Pickling of struct members such as %s must be explicitly requested "
+                       "with @auto_pickle(True)" % ','.join("self.%s" % e.name for e in structs))
+
+            if auto_pickle_forced:
+                error(node.pos, msg)
+
+            pickle_func = TreeFragment(u"""
+                def __reduce_cython__(self):
+                    raise TypeError("%(msg)s")
+                def __setstate_cython__(self, __pyx_state):
+                    raise TypeError("%(msg)s")
+                """ % {'msg': msg},
+                level='c_class', pipeline=[NormalizeTree(None)]).substitute({})
+            pickle_func.analyse_declarations(node.scope)
+            self.visit(pickle_func)
+            node.body.stats.append(pickle_func)
+
+        else:
+            for e in all_members:
+                if not e.type.is_pyobject:
+                    e.type.create_to_py_utility_code(env)
+                    e.type.create_from_py_utility_code(env)
+            all_members_names = sorted([e.name for e in all_members])
+            checksum = '0x%s' % hashlib.md5(' '.join(all_members_names).encode('utf-8')).hexdigest()[:7]
+            unpickle_func_name = '__pyx_unpickle_%s' % node.class_name
+
+            # TODO(robertwb): Move the state into the third argument
+            # so it can be pickled *after* self is memoized.
+            unpickle_func = TreeFragment(u"""
+                def %(unpickle_func_name)s(__pyx_type, long __pyx_checksum, __pyx_state):
+                    if __pyx_checksum != %(checksum)s:
+                        from pickle import PickleError
+                        raise PickleError("Incompatible checksums (%%s vs %(checksum)s = (%(members)s))" %% __pyx_checksum)
+                    result = %(class_name)s.__new__(__pyx_type)
+                    if __pyx_state is not None:
+                        %(unpickle_func_name)s__set_state(<%(class_name)s> result, __pyx_state)
+                    return result
+
+                cdef %(unpickle_func_name)s__set_state(%(class_name)s result, tuple __pyx_state):
+                    %(assignments)s
+                    if hasattr(result, '__dict__'):
+                        result.__dict__.update(__pyx_state[%(num_members)s])
+                """ % {
+                    'unpickle_func_name': unpickle_func_name,
+                    'checksum': checksum,
+                    'members': ', '.join(all_members_names),
+                    'class_name': node.class_name,
+                    'assignments': '; '.join(
+                        'result.%s = __pyx_state[%s]' % (v, ix)
+                        for ix, v in enumerate(all_members_names)),
+                    'num_members': len(all_members_names),
+                }, level='module', pipeline=[NormalizeTree(None)]).substitute({})
+            unpickle_func.analyse_declarations(node.entry.scope)
+            self.visit(unpickle_func)
+            self.extra_module_declarations.append(unpickle_func)
+
+            pickle_func = TreeFragment(u"""
+                def __reduce_cython__(self):
+                    cdef bint use_setstate
+                    state = (%(members)s)
+                    _dict = getattr(self, '__dict__', None)
+                    if _dict is not None:
+                        state += _dict,
+                        use_setstate = True
+                    else:
+                        use_setstate = %(any_notnone_members)s
+                    if use_setstate:
+                        return %(unpickle_func_name)s, (type(self), %(checksum)s, None), state
+                    else:
+                        return %(unpickle_func_name)s, (type(self), %(checksum)s, state)
+
+                def __setstate_cython__(self, __pyx_state):
+                    %(unpickle_func_name)s__set_state(self, __pyx_state)
+                """ % {
+                    'unpickle_func_name': unpickle_func_name,
+                    'checksum': checksum,
+                    'members': ', '.join('self.%s' % v for v in all_members_names) + (',' if len(all_members_names) == 1 else ''),
+                    # Even better, we could check PyType_IS_GC.
+                    'any_notnone_members' : ' or '.join(['self.%s is not None' % e.name for e in all_members if e.type.is_pyobject] or ['False']),
+                },
+                level='c_class', pipeline=[NormalizeTree(None)]).substitute({})
+            pickle_func.analyse_declarations(node.scope)
+            self.visit(pickle_func)
+            node.body.stats.append(pickle_func)
 
     def _handle_fused_def_decorators(self, old_decorators, env, node):
         """

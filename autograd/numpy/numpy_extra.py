@@ -1,25 +1,24 @@
 from __future__ import absolute_import
 import numpy as np
 
-from autograd.core import (Node, VSpace,
-                           SparseObject, primitive, vspace,
-                           register_node, register_vspace, getval)
+from autograd.core import (Node, VSpace, SparseObject, primitive,
+                           register_node, register_vspace)
 from . import numpy_wrapper as anp
 
 @primitive
 def take(A, idx):
     return A[idx]
 def grad_take(g, ans, vs, gvs, A, idx):
-    return untake(g, idx, A)
+    return untake(g, idx, vs)
 take.defvjp(grad_take)
 
 @primitive
-def untake(x, idx, template):
+def untake(x, idx, vs):
     def mut_add(A):
         np.add.at(A, idx, x)
         return A
-    return SparseObject(vspace(template), mut_add)
-untake.defvjp(lambda g, ans, vs, gvs, x, idx, template : take(g, idx))
+    return SparseObject(vs, mut_add)
+untake.defvjp(lambda g, ans, vs, gvs, x, idx, _: take(g, idx))
 untake.defvjp_is_zero(argnums=(1, 2))
 
 Node.__array_priority__ = 90.0
@@ -67,14 +66,24 @@ class ArrayNode(Node):
 
 class ArrayVSpace(VSpace):
     def __init__(self, value):
-        value = np.array(value)
+        value = np.array(value, copy=False)
         self.shape = value.shape
         self.size  = value.size
         self.dtype = value.dtype
+        self.ndim  = value.ndim
         self.scalartype = float
 
     def zeros(self):
-        return anp.zeros(self.shape, dtype=self.dtype)
+        return np.zeros(self.shape, dtype=self.dtype)
+
+    def ones(self):
+        return np.ones(self.shape, dtype=self.dtype)
+
+    def standard_basis(self):
+      for idxs in np.ndindex(*self.shape):
+            vect = np.zeros(self.shape)
+            vect[idxs] = 1
+            yield vect
 
     def flatten(self, value, covector=False):
         return np.ravel(value)

@@ -1,1 +1,1 @@
-../../../../../../Cellar/pyqt/5.8.2/lib/python3.6/site-packages/PyQt5/uic/port_v2/proxy_base.py
+../../../../../../Cellar/pyqt/5.9_1/lib/python3.6/site-packages/PyQt5/uic/port_v2/proxy_base.py

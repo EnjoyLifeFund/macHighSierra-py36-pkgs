@@ -59,7 +59,7 @@ class _ColorPalette(list):
 def color_palette(palette=None, n_colors=None, desat=None):
     """Return a list of colors defining a color palette.
 
-    Availible seaborn palette names:
+    Available seaborn palette names:
         deep, muted, bright, pastel, dark, colorblind
 
     Other options:
@@ -68,7 +68,7 @@ def color_palette(palette=None, n_colors=None, desat=None):
     Calling this function with ``palette=None`` will return the current
     matplotlib color cycle.
 
-    Matplotlib paletes can be specified as reversed palettes by appending
+    Matplotlib palettes can be specified as reversed palettes by appending
     "_r" to the name or as dark palettes by appending "_d" to the name.
     (These options are mutually exclusive, but the resulting list of colors
     can also be reversed).
@@ -172,12 +172,11 @@ def color_palette(palette=None, n_colors=None, desat=None):
             raise ValueError("No.")
         elif palette in SEABORN_PALETTES:
             palette = SEABORN_PALETTES[palette]
-        elif palette in dir(mpl.cm):
-            palette = mpl_palette(palette, n_colors)
-        elif palette[:-2] in dir(mpl.cm):
-            palette = mpl_palette(palette, n_colors)
         else:
-            raise ValueError("%s is not a valid palette name" % palette)
+            try:
+                palette = mpl_palette(palette, n_colors)
+            except ValueError:
+                raise ValueError("%s is not a valid palette name" % palette)
 
     if desat is not None:
         palette = [desaturate(c, desat) for c in palette]
@@ -394,18 +393,21 @@ def mpl_palette(name, n_colors=6):
         >>> sns.palplot(sns.mpl_palette("GnBu_d"))
 
     """
-    brewer_qual_pals = {"Accent": 8, "Dark2": 8, "Paired": 12,
-                        "Pastel1": 9, "Pastel2": 8,
-                        "Set1": 9, "Set2": 8, "Set3": 12}
+    mpl_qual_pals = {"Accent": 8, "Dark2": 8, "Paired": 12,
+                     "Pastel1": 9, "Pastel2": 8,
+                     "Set1": 9, "Set2": 8, "Set3": 12,
+                     "tab10": 10, "tab20": 20, "tab20b": 20, "tab20c": 20}
 
     if name.endswith("_d"):
         pal = ["#333333"]
         pal.extend(color_palette(name.replace("_d", "_r"), 2))
         cmap = blend_palette(pal, n_colors, as_cmap=True)
     else:
-        cmap = getattr(mpl.cm, name)
-    if name in brewer_qual_pals:
-        bins = np.linspace(0, 1, brewer_qual_pals[name])[:n_colors]
+        cmap = mpl.cm.get_cmap(name)
+        if cmap is None:
+            raise ValueError("{} is not a valid colormap".format(name))
+    if name in mpl_qual_pals:
+        bins = np.linspace(0, 1, mpl_qual_pals[name])[:n_colors]
     else:
         bins = np.linspace(0, 1, n_colors + 2)[1:-1]
     palette = list(map(tuple, cmap(bins)[:, :3]))
@@ -788,7 +790,7 @@ def cubehelix_palette(n_colors=6, start=0, rot=.4, gamma=1.0, hue=0.8,
     This produces a colormap with linearly-decreasing (or increasing)
     brightness. That means that information will be preserved if printed to
     black and white or viewed by someone who is colorblind.  "cubehelix" is
-    also availible as a matplotlib-based palette, but this function gives the
+    also available as a matplotlib-based palette, but this function gives the
     user more control over the look of the palette and has a different set of
     defaults.
 

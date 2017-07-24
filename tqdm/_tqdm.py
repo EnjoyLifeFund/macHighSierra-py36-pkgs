@@ -63,9 +63,6 @@ class TMonitor(Thread):
     _sleep = None
 
     def __init__(self, tqdm_cls, sleep_interval):
-        # setcheckinterval is deprecated
-        getattr(sys, 'setswitchinterval',
-                getattr(sys, 'setcheckinterval'))(100)
         Thread.__init__(self)
         self.daemon = True  # kill thread when main killed (KeyboardInterrupt)
         self.was_killed = False
@@ -232,10 +229,11 @@ class tqdm(object):
             (1-9 #).
         unit  : str, optional
             The iteration unit [default: 'it'].
-        unit_scale  : bool, optional
-            If set, the number of iterations will printed with an
+        unit_scale  : bool or int or float, optional
+            If 1 or True, the number of iterations will be printed with an
             appropriate SI metric prefix (K = 10^3, M = 10^6, etc.)
-            [default: False].
+            [default: False]. If any other non-zero number, will scale
+            `total` and `n`.
         rate  : float, optional
             Manual override for iteration rate.
             If [default: None], uses n/elapsed.
@@ -259,6 +257,12 @@ class tqdm(object):
         # sanity check: total
         if total and n > total:
             total = None
+
+        # apply custom scale if necessary
+        if unit_scale and unit_scale not in (True, 1):
+            total *= unit_scale
+            n *= unit_scale
+            unit_scale = False
 
         format_interval = tqdm.format_interval
         elapsed_str = format_interval(elapsed)
@@ -508,8 +512,13 @@ class tqdm(object):
                 # Precompute total iterations
                 total = getattr(df, 'ngroups', None)
                 if total is None:  # not grouped
-                    total = len(df) if isinstance(df, Series) \
-                        else df.size // len(df)
+                    if isinstance(df, Series):
+                        total = len(df)
+                    else:
+                        if kwargs.get('axis') == 1:
+                            total = len(df)
+                        else:
+                            total = df.size // len(df)
                 else:
                     total += 1  # pandas calls update once too many
 
@@ -611,11 +620,12 @@ class tqdm(object):
         unit  : str, optional
             String that will be used to define the unit of each iteration
             [default: it].
-        unit_scale  : bool, optional
-            If set, the number of iterations will be reduced/scaled
+        unit_scale  : bool or int or float, optional
+            If 1 or True, the number of iterations will be reduced/scaled
             automatically and a metric prefix following the
             International System of Units standard will be added
-            (kilo, mega, etc.) [default: False].
+            (kilo, mega, etc.) [default: False]. If any other non-zero
+            number, will scale `total` and `n`.
         dynamic_ncols  : bool, optional
             If set, constantly alters `ncols` to the environment (allowing
             for window resizes) [default: False].
@@ -651,6 +661,9 @@ class tqdm(object):
         out  : decorated iterator.
         """
 
+        if file is None:
+            file = sys.stderr
+
         if disable is None and hasattr(file, "isatty") and not file.isatty():
             disable = True
 
@@ -660,9 +673,6 @@ class tqdm(object):
             self.pos = self._get_free_pos(self)
             self._instances.remove(self)
             return
-
-        if file is None:
-            file = sys.stderr
 
         if kwargs:
             self.disable = True

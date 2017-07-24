@@ -13,6 +13,7 @@ cython.declare(os=object, re=object, operator=object,
 
 import os
 import re
+import shutil
 import sys
 import operator
 import textwrap
@@ -1436,12 +1437,13 @@ class GlobalState(object):
     #
 
     def lookup_filename(self, source_desc):
+        entry = source_desc.get_filenametable_entry()
         try:
-            index = self.filename_table[source_desc.get_filenametable_entry()]
+            index = self.filename_table[entry]
         except KeyError:
             index = len(self.filename_list)
             self.filename_list.append(source_desc)
-            self.filename_table[source_desc.get_filenametable_entry()] = index
+            self.filename_table[entry] = index
         return index
 
     def commented_file_contents(self, source_desc):
@@ -1737,7 +1739,7 @@ class CCodeWriter(object):
                 tmp_path = '%s.tmp%s' % (path, os.getpid())
                 with closing(Utils.open_new_file(tmp_path)) as f:
                     f.write(code)
-                os.rename(tmp_path, path)
+                shutil.move(tmp_path, path)
             code = '#include "%s"\n' % path
         self.put(code)
 
@@ -2072,22 +2074,30 @@ class CCodeWriter(object):
         """
         self.globalstate.use_utility_code(
             UtilityCode.load_cached("ForceInitThreads", "ModuleSetupCode.c"))
+        if self.globalstate.directives['fast_gil']:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("FastGil", "ModuleSetupCode.c"))
+        else:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("NoFastGil", "ModuleSetupCode.c"))
         self.putln("#ifdef WITH_THREAD")
         if not variable:
             variable = '__pyx_gilstate_save'
             if declare_gilstate:
                 self.put("PyGILState_STATE ")
-        self.putln("%s = PyGILState_Ensure();" % variable)
+        self.putln("%s = __Pyx_PyGILState_Ensure();" % variable)
         self.putln("#endif")
 
     def put_release_ensured_gil(self, variable=None):
         """
         Releases the GIL, corresponds to `put_ensure_gil`.
         """
+        if self.globalstate.directives['fast_gil']:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("FastGil", "ModuleSetupCode.c"))
+        else:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("NoFastGil", "ModuleSetupCode.c"))
         if not variable:
             variable = '__pyx_gilstate_save'
         self.putln("#ifdef WITH_THREAD")
-        self.putln("PyGILState_Release(%s);" % variable)
+        self.putln("__Pyx_PyGILState_Release(%s);" % variable)
         self.putln("#endif")
 
     def put_acquire_gil(self, variable=None):
@@ -2095,7 +2105,12 @@ class CCodeWriter(object):
         Acquire the GIL. The thread's thread state must have been initialized
         by a previous `put_release_gil`
         """
+        if self.globalstate.directives['fast_gil']:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("FastGil", "ModuleSetupCode.c"))
+        else:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("NoFastGil", "ModuleSetupCode.c"))
         self.putln("#ifdef WITH_THREAD")
+        self.putln("__Pyx_FastGIL_Forget();")
         if variable:
             self.putln('_save = %s;' % variable)
         self.putln("Py_BLOCK_THREADS")
@@ -2103,11 +2118,16 @@ class CCodeWriter(object):
 
     def put_release_gil(self, variable=None):
         "Release the GIL, corresponds to `put_acquire_gil`."
+        if self.globalstate.directives['fast_gil']:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("FastGil", "ModuleSetupCode.c"))
+        else:
+          self.globalstate.use_utility_code(UtilityCode.load_cached("NoFastGil", "ModuleSetupCode.c"))
         self.putln("#ifdef WITH_THREAD")
         self.putln("PyThreadState *_save;")
         self.putln("Py_UNBLOCK_THREADS")
         if variable:
             self.putln('%s = _save;' % variable)
+        self.putln("__Pyx_FastGIL_Remember();")
         self.putln("#endif")
 
     def declare_gilstate(self):
@@ -2194,7 +2214,7 @@ class CCodeWriter(object):
     def put_finish_refcount_context(self):
         self.putln("__Pyx_RefNannyFinishContext();")
 
-    def put_add_traceback(self, qualified_name):
+    def put_add_traceback(self, qualified_name, include_cline=True):
         """
         Build a Python traceback for propagating exceptions.
 
@@ -2202,7 +2222,7 @@ class CCodeWriter(object):
         """
         format_tuple = (
             qualified_name,
-            Naming.clineno_cname,
+            Naming.clineno_cname if include_cline else 0,
             Naming.lineno_cname,
             Naming.filename_cname,
         )

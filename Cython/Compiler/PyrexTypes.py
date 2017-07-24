@@ -28,9 +28,13 @@ class BaseType(object):
     # List of attribute names of any subtypes
     subtypes = []
     _empty_declaration = None
+    _specialization_name = None
     default_format_spec = None
 
     def can_coerce_to_pyobject(self, env):
+        return False
+
+    def can_coerce_from_pyobject(self, env):
         return False
 
     def can_coerce_to_pystring(self, env, format_spec=None):
@@ -48,15 +52,15 @@ class BaseType(object):
         return self._empty_declaration
 
     def specialization_name(self):
-        # This is not entirely robust.
-        safe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789'
-        all = []
-        for c in self.empty_declaration_code().replace("unsigned ", "unsigned_").replace("long long", "long_long").replace(" ", "__"):
-            if c in safe:
-                all.append(c)
-            else:
-                all.append('_%x_' % ord(c))
-        return ''.join(all)
+        if self._specialization_name is None:
+            # This is not entirely robust.
+            common_subs = (self.empty_declaration_code()
+                           .replace("unsigned ", "unsigned_")
+                           .replace("long long", "long_long")
+                           .replace(" ", "__"))
+            self._specialization_name = re.sub(
+                '[^a-zA-Z0-9_]', lambda x: '_%x_' % ord(x.group(0)), common_subs)
+        return self._specialization_name
 
     def base_declaration_code(self, base_code, entity_code):
         if entity_code:
@@ -185,6 +189,8 @@ class PyrexType(BaseType):
     #  is_returncode         boolean     Is used only to signal exceptions
     #  is_error              boolean     Is the dummy error type
     #  is_buffer             boolean     Is buffer access type
+    #  is_pythran_expr       boolean     Is Pythran expr
+    #  is_numpy_buffer       boolean     Is Numpy array buffer
     #  has_attributes        boolean     Has C dot-selectable attributes
     #  default_value         string      Initial value
     #  entry                 Entry       The Entry for this type
@@ -244,6 +250,8 @@ class PyrexType(BaseType):
     is_buffer = 0
     is_ctuple = 0
     is_memoryviewslice = 0
+    is_pythran_expr = 0
+    is_numpy_buffer = 0
     has_attributes = 0
     default_value = ""
 
@@ -309,7 +317,7 @@ class PyrexType(BaseType):
 
 def public_decl(base_code, dll_linkage):
     if dll_linkage:
-        return "%s(%s)" % (dll_linkage, base_code)
+        return "%s(%s)" % (dll_linkage, base_code.replace(',', ' __PYX_COMMA '))
     else:
         return base_code
 
@@ -529,6 +537,9 @@ class CTypedefType(BaseType):
 
     def can_coerce_to_pyobject(self, env):
         return self.typedef_base_type.can_coerce_to_pyobject(env)
+
+    def can_coerce_from_pyobject(self, env):
+        return self.typedef_base_type.can_coerce_from_pyobject(env)
 
 
 class MemoryViewSliceType(PyrexType):
@@ -830,6 +841,9 @@ class MemoryViewSliceType(PyrexType):
     def can_coerce_to_pyobject(self, env):
         return True
 
+    def can_coerce_from_pyobject(self, env):
+        return True
+
     def check_for_null_code(self, cname):
         return cname + '.memview'
 
@@ -1007,8 +1021,12 @@ class BufferType(BaseType):
         self.mode = mode
         self.negative_indices = negative_indices
         self.cast = cast
+        self.is_numpy_buffer = self.base.name == "ndarray"
 
     def can_coerce_to_pyobject(self,env):
+        return True
+
+    def can_coerce_from_pyobject(self,env):
         return True
 
     def as_argument_type(self):
@@ -1080,6 +1098,9 @@ class PyObjectType(PyrexType):
         return "<PyObjectType>"
 
     def can_coerce_to_pyobject(self, env):
+        return True
+
+    def can_coerce_from_pyobject(self, env):
         return True
 
     def default_coerced_ctype(self):
@@ -1414,6 +1435,9 @@ class CType(PyrexType):
     def can_coerce_to_pyobject(self, env):
         return self.create_to_py_utility_code(env)
 
+    def can_coerce_from_pyobject(self, env):
+        return self.create_from_py_utility_code(env)
+
     def error_condition(self, result_code):
         conds = []
         if self.is_string or self.is_pyunicode_ptr:
@@ -1450,6 +1474,40 @@ class CType(PyrexType):
             source_code,
             code.error_goto_if(error_condition or self.error_condition(result_code), error_pos))
 
+class PythranExpr(CType):
+    # Pythran object of a given type
+
+    to_py_function = "to_python_from_expr"
+    is_pythran_expr = True
+    writable = True
+    has_attributes = 1
+
+    def __init__(self, pythran_type, org_buffer=None):
+        self.org_buffer = org_buffer
+        self.pythran_type = pythran_type
+        self.name = self.pythran_type
+        self.cname = self.pythran_type
+        self.from_py_function = "from_python<%s>" % (self.pythran_type)
+        self.scope = None
+
+    def declaration_code(self, entity_code, for_display = 0, dll_linkage = None, pyrex = 0):
+        assert pyrex == 0
+        return "%s %s" % (self.name, entity_code)
+
+    def attributes_known(self):
+        if self.scope is None:
+            from . import Symtab
+            self.scope = scope = Symtab.CClassScope(
+                    '',
+                    None,
+                    visibility="extern")
+            scope.parent_type = self
+            scope.directives = {}
+            # rank 3 == long
+            scope.declare_var("shape", CPtrType(CIntType(3)), None, cname="_shape", is_cdef=True)
+            scope.declare_var("ndim", CIntType(3), None, cname="value", is_cdef=True)
+
+        return True
 
 class CConstType(BaseType):
 
@@ -1486,6 +1544,9 @@ class CConstType(BaseType):
 
     def can_coerce_to_pyobject(self, env):
         return self.const_base_type.can_coerce_to_pyobject(env)
+
+    def can_coerce_from_pyobject(self, env):
+        return self.const_base_type.can_coerce_from_pyobject(env)
 
     def create_to_py_utility_code(self, env):
         if self.const_base_type.create_to_py_utility_code(env):
@@ -1673,6 +1734,9 @@ class CIntType(CNumericType):
     exception_value = -1
 
     def can_coerce_to_pyobject(self, env):
+        return True
+
+    def can_coerce_from_pyobject(self, env):
         return True
 
     @staticmethod
@@ -2047,6 +2111,8 @@ class CComplexType(CNumericType):
         if (not src_type.is_complex and src_type.is_numeric and src_type.is_typedef
             and src_type.typedef_is_external):
              return False
+        elif src_type.is_pyobject:
+            return True
         else:
             return super(CComplexType, self).assignable_from(src_type)
 
@@ -2097,6 +2163,9 @@ class CComplexType(CNumericType):
         return True
 
     def can_coerce_to_pyobject(self, env):
+        return True
+
+    def can_coerce_from_pyobject(self, env):
         return True
 
     def create_to_py_utility_code(self, env):
@@ -2168,15 +2237,17 @@ class CPointerBaseType(CType):
             if base_type.signed == 2:
                 self.to_py_function = "__Pyx_PyObject_FromCString"
                 if self.is_ptr:
-                    self.from_py_function = "__Pyx_PyObject_AsSString"
+                    self.from_py_function = "__Pyx_PyObject_As%sSString"
             elif base_type.signed:
                 self.to_py_function = "__Pyx_PyObject_FromString"
                 if self.is_ptr:
-                    self.from_py_function = "__Pyx_PyObject_AsString"
+                    self.from_py_function = "__Pyx_PyObject_As%sString"
             else:
                 self.to_py_function = "__Pyx_PyObject_FromCString"
                 if self.is_ptr:
-                    self.from_py_function = "__Pyx_PyObject_AsUString"
+                    self.from_py_function = "__Pyx_PyObject_As%sUString"
+            if self.is_ptr:
+                self.from_py_function %= '' if self.base_type.is_const else 'Writable'
             self.exception_value = "NULL"
         elif self.is_pyunicode_ptr and not base_type.is_error:
             self.to_py_function = "__Pyx_PyUnicode_FromUnicode"
@@ -2265,10 +2336,13 @@ class CArrayType(CPointerBaseType):
         if isinstance(actual, CArrayType):
             return self.base_type.deduce_template_params(actual.base_type)
         else:
-            return None
+            return {}
 
     def can_coerce_to_pyobject(self, env):
         return self.base_type.can_coerce_to_pyobject(env)
+
+    def can_coerce_from_pyobject(self, env):
+        return self.base_type.can_coerce_from_pyobject(env)
 
     def create_to_py_utility_code(self, env):
         if self.to_py_function is not None:
@@ -2276,8 +2350,7 @@ class CArrayType(CPointerBaseType):
         if not self.base_type.create_to_py_utility_code(env):
             return False
 
-        base_type = self.base_type.declaration_code("", pyrex=1)
-        safe_typename = re.sub('[^a-zA-Z0-9]', '__', base_type)
+        safe_typename = self.base_type.specialization_name()
         to_py_function = "__Pyx_carray_to_py_%s" % safe_typename
         to_tuple_function = "__Pyx_carray_to_tuple_%s" % safe_typename
 
@@ -2285,7 +2358,7 @@ class CArrayType(CPointerBaseType):
         context = {
             'cname': to_py_function,
             'to_tuple_cname': to_tuple_function,
-            'base_type': base_type,
+            'base_type': self.base_type,
         }
         env.use_utility_code(CythonUtilityCode.load(
             "carray.to_py", "CConvert.pyx",
@@ -2315,14 +2388,12 @@ class CArrayType(CPointerBaseType):
         if not self.base_type.create_from_py_utility_code(env):
             return False
 
-        base_type = self.base_type.declaration_code("", pyrex=1)
-        safe_typename = re.sub('[^a-zA-Z0-9]', '__', base_type)
-        from_py_function = "__Pyx_carray_from_py_%s" % safe_typename
+        from_py_function = "__Pyx_carray_from_py_%s" % self.base_type.specialization_name()
 
         from .UtilityCode import CythonUtilityCode
         context = {
             'cname': from_py_function,
-            'base_type': base_type,
+            'base_type': self.base_type,
         }
         env.use_utility_code(CythonUtilityCode.load(
             "carray.from_py", "CConvert.pyx",
@@ -2403,7 +2474,7 @@ class CPtrType(CPointerBaseType):
         if isinstance(actual, CPtrType):
             return self.base_type.deduce_template_params(actual.base_type)
         else:
-            return None
+            return {}
 
     def invalid_value(self):
         return "1"
@@ -2532,6 +2603,19 @@ class CFuncType(CType):
             ",".join(arg_reprs),
             except_clause)
 
+    def with_with_gil(self, with_gil):
+        if with_gil == self.with_gil:
+            return self
+        else:
+            return CFuncType(
+                self.return_type, self.args, self.has_varargs,
+                self.exception_value, self.exception_check,
+                self.calling_convention, self.nogil,
+                with_gil,
+                self.is_overridable, self.optional_arg_count,
+                self.is_const_method, self.is_static_method,
+                self.templates, self.is_strict_signature)
+
     def calling_convention_prefix(self):
         cc = self.calling_convention
         if cc:
@@ -2546,7 +2630,7 @@ class CFuncType(CType):
         return self.same_c_signature_as_resolved_type(
             other_type.resolve(), as_cmethod)
 
-    def same_c_signature_as_resolved_type(self, other_type, as_cmethod = 0):
+    def same_c_signature_as_resolved_type(self, other_type, as_cmethod = 0, as_pxd_definition = 0):
         #print "CFuncType.same_c_signature_as_resolved_type:", \
         #    self, other_type, "as_cmethod =", as_cmethod ###
         if other_type is error_type:
@@ -2568,8 +2652,13 @@ class CFuncType(CType):
             return 0
         if self.optional_arg_count != other_type.optional_arg_count:
             return 0
-        if not self.return_type.same_as(other_type.return_type):
-            return 0
+        if as_pxd_definition:
+            # A narrowing of the return type declared in the pxd is allowed.
+            if not self.return_type.subtype_of_resolved_type(other_type.return_type):
+                return 0
+        else:
+            if not self.return_type.same_as(other_type.return_type):
+                return 0
         if not self.same_calling_convention_as(other_type):
             return 0
         if self.exception_check != other_type.exception_check:
@@ -3133,12 +3222,12 @@ class CStructOrUnionType(CType):
         self._convert_from_py_code = None
         self.packed = packed
 
-    def create_to_py_utility_code(self, env):
-        if env.outer_scope is None:
-            return False
-
+    def can_coerce_to_pyobject(self, env):
         if self._convert_to_py_code is False:
             return None  # tri-state-ish
+
+        if env.outer_scope is None:
+            return False
 
         if self._convert_to_py_code is None:
             is_union = not self.is_struct
@@ -3146,7 +3235,7 @@ class CStructOrUnionType(CType):
             safe_union_types = set()
             for member in self.scope.var_entries:
                 member_type = member.type
-                if not member_type.create_to_py_utility_code(env):
+                if not member_type.can_coerce_to_pyobject(env):
                     self.to_py_function = None
                     self._convert_to_py_code = False
                     return False
@@ -3162,10 +3251,27 @@ class CStructOrUnionType(CType):
                 self._convert_from_py_code = False
                 return False
 
+        return True
+
+    def create_to_py_utility_code(self, env):
+        if not self.can_coerce_to_pyobject(env):
+            return False
+
+        if self._convert_to_py_code is None:
+            for member in self.scope.var_entries:
+                member.type.create_to_py_utility_code(env)
             forward_decl = self.entry.visibility != 'extern' and not self.typedef_flag
             self._convert_to_py_code = ToPyStructUtilityCode(self, forward_decl, env)
 
         env.use_utility_code(self._convert_to_py_code)
+        return True
+
+    def can_coerce_from_pyobject(self, env):
+        if env.outer_scope is None or self._convert_from_py_code is False:
+            return False
+        for member in self.scope.var_entries:
+            if not member.type.can_coerce_from_pyobject(env):
+                return False
         return True
 
     def create_from_py_utility_code(self, env):
@@ -3176,6 +3282,11 @@ class CStructOrUnionType(CType):
             return None  # tri-state-ish
 
         if self._convert_from_py_code is None:
+            if not self.scope.var_entries:
+                # There are obviously missing fields; don't allow instantiation
+                # where absolutely no content is provided.
+                return False
+
             for member in self.scope.var_entries:
                 if not member.type.create_from_py_utility_code(env):
                     self.from_py_function = None
@@ -3183,7 +3294,7 @@ class CStructOrUnionType(CType):
                     return False
 
             context = dict(
-                struct_name=self.name,
+                struct_type=self,
                 var_entries=self.scope.var_entries,
                 funcname=self.from_py_function,
             )
@@ -3313,69 +3424,56 @@ class CppClassType(CType):
         else:
             return ''
 
+    def can_coerce_from_pyobject(self, env):
+        if self.cname in builtin_cpp_conversions or self.cname in cpp_string_conversions:
+            for ix, T in enumerate(self.templates or []):
+                if ix >= builtin_cpp_conversions[self.cname]:
+                    break
+                if T.is_pyobject or not T.can_coerce_from_pyobject(env):
+                    return False
+            return True
+
     def create_from_py_utility_code(self, env):
         if self.from_py_function is not None:
             return True
         if self.cname in builtin_cpp_conversions or self.cname in cpp_string_conversions:
             X = "XYZABC"
             tags = []
-            declarations = ["cdef extern from *:"]
+            context = {}
             for ix, T in enumerate(self.templates or []):
                 if ix >= builtin_cpp_conversions[self.cname]:
                     break
                 if T.is_pyobject or not T.create_from_py_utility_code(env):
                     return False
                 tags.append(T.specialization_name())
-                if T.exception_value is not None:
-                    # This is a hack due to the except value clause
-                    # requiring a const (literal) value of the right
-                    # (visible) type.
-                    def guess_type(value):
-                        if not T.is_typedef and (T.is_numeric or T.is_ptr):
-                            return T
-                        try:
-                            int(value)
-                            return c_longlong_type
-                        except ValueError:
-                            pass
-                        try:
-                            float(value)
-                            return c_double_type
-                        except ValueError:
-                            pass
-                        return T
-                    except_type = guess_type(T.exception_value)
-                    except_clause = "%s " % T.exception_value
-                    if T.exception_check:
-                        except_clause = "? %s" % except_clause
-                    declarations.append(
-                        "    ctypedef %s %s '%s'" % (
-                             except_type.declaration_code("", for_display=True), X[ix], T.empty_declaration_code()))
-                else:
-                    except_clause = "*"
-                    declarations.append(
-                        "    ctypedef struct %s '%s':\n        pass" % (
-                             X[ix], T.empty_declaration_code()))
-                declarations.append(
-                    "    cdef %s %s_from_py '%s' (object) except %s" % (
-                         X[ix], X[ix], T.from_py_function, except_clause))
+                context[X[ix]] = T
+
             if self.cname in cpp_string_conversions:
                 cls = 'string'
                 tags = type_identifier(self),
             else:
                 cls = self.cname[5:]
             cname = '__pyx_convert_%s_from_py_%s' % (cls, '__and_'.join(tags))
-            context = {
-                'template_type_declarations': '\n'.join(declarations),
+            context.update({
                 'cname': cname,
                 'maybe_unordered': self.maybe_unordered(),
                 'type': self.cname,
-            }
+            })
             from .UtilityCode import CythonUtilityCode
             env.use_utility_code(CythonUtilityCode.load(
                 cls.replace('unordered_', '') + ".from_py", "CppConvert.pyx", context=context))
             self.from_py_function = cname
             return True
+
+    def can_coerce_to_pyobject(self, env):
+        if self.cname in builtin_cpp_conversions or self.cname in cpp_string_conversions:
+            for ix, T in enumerate(self.templates or []):
+                if ix >= builtin_cpp_conversions[self.cname]:
+                    break
+                if T.is_pyobject or not T.can_coerce_to_pyobject(env):
+                    return False
+            return True
+
 
     def create_to_py_utility_code(self, env):
         if self.to_py_function is not None:
@@ -3383,19 +3481,15 @@ class CppClassType(CType):
         if self.cname in builtin_cpp_conversions or self.cname in cpp_string_conversions:
             X = "XYZABC"
             tags = []
-            declarations = ["cdef extern from *:"]
+            context = {}
             for ix, T in enumerate(self.templates or []):
                 if ix >= builtin_cpp_conversions[self.cname]:
                     break
                 if not T.create_to_py_utility_code(env):
                     return False
                 tags.append(T.specialization_name())
-                declarations.append(
-                    "    ctypedef struct %s '%s':\n        pass" % (
-                         X[ix], T.empty_declaration_code()))
-                declarations.append(
-                    "    cdef object %s_to_py '%s' (%s)" % (
-                         X[ix], T.to_py_function, X[ix]))
+                context[X[ix]] = T
+
             if self.cname in cpp_string_conversions:
                 cls = 'string'
                 prefix = 'PyObject_'  # gets specialised by explicit type casts in CoerceToPyTypeNode
@@ -3404,12 +3498,11 @@ class CppClassType(CType):
                 cls = self.cname[5:]
                 prefix = ''
             cname = "__pyx_convert_%s%s_to_py_%s" % (prefix, cls, "____".join(tags))
-            context = {
-                'template_type_declarations': '\n'.join(declarations),
+            context.update({
                 'cname': cname,
                 'maybe_unordered': self.maybe_unordered(),
                 'type': self.cname,
-            }
+            })
             from .UtilityCode import CythonUtilityCode
             env.use_utility_code(CythonUtilityCode.load(
                 cls.replace('unordered_', '') + ".to_py", "CppConvert.pyx", context=context))
@@ -3496,24 +3589,33 @@ class CppClassType(CType):
         return specialized
 
     def deduce_template_params(self, actual):
+        if actual.is_const:
+            actual = actual.const_base_type
+        if actual.is_reference:
+            actual = actual.ref_base_type
         if self == actual:
             return {}
         elif actual.is_cpp_class:
-            self_template_type = self.template_type or self
+            self_template_type = self
+            while getattr(self_template_type, 'template_type', None):
+                self_template_type = self_template_type.template_type
             def all_bases(cls):
                 yield cls
                 for parent in cls.base_classes:
                     for base in all_bases(parent):
                         yield base
             for actual_base in all_bases(actual):
-                if (actual_base.template_type
-                    and self_template_type.empty_declaration_code()
-                        == actual_base.template_type.empty_declaration_code()):
-                    return reduce(
-                        merge_template_deductions,
-                        [formal_param.deduce_template_params(actual_param)
-                         for (formal_param, actual_param) in zip(self.templates, actual_base.templates)],
-                        {})
+                template_type = actual_base
+                while getattr(template_type, 'template_type', None):
+                    template_type = template_type.template_type
+                    if (self_template_type.empty_declaration_code()
+                            == template_type.empty_declaration_code()):
+                        return reduce(
+                            merge_template_deductions,
+                            [formal_param.deduce_template_params(actual_param)
+                             for (formal_param, actual_param)
+                             in zip(self.templates, actual_base.templates)],
+                            {})
         else:
             return {}
 
@@ -3550,6 +3652,14 @@ class CppClassType(CType):
                 return 1
         return 0
 
+    def subclass_dist(self, super_type):
+        if self.same_as_resolved_type(super_type):
+            return 0
+        elif not self.base_classes:
+            return float('inf')
+        else:
+            return 1 + min(b.subclass_dist(super_type) for b in self.base_classes)
+
     def same_as_resolved_type(self, other_type):
         if other_type.is_cpp_class:
             if self == other_type:
@@ -3570,7 +3680,8 @@ class CppClassType(CType):
         # TODO: handle operator=(...) here?
         if other_type is error_type:
             return True
-        return other_type.is_cpp_class and other_type.is_subclass(self)
+        elif other_type.is_cpp_class:
+            return other_type.is_subclass(self)
 
     def attributes_known(self):
         return self.scope is not None
@@ -3689,6 +3800,12 @@ class CEnumType(CType):
                     self.name, self.cname, self.typedef_flag, namespace)
         return self
 
+    def can_coerce_to_pyobject(self, env):
+        return True
+
+    def can_coerce_from_pyobject(self, env):
+        return True
+
     def create_to_py_utility_code(self, env):
         self.to_py_function = "__Pyx_PyInt_From_" + self.specialization_name()
         env.use_utility_code(TempitaUtilityCode.load_cached(
@@ -3752,6 +3869,12 @@ class CTupleType(CType):
     def can_coerce_to_pyobject(self, env):
         for component in self.components:
             if not component.can_coerce_to_pyobject(env):
+                return False
+        return True
+
+    def can_coerce_from_pyobject(self, env):
+        for component in self.components:
+            if not component.can_coerce_from_pyobject(env):
                 return False
         return True
 
@@ -4080,7 +4203,7 @@ def best_match(arg_types, functions, pos=None, env=None, args=None):
                 [pattern.type.deduce_template_params(actual) for (pattern, actual) in zip(func_type.args, arg_types)],
                 {})
             if deductions is None:
-                errors.append((func, "Unable to deduce type parameters for %s given %s" % (pattern.type, actual)))
+                errors.append((func, "Unable to deduce type parameters for %s given (%s)" % (func_type, ', '.join(map(str, arg_types)))))
             elif len(deductions) < len(func_type.templates):
                 errors.append((func, "Unable to deduce type parameter %s" % (
                     ", ".join([param.name for param in set(func_type.templates) - set(deductions.keys())]))))
@@ -4113,7 +4236,7 @@ def best_match(arg_types, functions, pos=None, env=None, args=None):
     needed_coercions = {}
 
     for index, (func, func_type) in enumerate(candidates):
-        score = [0,0,0,0]
+        score = [0,0,0,0,0,0,0]
         for i in range(min(actual_nargs, len(func_type.args))):
             src_type = arg_types[i]
             dst_type = func_type.args[i].type
@@ -4124,13 +4247,17 @@ def best_match(arg_types, functions, pos=None, env=None, args=None):
             # function that takes a char *, the coercion will mean that the
             # type will simply become bytes. We need to do this coercion
             # manually for overloaded and fused functions
-            if not assignable and src_type.is_pyobject:
-                if src_type.is_builtin_type and src_type.name == 'str' and dst_type.resolve().is_string:
-                    c_src_type = dst_type.resolve()
-                else:
-                    c_src_type = src_type.default_coerced_ctype()
+            if not assignable:
+                c_src_type = None
+                if src_type.is_pyobject:
+                    if src_type.is_builtin_type and src_type.name == 'str' and dst_type.resolve().is_string:
+                        c_src_type = dst_type.resolve()
+                    else:
+                        c_src_type = src_type.default_coerced_ctype()
+                elif src_type.is_pythran_expr:
+                        c_src_type = src_type.org_buffer
 
-                if c_src_type:
+                if c_src_type is not None:
                     assignable = dst_type.assignable_from(c_src_type)
                     if assignable:
                         src_type = c_src_type
@@ -4147,6 +4274,13 @@ def best_match(arg_types, functions, pos=None, env=None, args=None):
                       (src_type.is_float and dst_type.is_float)):
                     score[2] += abs(dst_type.rank + (not dst_type.signed) -
                                     (src_type.rank + (not src_type.signed))) + 1
+                elif dst_type.is_ptr and src_type.is_ptr:
+                    if dst_type.base_type == c_void_type:
+                        score[4] += 1
+                    elif src_type.base_type.is_cpp_class and src_type.base_type.is_subclass(dst_type.base_type):
+                        score[6] += src_type.base_type.subclass_dist(dst_type.base_type)
+                    else:
+                        score[5] += 1
                 elif not src_type.is_pyobject:
                     score[1] += 1
                 else:

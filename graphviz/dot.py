@@ -17,11 +17,11 @@ r"""Assemble DOT source code objects.
 // M0nti Pyth0n ik den H0lie Grailen
 graph {
     node [shape=rectangle]
-        "M00se"
-        trained_by [label="trained by"]
-        tutte [label="TUTTE HERMSGERVORDENBROTBORDA"]
-            "M00se" -- trained_by
-            trained_by -- tutte
+    "M00se"
+    trained_by [label="trained by"]
+    tutte [label="TUTTE HERMSGERVORDENBROTBORDA"]
+    "M00se" -- trained_by
+    trained_by -- tutte
 }
 
 >>> dot.view('test-output/m00se.gv')  # doctest: +SKIP
@@ -78,6 +78,17 @@ class Dot(files.File):
             'body': list(self.body), 'strict': self.strict,
         })
         return result
+
+    def clear(self, keep_attrs=False):
+        """Reset content to an empty body, clear graph/node/egde_attr mappings.
+
+        Args:
+            keep_attrs(bool): preserve graph/node/egde_attr mappings
+        """
+        if not keep_attrs:
+            for a in (self.graph_attr, self.node_attr, self.edge_attr):
+                a.clear()
+        self.body[:] = []
 
     def __iter__(self, subgraph=False):
         """Yield the DOT source code line by line (as graph or subgraph)."""
@@ -246,7 +257,7 @@ class Graph(Dot):
 
     _head = 'graph %s{'
     _head_strict = 'strict %s' % _head
-    _edge = '\t\t%s -- %s%s'
+    _edge = '\t%s -- %s%s'
     _edge_plain = _edge % ('%s', '%s', '')
 
     @property
@@ -261,7 +272,7 @@ class Digraph(Dot):
 
     _head = 'digraph %s{'
     _head_strict = 'strict %s' % _head
-    _edge = '\t\t%s -> %s%s'
+    _edge = '\t%s -> %s%s'
     _edge_plain = _edge % ('%s', '%s', '')
 
     @property

@@ -1,14 +1,12 @@
 from __future__ import absolute_import
 import numpy as onp
-import operator as op
-from numpy.core.einsumfunc import _parse_einsum_input, einsum_symbols_set
+from numpy.core.einsumfunc import _parse_einsum_input
 
 from autograd.core import primitive, getval, vspace
 from . import numpy_wrapper as anp
-from .numpy_extra import ArrayNode, take, array_types
+from .numpy_extra import ArrayNode, take
 from builtins import range, zip
 from future.utils import string_types
-import string
 
 # ----- Functions that are constant w.r.t. continuous inputs -----
 
@@ -174,16 +172,14 @@ def grad_kron(argnum, G, ans, vs, gvs, orig_A, orig_B):
     # kron has different promotion rules than dot. the reshapes are necessary if
     # and only if (1) orig_B is 1D or (2) orig_A and/or orig_B are 0D
     A, B = anp.atleast_2d(orig_A), anp.atleast_2d(orig_B)
-    shape = list(anp.shape(A) + anp.shape(B))
+    shape = list(A.shape + B.shape)
     n = anp.ndim(A)
     shape[n-1], shape[n] = shape[n], shape[n-1]
     reshaped_G = anp.swapaxes(anp.reshape(G, shape), n-1, n)
     if argnum == 0:
-        return anp.reshape(anp.tensordot(reshaped_G, B, axes=anp.ndim(B)),
-                           anp.shape(orig_A))
+        return anp.reshape(anp.tensordot(reshaped_G, B, axes=anp.ndim(B)), vs.shape)
     else:
-        return anp.reshape(anp.tensordot(A, reshaped_G, axes=anp.ndim(A)),
-                           anp.shape(orig_B))
+        return anp.reshape(anp.tensordot(A, reshaped_G, axes=anp.ndim(A)), vs.shape)
 anp.kron.defvjps(grad_kron, [0, 1])
 
 def grad_transpose(g, ans, vs, gvs, x, axes=None):
@@ -203,7 +199,7 @@ def repeat_to_match_shape(g, vs, axis, keepdims):
     num_reps = onp.prod(onp.array(vs.shape)[axis])
     return anp.reshape(g, shape) + vs.zeros(), num_reps
 
-def grad_np_sum(g, ans, vs, gvs, x, axis=None, keepdims=False):
+def grad_np_sum(g, ans, vs, gvs, x, axis=None, keepdims=False, dtype=None):
     return repeat_to_match_shape(g, vs, axis, keepdims)[0]
 anp.sum.defvjp(grad_np_sum)
 
@@ -256,7 +252,7 @@ def reverse_axis(x, axis):
 
 def grad_np_cumsum(g, ans, vs, gvs, x, axis=None):
     if axis:
-        return reverse_axis(anp.cumsum(reverse_axis(g, axis)), axis)
+        return reverse_axis(anp.cumsum(reverse_axis(g, axis), axis), axis)
     else:
         return anp.reshape(anp.cumsum(g[::-1], axis)[::-1], x.shape)
 anp.cumsum.defvjp(grad_np_cumsum)
@@ -336,9 +332,10 @@ anp.outer.defvjp(lambda g, ans, vs, gvs, a, b : anp.dot(a.T, g), argnum=1)
 
 def grad_concatenate_args(argnum, g, ans, vs, gvs, axis_args, kwargs):
     axis, args = axis_args[0], axis_args[1:]
-    start = sum([a.shape[axis] for a in args[:argnum-1]])
+    sizes = [a.shape[axis] for a in args[:argnum]]
+    start = sum(sizes[:-1])
     idxs = [slice(None)] * ans.ndim
-    idxs[axis] = slice(start, start + args[argnum-1].shape[axis])
+    idxs[axis] = slice(start, start + sizes[-1])
     return take(g, idxs)
 anp.concatenate_args.vjp = grad_concatenate_args
 
@@ -386,7 +383,7 @@ anp.atleast_3d.defvjp(grad_reshape_list)
 def grad_einsum(argnum, g, ans, vs, gvs, operands, kwargs):
     if isinstance(operands[0], string_types):  # using "ijk" convention.
         in_subs, out_subs, _ = _parse_einsum_input(tuple(map(getval, operands)))
-        operands = operands[1:]
+        string, operands = operands[0], operands[1:]
 
         in_subs_list = in_subs.split(',')
         op_num = argnum - 1
@@ -399,12 +396,12 @@ def grad_einsum(argnum, g, ans, vs, gvs, operands, kwargs):
         # against a tensor of ones. we make that tensor of ones explicit to handle
         # the necessary vjp broadcasting inside einsum.
         other_named_subs = set(''.join([out_subs] + rest_of_subs))
-        naked_summed = [(i, sub) for (i, sub) in enumerate(subs_wrt)
+        naked_summed = [(i, sub) for i, sub in enumerate(subs_wrt)
                         if sub not in other_named_subs]
         if naked_summed:
             naked_summed_dims, ones_subs = zip(*naked_summed)
             ones_subs = ''.join(ones_subs)
-            ones = onp.ones(onp.array(operands[op_num].shape)[naked_summed_dims])
+            ones = onp.ones(onp.array(operands[op_num].shape)[list(naked_summed_dims)])
             new_input_subs = ','.join([out_subs, ones_subs] + rest_of_subs)
             new_operands = (g, ones) + rest_of_ops
         else:
@@ -412,7 +409,7 @@ def grad_einsum(argnum, g, ans, vs, gvs, operands, kwargs):
             new_operands = (g,) + rest_of_ops
 
         new_subscripts = new_input_subs + '->' + subs_wrt
-        return anp.einsum(new_subscripts, *new_operands)
+        return unbroadcast(vs, gvs, anp.einsum(new_subscripts, *new_operands))
     else:  # using (op0, sublist0, op1, sublist1, ..., sublistout) convention
         if len(operands) % 2 == 0:
             raise NotImplementedError("Need sublistout argument")
@@ -466,24 +463,14 @@ def unbroadcast(vs, gvs, result, broadcast_idx=0):
     return result
 
 def unbroadcast_einsum(vs, gvs, result, subscript):
-    if isinstance(subscript, string_types):
-        if '...' not in subscript:
-            return result
-        elif subscript.startswith('...'):
-            return unbroadcast(vs, gvs, result)
-        elif subscript.endswith('...'):
-            return unbroadcast(vs, gvs, result, -1)
-        else:
-            return unbroadcast(vs, gvs, result, subscript.index('...'))
+    if Ellipsis not in subscript:
+        return result
+    elif subscript[0] == Ellipsis:
+        return unbroadcast(vs, gvs, result, 0)
+    elif subscript[-1] == Ellipsis:
+        return unbroadcast(vs, gvs, result, -1)
     else:
-        if Ellipsis not in subscript:
-            return result
-        elif subscript[0] == Ellipsis:
-            return unbroadcast(vs, gvs, result, 0)
-        elif subscript[-1] == Ellipsis:
-            return unbroadcast(vs, gvs, result, -1)
-        else:
-            return unbroadcast(vs, gvs, result, subscript.index(Ellipsis))
+        return unbroadcast(vs, gvs, result, subscript.index(Ellipsis))
 
 def balanced_eq(x, z, y):
     return (x == z) / (1.0 + (x == y))

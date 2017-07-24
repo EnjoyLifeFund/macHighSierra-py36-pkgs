@@ -1,1 +1,1 @@
-../../../../Cellar/pyqt/5.8.2/lib/python3.6/site-packages/PyQt5/QtXml.pyi
+../../../../Cellar/pyqt/5.9_1/lib/python3.6/site-packages/PyQt5/QtXml.pyi

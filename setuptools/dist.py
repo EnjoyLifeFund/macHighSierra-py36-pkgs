@@ -8,16 +8,16 @@ import distutils.log
 import distutils.core
 import distutils.cmd
 import distutils.dist
-from distutils.errors import (DistutilsOptionError, DistutilsPlatformError,
-    DistutilsSetupError)
+import itertools
+from collections import defaultdict
+from distutils.errors import (
+    DistutilsOptionError, DistutilsPlatformError, DistutilsSetupError,
+)
 from distutils.util import rfc822_escape
 
 from setuptools.extern import six
 from setuptools.extern.six.moves import map
 from pkg_resources.extern import packaging
-
-__import__('pkg_resources.extern.packaging.specifiers')
-__import__('pkg_resources.extern.packaging.version')
 
 from setuptools.depends import Require
 from setuptools import windows_support
@@ -25,6 +25,9 @@ from setuptools.monkey import get_unpatched
 from setuptools.config import parse_configuration
 import pkg_resources
 from .py36compat import Distribution_parse_config_files
+
+__import__('pkg_resources.extern.packaging.specifiers')
+__import__('pkg_resources.extern.packaging.version')
 
 
 def _get_unpatched(cls):
@@ -129,18 +132,20 @@ def check_nsp(dist, attr, value):
 def check_extras(dist, attr, value):
     """Verify that extras_require mapping is valid"""
     try:
-        for k, v in value.items():
-            if ':' in k:
-                k, m = k.split(':', 1)
-                if pkg_resources.invalid_marker(m):
-                    raise DistutilsSetupError("Invalid environment marker: " + m)
-            list(pkg_resources.parse_requirements(v))
+        list(itertools.starmap(_check_extra, value.items()))
     except (TypeError, ValueError, AttributeError):
         raise DistutilsSetupError(
             "'extras_require' must be a dictionary whose values are "
             "strings or lists of strings containing valid project/version "
             "requirement specifiers."
         )
+
+
+def _check_extra(extra, reqs):
+    name, sep, marker = extra.partition(':')
+    if marker and pkg_resources.invalid_marker(marker):
+        raise DistutilsSetupError("Invalid environment marker: " + marker)
+    list(pkg_resources.parse_requirements(reqs))
 
 
 def assert_bool(dist, attr, value):
@@ -346,6 +351,50 @@ class Distribution(Distribution_parse_config_files, _Distribution):
                 )
         if getattr(self, 'python_requires', None):
             self.metadata.python_requires = self.python_requires
+        self._finalize_requires()
+
+    def _finalize_requires(self):
+        """
+        Fix environment markers in `install_requires` and `extras_require`.
+
+        - move requirements in `install_requires` that are using environment
+          markers or extras to `extras_require`.
+        - convert requirements in `extras_require` of the form
+          `"extra": ["barbazquux; {marker}"]` to
+          `"extra:{marker}": ["barbazquux"]`.
+        """
+        extras_require = defaultdict(list)
+        for k, v in (
+            getattr(self, 'extras_require', None) or {}
+        ).items():
+            for r in pkg_resources.parse_requirements(v):
+                marker = r.marker
+                if marker:
+                    r.marker = None
+                    extras_require[k + ':' + str(marker)].append(r)
+                else:
+                    extras_require[k].append(r)
+        install_requires = []
+        for r in pkg_resources.parse_requirements(
+            getattr(self, 'install_requires', None) or ()
+        ):
+            marker = r.marker
+            extras = r.extras
+            if not marker and not extras:
+                install_requires.append(r)
+                continue
+            r.extras = ()
+            r.marker = None
+            for e in extras or ('',):
+                section = e
+                if marker:
+                    section += ':' + str(marker)
+                extras_require[section].append(r)
+        self.extras_require = dict(
+            (k, [str(r) for r in v])
+            for k, v in extras_require.items()
+        )
+        self.install_requires = [str(r) for r in install_requires]
 
     def parse_config_files(self, filenames=None):
         """Parses configuration files from various levels
@@ -392,7 +441,10 @@ class Distribution(Distribution_parse_config_files, _Distribution):
                 ep.load()(self, ep.name, value)
         if getattr(self, 'convert_2to3_doctests', None):
             # XXX may convert to set here when we can rely on set being builtin
-            self.convert_2to3_doctests = [os.path.abspath(p) for p in self.convert_2to3_doctests]
+            self.convert_2to3_doctests = [
+                os.path.abspath(p)
+                for p in self.convert_2to3_doctests
+            ]
         else:
             self.convert_2to3_doctests = []
 
@@ -436,7 +488,8 @@ class Distribution(Distribution_parse_config_files, _Distribution):
                 opts['find_links'] = ('setup', links)
             install_dir = self.get_egg_cache_dir()
             cmd = easy_install(
-                dist, args=["x"], install_dir=install_dir, exclude_scripts=True,
+                dist, args=["x"], install_dir=install_dir,
+                exclude_scripts=True,
                 always_copy=False, build_directory=None, editable=False,
                 upgrade=False, multi_version=True, no_report=True, user=False
             )
@@ -461,8 +514,11 @@ class Distribution(Distribution_parse_config_files, _Distribution):
                 if not feature.include_by_default():
                     excdef, incdef = incdef, excdef
 
-                go.append(('with-' + name, None, 'include ' + descr + incdef))
-                go.append(('without-' + name, None, 'exclude ' + descr + excdef))
+                new = (
+                    ('with-' + name, None, 'include ' + descr + incdef),
+                    ('without-' + name, None, 'exclude ' + descr + excdef),
+                )
+                go.extend(new)
                 no['without-' + name] = 'with-' + name
 
         self.global_options = self.feature_options = go + self.global_options
@@ -490,7 +546,8 @@ class Distribution(Distribution_parse_config_files, _Distribution):
         if command in self.cmdclass:
             return self.cmdclass[command]
 
-        for ep in pkg_resources.iter_entry_points('distutils.commands', command):
+        eps = pkg_resources.iter_entry_points('distutils.commands', command)
+        for ep in eps:
             ep.require(installer=self.fetch_build_egg)
             self.cmdclass[command] = cmdclass = ep.load()
             return cmdclass
@@ -624,7 +681,8 @@ class Distribution(Distribution_parse_config_files, _Distribution):
                 name + ": this setting cannot be changed via include/exclude"
             )
         else:
-            setattr(self, name, old + [item for item in value if item not in old])
+            new = [item for item in value if item not in old]
+            setattr(self, name, old + new)
 
     def exclude(self, **attrs):
         """Remove items from distribution that are named in keyword arguments
@@ -835,14 +893,14 @@ class Feature:
 
     @staticmethod
     def warn_deprecated():
-        warnings.warn(
+        msg = (
             "Features are deprecated and will be removed in a future "
-                "version. See https://github.com/pypa/setuptools/issues/65.",
-            DeprecationWarning,
-            stacklevel=3,
+            "version. See https://github.com/pypa/setuptools/issues/65."
         )
+        warnings.warn(msg, DeprecationWarning, stacklevel=3)
 
-    def __init__(self, description, standard=False, available=True,
+    def __init__(
+            self, description, standard=False, available=True,
             optional=True, require_features=(), remove=(), **extras):
         self.warn_deprecated()
 
@@ -867,8 +925,8 @@ class Feature:
 
         if not remove and not require_features and not extras:
             raise DistutilsSetupError(
-                "Feature %s: must define 'require_features', 'remove', or at least one"
-                " of 'packages', 'py_modules', etc."
+                "Feature %s: must define 'require_features', 'remove', or "
+                "at least one of 'packages', 'py_modules', etc."
             )
 
     def include_by_default(self):

@@ -24,6 +24,9 @@
   #define DL_EXPORT(t) t
 #endif
 
+// For use in DL_IMPORT/DL_EXPORT macros.
+#define __PYX_COMMA ,
+
 #ifndef HAVE_LONG_LONG
   // CPython has required PY_LONG_LONG support for years, even if HAVE_LONG_LONG is not defined for us
   #if PY_VERSION_HEX >= 0x03030000 || (PY_MAJOR_VERSION == 2 && PY_VERSION_HEX >= 0x02070000)
@@ -193,17 +196,22 @@
   #define Py_TPFLAGS_HAVE_FINALIZE 0
 #endif
 
-#ifndef METH_FASTCALL
-  // new in CPython 3.6
-  #define METH_FASTCALL 0x80
-  typedef PyObject *(*__Pyx_PyCFunctionFast) (PyObject *self, PyObject **args,
-                                              Py_ssize_t nargs, PyObject *kwnames);
+#if PY_VERSION_HEX < 0x030700A0 || !defined(METH_FASTCALL)
+  // new in CPython 3.6, but changed in 3.7 - see https://bugs.python.org/issue29464
+  #ifndef METH_FASTCALL
+     #define METH_FASTCALL 0x80
+  #endif
+  typedef PyObject *(*__Pyx_PyCFunctionFast) (PyObject *self, PyObject **args, Py_ssize_t nargs);
+  // new in CPython 3.7, used to be old signature of _PyCFunctionFast() in 3.6
+  typedef PyObject *(*__Pyx_PyCFunctionFastWithKeywords) (PyObject *self, PyObject **args,
+                                                          Py_ssize_t nargs, PyObject *kwnames);
 #else
   #define __Pyx_PyCFunctionFast _PyCFunctionFast
+  #define __Pyx_PyCFunctionFastWithKeywords _PyCFunctionFastWithKeywords
 #endif
 #if CYTHON_FAST_PYCCALL
 #define __Pyx_PyFastCFunction_Check(func) \
-    ((PyCFunction_Check(func) && (METH_FASTCALL == (PyCFunction_GET_FLAGS(func) & ~(METH_CLASS | METH_STATIC | METH_COEXIST)))))
+    ((PyCFunction_Check(func) && (METH_FASTCALL == (PyCFunction_GET_FLAGS(func) & ~(METH_CLASS | METH_STATIC | METH_COEXIST | METH_KEYWORDS)))))
 #else
 #define __Pyx_PyFastCFunction_Check(func) 0
 #endif
@@ -353,6 +361,14 @@
   #define __Pyx_PyMethod_New(func, self, klass) PyMethod_New(func, self, klass)
 #endif
 
+#ifndef __has_attribute
+  #define __has_attribute(x) 0
+#endif
+
+#ifndef __has_cpp_attribute
+  #define __has_cpp_attribute(x) 0
+#endif
+
 // backport of PyAsyncMethods from Py3.5 to older Py3.x versions
 // (mis-)using the "tp_reserved" type slot which is re-activated as "tp_as_async" in Py3.5
 #if CYTHON_USE_ASYNC_SLOTS
@@ -417,6 +433,38 @@
 
 #define __Pyx_void_to_None(void_result) ((void)(void_result), Py_INCREF(Py_None), Py_None)
 
+#ifdef _MSC_VER
+    #ifndef _MSC_STDINT_H_
+        #if _MSC_VER < 1300
+           typedef unsigned char     uint8_t;
+           typedef unsigned int      uint32_t;
+        #else
+           typedef unsigned __int8   uint8_t;
+           typedef unsigned __int32  uint32_t;
+        #endif
+    #endif
+#else
+   #include <stdint.h>
+#endif
+
+
+#ifndef CYTHON_FALLTHROUGH
+  #ifdef __cplusplus
+    #if __has_cpp_attribute(fallthrough)
+      #define CYTHON_FALLTHROUGH [[fallthrough]]
+    #elif __has_cpp_attribute(clang::fallthrough)
+      #define CYTHON_FALLTHROUGH [[clang::fallthrough]]
+    #endif
+  #endif
+
+  #ifndef CYTHON_FALLTHROUGH
+    #if __has_attribute(fallthrough) || (defined(__GNUC__) && defined(__attribute__))
+      #define CYTHON_FALLTHROUGH __attribute__((fallthrough))
+    #else
+      #define CYTHON_FALLTHROUGH
+    #endif
+  #endif
+#endif
 
 /////////////// CInitCode ///////////////
 
@@ -659,6 +707,22 @@ static int __Pyx_check_binary_version(void) {
     return 0;
 }
 
+/////////////// IsLittleEndian.proto ///////////////
+
+static int __Pyx_Is_Little_Endian(void);
+
+/////////////// IsLittleEndian ///////////////
+
+static int __Pyx_Is_Little_Endian(void)
+{
+  union {
+    uint32_t u32;
+    uint8_t u8[4];
+  } S;
+  S.u32 = 0x01020304;
+  return S.u8[0] == 4;
+}
+
 /////////////// Refnanny.proto ///////////////
 
 #ifndef CYTHON_REFNANNY
@@ -827,7 +891,186 @@ bad:
 #else
 // fake call purely to work around "unused function" warning for __Pyx_ImportModule()
 static int __Pyx_RegisterCleanup(void) {
-    if (0) __Pyx_ImportModule(NULL);
+    if ((0)) __Pyx_ImportModule(NULL);
     return 0;
 }
 #endif
+
+/////////////// FastGil.init ///////////////
+#ifdef WITH_THREAD
+__Pyx_FastGilFuncInit();
+#endif
+
+/////////////// NoFastGil.proto ///////////////
+
+#define __Pyx_PyGILState_Ensure PyGILState_Ensure
+#define __Pyx_PyGILState_Release PyGILState_Release
+#define __Pyx_FastGIL_Remember()
+#define __Pyx_FastGIL_Forget()
+#define __Pyx_FastGilFuncInit()
+
+/////////////// FastGil.proto ///////////////
+
+struct __Pyx_FastGilVtab {
+  PyGILState_STATE (*Fast_PyGILState_Ensure)(void);
+  void (*Fast_PyGILState_Release)(PyGILState_STATE oldstate);
+  void (*FastGIL_Remember)(void);
+  void (*FastGIL_Forget)(void);
+};
+
+static void __Pyx_FastGIL_Noop(void) {}
+static struct __Pyx_FastGilVtab __Pyx_FastGilFuncs = {
+  PyGILState_Ensure,
+  PyGILState_Release,
+  __Pyx_FastGIL_Noop,
+  __Pyx_FastGIL_Noop
+};
+
+static void __Pyx_FastGilFuncInit(void);
+
+#define __Pyx_PyGILState_Ensure __Pyx_FastGilFuncs.Fast_PyGILState_Ensure
+#define __Pyx_PyGILState_Release __Pyx_FastGilFuncs.Fast_PyGILState_Release
+#define __Pyx_FastGIL_Remember __Pyx_FastGilFuncs.FastGIL_Remember
+#define __Pyx_FastGIL_Forget __Pyx_FastGilFuncs.FastGIL_Forget
+
+#ifdef WITH_THREAD
+  #ifndef CYTHON_THREAD_LOCAL
+    #if __STDC_VERSION__ >= 201112
+      #define CYTHON_THREAD_LOCAL _Thread_local
+    #elif defined(__GNUC__)
+      #define CYTHON_THREAD_LOCAL __thread
+    #elif defined(_MSC_VER)
+      #define CYTHON_THREAD_LOCAL __declspec(thread)
+    #endif
+  #endif
+#endif
+
+/////////////// FastGil ///////////////
+//@requires: CommonStructures.c::FetchCommonPointer
+// The implementations of PyGILState_Ensure/Release calls PyThread_get_key_value
+// several times which is turns out to be quite slow (slower in fact than
+// acquiring the GIL itself).  Simply storing it in a thread local for the
+// common case is much faster.
+// To make optimal use of this thread local, we attempt to share it between
+// modules.
+
+#define __Pyx_FastGIL_ABI_module "_cython_" CYTHON_ABI
+#define __Pyx_FastGIL_PyCapsuleName "FastGilFuncs"
+#define __Pyx_FastGIL_PyCapsule \
+    __Pyx_FastGIL_ABI_module "." __Pyx_FastGIL_PyCapsuleName
+
+#if PY_VERSION_HEX >= 0x03050000
+  #define __Pyx_PyThreadState_Current _PyThreadState_UncheckedGet()
+#elif PY_VERSION_HEX >= 0x03000000
+  #define __Pyx_PyThreadState_Current PyThreadState_Get()
+#elif PY_VERSION_HEX < 0x02070000
+  #undef CYTHON_THREAD_LOCAL
+#else
+  #define __Pyx_PyThreadState_Current _PyThreadState_Current
+#endif
+
+
+#ifdef CYTHON_THREAD_LOCAL
+
+#include "pythread.h"
+#include "pystate.h"
+
+static CYTHON_THREAD_LOCAL PyThreadState *__Pyx_FastGil_tcur = NULL;
+static CYTHON_THREAD_LOCAL int __Pyx_FastGil_tcur_depth = 0;
+static int __Pyx_FastGil_autoTLSkey = -1;
+
+static CYTHON_INLINE void __Pyx_FastGIL_Remember0(void) {
+  ++__Pyx_FastGil_tcur_depth;
+}
+
+static CYTHON_INLINE void __Pyx_FastGIL_Forget0(void) {
+  if (--__Pyx_FastGil_tcur_depth == 0) {
+    __Pyx_FastGil_tcur = NULL;
+  }
+}
+
+static CYTHON_INLINE PyThreadState *__Pyx_FastGil_get_tcur(void) {
+  PyThreadState *tcur = __Pyx_FastGil_tcur;
+  if (tcur == NULL) {
+    tcur = __Pyx_FastGil_tcur = (PyThreadState*)PyThread_get_key_value(__Pyx_FastGil_autoTLSkey);
+  }
+  return tcur;
+}
+
+static PyGILState_STATE __Pyx_FastGil_PyGILState_Ensure(void) {
+  int current;
+  __Pyx_FastGIL_Remember0();
+  PyThreadState *tcur = __Pyx_FastGil_get_tcur();
+  if (tcur == NULL) {
+    // Uninitialized, need to initialize now.
+    return PyGILState_Ensure();
+  }
+  current = tcur == __Pyx_PyThreadState_Current;
+  if (current == 0) {
+    PyEval_RestoreThread(tcur);
+  }
+  ++tcur->gilstate_counter;
+  return current ? PyGILState_LOCKED : PyGILState_UNLOCKED;
+}
+
+static void __Pyx_FastGil_PyGILState_Release(PyGILState_STATE oldstate) {
+  PyThreadState *tcur = __Pyx_FastGil_get_tcur();
+  __Pyx_FastGIL_Forget0();
+  if (tcur->gilstate_counter == 1) {
+    // This is the last lock, do all the cleanup as well.
+    PyGILState_Release(oldstate);
+  } else {
+    --tcur->gilstate_counter;
+    if (oldstate == PyGILState_UNLOCKED) {
+      PyEval_SaveThread();
+    }
+  }
+}
+
+static void __Pyx_FastGilFuncInit0(void) {
+  /* Try to detect autoTLSkey. */
+  int key;
+  void* this_thread_state = (void*) PyGILState_GetThisThreadState();
+  for (key = 0; key < 100; key++) {
+    if (PyThread_get_key_value(key) == this_thread_state) {
+      __Pyx_FastGil_autoTLSkey = key;
+      break;
+    }
+  }
+  if (__Pyx_FastGil_autoTLSkey != -1) {
+    PyObject* capsule = NULL;
+    PyObject* abi_module = NULL;
+    __Pyx_PyGILState_Ensure = __Pyx_FastGil_PyGILState_Ensure;
+    __Pyx_PyGILState_Release = __Pyx_FastGil_PyGILState_Release;
+    __Pyx_FastGIL_Remember = __Pyx_FastGIL_Remember0;
+    __Pyx_FastGIL_Forget = __Pyx_FastGIL_Forget0;
+    capsule = PyCapsule_New(&__Pyx_FastGilFuncs, __Pyx_FastGIL_PyCapsule, NULL);
+    abi_module = PyImport_AddModule(__Pyx_FastGIL_ABI_module);
+    if (capsule && abi_module) {
+      PyObject_SetAttrString(abi_module, __Pyx_FastGIL_PyCapsuleName, capsule);
+    }
+    Py_XDECREF(capsule);
+  }
+}
+
+#else
+
+static void __Pyx_FastGilFuncInit0(void) {
+  CYTHON_UNUSED void* force_use = (void*)&__Pyx_FetchCommonPointer;
+}
+
+#endif
+
+static void __Pyx_FastGilFuncInit(void) {
+#if PY_VERSION_HEX >= 0x02070000
+  struct __Pyx_FastGilVtab* shared = (struct __Pyx_FastGilVtab*)PyCapsule_Import(__Pyx_FastGIL_PyCapsule, 1);
+#else
+  struct __Pyx_FastGilVtab* shared = NULL;
+#endif
+  if (shared) {
+    __Pyx_FastGilFuncs = *shared;
+  } else {
+   PyErr_Clear();
+    __Pyx_FastGilFuncInit0();
+  }
+}

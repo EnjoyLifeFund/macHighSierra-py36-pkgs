@@ -8,10 +8,10 @@ class ShouldBeFromDirective(object):
 
     known_directives = []
 
-    def __init__(self, options_name, directive_name=None, dissallow=False):
+    def __init__(self, options_name, directive_name=None, disallow=False):
         self.options_name = options_name
         self.directive_name = directive_name or options_name
-        self.dissallow = dissallow
+        self.disallow = disallow
         self.known_directives.append(self)
 
     def __nonzero__(self):
@@ -144,6 +144,7 @@ _directive_defaults = {
     'embedsignature' : False,
     'locals' : {},
     'auto_cpdef': False,
+    'auto_pickle': None,
     'cdivision': False, # was True before 0.12
     'cdivision_warnings': False,
     'overflowcheck': False,
@@ -172,8 +173,10 @@ _directive_defaults = {
     'c_string_type': 'bytes',
     'c_string_encoding': '',
     'type_version_tag': True,   # enables Py_TPFLAGS_HAVE_VERSION_TAG on extension types
-    'unraisable_tracebacks': False,
+    'unraisable_tracebacks': True,
     'old_style_globals': False,
+    'np_pythran': False,
+    'fast_gil': False,
 
     # set __file__ and/or __path__ to known source/target path at import time (instead of not having them available)
     'set_initial_path' : None,  # SOURCEFILE or "/full/path/to/module"
@@ -263,6 +266,7 @@ def normalise_encoding_name(option_name, encoding):
 
 # Override types possibilities above, if needed
 directive_types = {
+    'auto_pickle': bool,
     'final' : bool,  # final cdef classes and methods
     'internal' : bool,  # cdef class visibility in the module dict
     'infer_types' : bool, # values can be True/None/False
@@ -285,6 +289,7 @@ for key, val in _directive_defaults.items():
 
 directive_scopes = { # defaults to available everywhere
     # 'module', 'function', 'class', 'with statement'
+    'auto_pickle': ('module', 'cclass'),
     'final' : ('cclass', 'function'),
     'inline' : ('function',),
     'staticmethod' : ('function',),  # FIXME: analysis currently lacks more specific function scope
@@ -308,6 +313,8 @@ directive_scopes = { # defaults to available everywhere
     # globals() could conceivably be controlled at a finer granularity,
     # but that would complicate the implementation
     'old_style_globals': ('module',),
+    'np_pythran': ('module',),
+    'fast_gil': ('module',),
 }
 
 
