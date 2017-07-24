@@ -9,7 +9,7 @@ import sys
 from . import config, errors, runtests, types
 
 # Re-export typeof
-from .special import typeof
+from .special import typeof, prange
 
 # Re-export error classes
 from .errors import *
@@ -44,12 +44,13 @@ __all__ = """
     jitclass
     njit
     typeof
+    prange
     vectorize
     """.split() + types.__all__ + errors.__all__
 
 
-_min_llvmlite_version = (0, 9, 0)
-_min_llvm_version = (3, 7, 0)
+_min_llvmlite_version = (0, 19, 0)
+_min_llvm_version = (4, 0, 0)
 
 def _ensure_llvm():
     """

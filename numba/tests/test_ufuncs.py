@@ -5,6 +5,7 @@ import itertools
 import re
 import sys
 import warnings
+import threading
 
 import numpy as np
 
@@ -1530,10 +1531,24 @@ class TestLoopTypesIntNoPython(_LoopTypesTester):
     _ufuncs.remove(np.reciprocal)
     _ufuncs.remove(np.left_shift) # has its own test class
     _ufuncs.remove(np.right_shift) # has its own test class
+    # special test for bool subtract/negative, np1.13 deprecated/not supported
+    _ufuncs.remove(np.subtract)
+    _ufuncs.remove(np.negative)
     _required_types = '?bBhHiIlLqQ'
     _skip_types = 'fdFDmMO' + _LoopTypesTester._skip_types
 
 TestLoopTypesIntNoPython.autogenerate()
+
+
+class TestLoopTypesSubtractAndNegativeNoPython(_LoopTypesTester):
+    _compile_flags = no_pyobj_flags
+    _ufuncs = [np.subtract, np.negative]
+    _required_types = '?bBhHiIlLqQfdFD'
+    _skip_types = 'mMO' + _LoopTypesTester._skip_types
+    if after_numpy_112: # np1.13 deprecated/not supported
+        _skip_types += '?'
+
+TestLoopTypesSubtractAndNegativeNoPython.autogenerate()
 
 
 class TestLoopTypesReciprocalNoPython(_LoopTypesTester):
@@ -1805,6 +1820,34 @@ class TestUFuncBadArgsNoPython(TestCase):
             np.add(x, x, y)
         self.assertRaises(TypingError, compile_isolated, func, [types.float64],
                           return_type=types.float64, flags=self._compile_flags)
+
+class TestUFuncCompilationThreadSafety(TestCase):
+
+    def test_lock(self):
+        """
+        Test that (lazy) compiling from several threads at once doesn't
+        produce errors (see issue #2403).
+        """
+        errors = []
+
+        @vectorize
+        def foo(x):
+            return x + 1
+
+        def wrapper():
+            try:
+                a = np.ones((10,), dtype = np.float64)
+                expected = np.ones((10,), dtype = np.float64) + 1.
+                np.testing.assert_array_equal(foo(a), expected)
+            except BaseException as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=wrapper) for i in range(16)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertFalse(errors)
 
 
 if __name__ == '__main__':

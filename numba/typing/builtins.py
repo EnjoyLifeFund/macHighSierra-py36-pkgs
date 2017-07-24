@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from numba import types
+from numba import types, prange
 
 from numba.utils import PYVERSION, RANGE_ITER_OBJECTS, operator_map
 from numba.typing.templates import (AttributeTemplate, ConcreteTemplate,
@@ -85,6 +85,7 @@ class Range(ConcreteTemplate):
 for func in RANGE_ITER_OBJECTS:
     infer_global(func, typing_key=range)(Range)
 
+infer_global(prange, typing_key=prange)(Range)
 
 @infer
 class GetIter(AbstractTemplate):
@@ -246,10 +247,18 @@ class BitwiseShiftOperation(ConcreteTemplate):
     # should always be positive but will generally be considered
     # signed anyway, since it's often a constant integer).
     # (also, see issue #1995 for right-shifts)
-    cases = [signature(max(op, types.intp), op, types.intp)
-             for op in sorted(types.signed_domain)]
-    cases += [signature(max(op, types.uintp), op, types.intp)
-              for op in sorted(types.unsigned_domain)]
+
+    # The RHS type is fixed to 64-bit signed/unsigned ints.
+    # The implementation will always cast the operands to the width of the
+    # result type, which is the widest between the LHS type and (u)intp.
+    cases = [signature(max(op, types.intp), op, op2)
+             for op in sorted(types.signed_domain)
+             for op2 in [types.uint64, types.int64]]
+    cases += [signature(max(op, types.uintp), op, op2)
+              for op in sorted(types.unsigned_domain)
+              for op2 in [types.uint64, types.int64]]
+    unsafe_casting = False
+
 
 @infer
 class BitwiseLeftShift(BitwiseShiftOperation):
@@ -264,6 +273,7 @@ class BitwiseRightShift(BitwiseShiftOperation):
 class BitwiseLogicOperation(BinOp):
     cases = [signature(types.boolean, types.boolean, types.boolean)]
     cases += list(integer_binop_cases)
+    unsafe_casting = False
 
 
 @infer
@@ -296,6 +306,7 @@ class BitwiseInvert(ConcreteTemplate):
     cases += [signature(choose_result_int(op), op) for op in types.unsigned_domain]
     cases += [signature(choose_result_int(op), op) for op in types.signed_domain]
 
+    unsafe_casting = False
 
 class UnaryOp(ConcreteTemplate):
     cases = [signature(choose_result_int(op), op) for op in types.unsigned_domain]
@@ -488,6 +499,8 @@ class Len(AbstractTemplate):
         (val,) = args
         if isinstance(val, (types.Buffer, types.BaseTuple)):
             return signature(types.intp, val)
+        elif isinstance(val, (types.RangeType)):
+            return signature(val.dtype, val)
 
 
 @infer

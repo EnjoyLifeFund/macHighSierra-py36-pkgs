@@ -18,6 +18,7 @@ import contextlib
 import itertools
 from pprint import pprint
 import traceback
+from collections import OrderedDict
 
 from numba import ir, types, utils, config, six, typing
 from .errors import TypingError, UntypedAttributeError, new_error_context
@@ -642,6 +643,8 @@ def register_dispatcher(disp):
         del _temporary_dispatcher_map[name]
 
 
+typeinfer_extensions = {}
+
 class TypeInferer(object):
     """
     Operates on block that shares the same ir.Scope.
@@ -649,7 +652,10 @@ class TypeInferer(object):
 
     def __init__(self, context, func_ir, warnings):
         self.context = context
-        self.blocks = func_ir.blocks
+        # sort based on label, ensure iteration order!
+        self.blocks = OrderedDict()
+        for k in sorted(func_ir.blocks.keys()):
+            self.blocks[k] = func_ir.blocks[k]
         self.generator_info = func_ir.generator_info
         self.func_id = func_ir.func_id
         self.func_ir = func_ir
@@ -894,6 +900,10 @@ class TypeInferer(object):
             pass
         elif isinstance(inst, ir.StaticRaise):
             pass
+        elif type(inst) in typeinfer_extensions:
+            # let external calls handle stmt if type matches
+            f = typeinfer_extensions[type(inst)]
+            f(inst, self)
         else:
             raise NotImplementedError(inst)
 

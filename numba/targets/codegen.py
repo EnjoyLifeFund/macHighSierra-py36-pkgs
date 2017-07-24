@@ -293,6 +293,7 @@ class CodeLibrary(object):
         self._sentry_cache_disable_inspection()
         return str(self._codegen._tm.emit_assembly(self._final_module))
 
+    @llvmts.lock_llvm
     def get_function_cfg(self, name):
         """
         Get control-flow graph of the LLVM function
@@ -659,9 +660,10 @@ class BaseCPUCodegen(object):
         voidptr = llvmir.IntType(8).as_pointer()
         ptrname = self._rtlinker.PREFIX + name
         llvm_mod = builder.module
-        fnptr = llvm_mod.get_global(ptrname)
-        # Not defined?
-        if fnptr is None:
+        try:
+            fnptr = llvm_mod.get_global(ptrname)
+        except KeyError:
+            # Not defined?
             fnptr = llvmir.GlobalVariable(llvm_mod, voidptr, name=ptrname)
             fnptr.linkage = 'external'
         return builder.bitcast(builder.load(fnptr), fnty.as_pointer())
