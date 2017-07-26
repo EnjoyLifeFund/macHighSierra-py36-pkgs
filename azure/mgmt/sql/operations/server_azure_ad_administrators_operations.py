@@ -25,6 +25,7 @@ class ServerAzureADAdministratorsOperations(object):
     :param serializer: An object model serializer.
     :param deserializer: An objec model deserializer.
     :ivar api_version: The API version to use for the request. Constant value: "2014-04-01".
+    :ivar administrator_name: Name of the server administrator resource. Constant value: "activeDirectory".
     """
 
     def __init__(self, client, config, serializer, deserializer):
@@ -33,6 +34,7 @@ class ServerAzureADAdministratorsOperations(object):
         self._serialize = serializer
         self._deserialize = deserializer
         self.api_version = "2014-04-01"
+        self.administrator_name = "activeDirectory"
 
         self.config = config
 
@@ -63,11 +65,12 @@ class ServerAzureADAdministratorsOperations(object):
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
-        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/activedirectory'
+        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/{administratorName}'
         path_format_arguments = {
             'subscriptionId': self._serialize.url("self.config.subscription_id", self.config.subscription_id, 'str'),
             'resourceGroupName': self._serialize.url("resource_group_name", resource_group_name, 'str'),
-            'serverName': self._serialize.url("server_name", server_name, 'str')
+            'serverName': self._serialize.url("server_name", server_name, 'str'),
+            'administratorName': self._serialize.url("self.administrator_name", self.administrator_name, 'str')
         }
         url = self._client.format_url(url, **path_format_arguments)
 
@@ -158,11 +161,12 @@ class ServerAzureADAdministratorsOperations(object):
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
-        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/activedirectory'
+        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/{administratorName}'
         path_format_arguments = {
             'subscriptionId': self._serialize.url("self.config.subscription_id", self.config.subscription_id, 'str'),
             'resourceGroupName': self._serialize.url("resource_group_name", resource_group_name, 'str'),
-            'serverName': self._serialize.url("server_name", server_name, 'str')
+            'serverName': self._serialize.url("server_name", server_name, 'str'),
+            'administratorName': self._serialize.url("self.administrator_name", self.administrator_name, 'str')
         }
         url = self._client.format_url(url, **path_format_arguments)
 
@@ -249,7 +253,7 @@ class ServerAzureADAdministratorsOperations(object):
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
-        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/activedirectory'
+        url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Sql/servers/{serverName}/administrators/{administratorName}'
         path_format_arguments = {
             'subscriptionId': self._serialize.url("self.config.subscription_id", self.config.subscription_id, 'str'),
             'resourceGroupName': self._serialize.url("resource_group_name", resource_group_name, 'str'),

@@ -55,10 +55,11 @@ from .resource import Resource
 from .dns_name_availability_result import DnsNameAvailabilityResult
 from .express_route_circuit_authorization import ExpressRouteCircuitAuthorization
 from .express_route_circuit_peering_config import ExpressRouteCircuitPeeringConfig
-from .express_route_circuit_stats import ExpressRouteCircuitStats
 from .route_filter_rule import RouteFilterRule
+from .express_route_circuit_stats import ExpressRouteCircuitStats
 from .express_route_circuit_peering import ExpressRouteCircuitPeering
 from .route_filter import RouteFilter
+from .ipv6_express_route_circuit_peering_config import Ipv6ExpressRouteCircuitPeeringConfig
 from .express_route_circuit_sku import ExpressRouteCircuitSku
 from .express_route_circuit_service_provider_properties import ExpressRouteCircuitServiceProviderProperties
 from .express_route_circuit import ExpressRouteCircuit
@@ -131,6 +132,8 @@ from .address_space import AddressSpace
 from .dhcp_options import DhcpOptions
 from .virtual_network import VirtualNetwork
 from .ip_address_availability_result import IPAddressAvailabilityResult
+from .virtual_network_usage_name import VirtualNetworkUsageName
+from .virtual_network_usage import VirtualNetworkUsage
 from .virtual_network_gateway_ip_configuration import VirtualNetworkGatewayIPConfiguration
 from .virtual_network_gateway_sku import VirtualNetworkGatewaySku
 from .vpn_client_root_certificate import VpnClientRootCertificate
@@ -168,6 +171,7 @@ from .route_paged import RoutePaged
 from .bgp_service_community_paged import BgpServiceCommunityPaged
 from .usage_paged import UsagePaged
 from .virtual_network_paged import VirtualNetworkPaged
+from .virtual_network_usage_paged import VirtualNetworkUsagePaged
 from .subnet_paged import SubnetPaged
 from .virtual_network_peering_paged import VirtualNetworkPeeringPaged
 from .virtual_network_gateway_paged import VirtualNetworkGatewayPaged
@@ -192,9 +196,9 @@ from .network_management_client_enums import (
     ApplicationGatewayFirewallMode,
     AuthorizationUseStatus,
     ExpressRouteCircuitPeeringAdvertisedPublicPrefixState,
+    Access,
     ExpressRouteCircuitPeeringType,
     ExpressRouteCircuitPeeringState,
-    Access,
     ExpressRouteCircuitSkuTier,
     ExpressRouteCircuitSkuFamily,
     ServiceProviderProvisioningState,
@@ -279,10 +283,11 @@ __all__ = [
     'DnsNameAvailabilityResult',
     'ExpressRouteCircuitAuthorization',
     'ExpressRouteCircuitPeeringConfig',
-    'ExpressRouteCircuitStats',
     'RouteFilterRule',
+    'ExpressRouteCircuitStats',
     'ExpressRouteCircuitPeering',
     'RouteFilter',
+    'Ipv6ExpressRouteCircuitPeeringConfig',
     'ExpressRouteCircuitSku',
     'ExpressRouteCircuitServiceProviderProperties',
     'ExpressRouteCircuit',
@@ -355,6 +360,8 @@ __all__ = [
     'DhcpOptions',
     'VirtualNetwork',
     'IPAddressAvailabilityResult',
+    'VirtualNetworkUsageName',
+    'VirtualNetworkUsage',
     'VirtualNetworkGatewayIPConfiguration',
     'VirtualNetworkGatewaySku',
     'VpnClientRootCertificate',
@@ -392,6 +399,7 @@ __all__ = [
     'BgpServiceCommunityPaged',
     'UsagePaged',
     'VirtualNetworkPaged',
+    'VirtualNetworkUsagePaged',
     'SubnetPaged',
     'VirtualNetworkPeeringPaged',
     'VirtualNetworkGatewayPaged',
@@ -415,9 +423,9 @@ __all__ = [
     'ApplicationGatewayFirewallMode',
     'AuthorizationUseStatus',
     'ExpressRouteCircuitPeeringAdvertisedPublicPrefixState',
+    'Access',
     'ExpressRouteCircuitPeeringType',
     'ExpressRouteCircuitPeeringState',
-    'Access',
     'ExpressRouteCircuitSkuTier',
     'ExpressRouteCircuitSkuFamily',
     'ServiceProviderProvisioningState',

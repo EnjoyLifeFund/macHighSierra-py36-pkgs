@@ -12,7 +12,7 @@
 from enum import Enum
 
 
-class RestorePointTypes(Enum):
+class RestorePointType(Enum):
 
     discrete = "DISCRETE"
     continuous = "CONTINUOUS"
@@ -37,6 +37,41 @@ class MaxSizeUnits(Enum):
 class PerformanceLevelUnit(Enum):
 
     dtu = "DTU"
+
+
+class ServerConnectionType(Enum):
+
+    default = "Default"
+    proxy = "Proxy"
+    redirect = "Redirect"
+
+
+class DataMaskingState(Enum):
+
+    disabled = "Disabled"
+    enabled = "Enabled"
+
+
+class DataMaskingRuleState(Enum):
+
+    disabled = "Disabled"
+    enabled = "Enabled"
+
+
+class DataMaskingFunction(Enum):
+
+    ccn = "CCN"
+    default = "Default"
+    email = "Email"
+    number = "Number"
+    ssn = "SSN"
+    text = "Text"
+
+
+class GeoBackupPolicyState(Enum):
+
+    disabled = "Disabled"
+    enabled = "Enabled"
 
 
 class DatabaseEdition(Enum):
@@ -84,6 +119,36 @@ class AuthenticationType(Enum):
     ad_password = "ADPassword"
 
 
+class UnitType(Enum):
+
+    count = "count"
+    bytes = "bytes"
+    seconds = "seconds"
+    percent = "percent"
+    count_per_second = "countPerSecond"
+    bytes_per_second = "bytesPerSecond"
+
+
+class PrimaryAggregationType(Enum):
+
+    none = "None"
+    average = "Average"
+    count = "Count"
+    minimum = "Minimum"
+    maximum = "Maximum"
+    total = "Total"
+
+
+class UnitDefinitionType(Enum):
+
+    count = "Count"
+    bytes = "Bytes"
+    seconds = "Seconds"
+    percent = "Percent"
+    count_per_second = "CountPerSecond"
+    bytes_per_second = "BytesPerSecond"
+
+
 class ReplicationRole(Enum):
 
     primary = "Primary"
@@ -101,16 +166,10 @@ class ReplicationState(Enum):
     suspended = "SUSPENDED"
 
 
-class ServerVersion(Enum):
+class CheckNameAvailabilityReason(Enum):
 
-    two_full_stop_zero = "2.0"
-    one_two_full_stop_zero = "12.0"
-
-
-class ServerState(Enum):
-
-    ready = "Ready"
-    disabled = "Disabled"
+    invalid = "Invalid"
+    already_exists = "AlreadyExists"
 
 
 class ElasticPoolEdition(Enum):
@@ -211,6 +270,12 @@ class SecurityAlertPolicyUseServerDefault(Enum):
     disabled = "Disabled"
 
 
+class BackupLongTermRetentionPolicyState(Enum):
+
+    disabled = "Disabled"
+    enabled = "Enabled"
+
+
 class BlobAuditingPolicyState(Enum):
 
     enabled = "Enabled"
@@ -233,3 +298,14 @@ class FailoverGroupReplicationRole(Enum):
 
     primary = "Primary"
     secondary = "Secondary"
+
+
+class IdentityType(Enum):
+
+    system_assigned = "SystemAssigned"
+
+
+class ServerKeyType(Enum):
+
+    service_managed = "ServiceManaged"
+    azure_key_vault = "AzureKeyVault"

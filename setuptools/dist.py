@@ -16,7 +16,7 @@ from distutils.errors import (
 from distutils.util import rfc822_escape
 
 from setuptools.extern import six
-from setuptools.extern.six.moves import map
+from setuptools.extern.six.moves import map, filter, filterfalse
 from pkg_resources.extern import packaging
 
 from setuptools.depends import Require
@@ -356,45 +356,65 @@ class Distribution(Distribution_parse_config_files, _Distribution):
     def _finalize_requires(self):
         """
         Fix environment markers in `install_requires` and `extras_require`.
-
-        - move requirements in `install_requires` that are using environment
-          markers or extras to `extras_require`.
-        - convert requirements in `extras_require` of the form
-          `"extra": ["barbazquux; {marker}"]` to
-          `"extra:{marker}": ["barbazquux"]`.
         """
-        extras_require = defaultdict(list)
-        for k, v in (
-            getattr(self, 'extras_require', None) or {}
-        ).items():
+        self._convert_extras_requirements()
+        self._move_install_requirements_markers()
+
+    def _convert_extras_requirements(self):
+        """
+        Convert requirements in `extras_require` of the form
+        `"extra": ["barbazquux; {marker}"]` to
+        `"extra:{marker}": ["barbazquux"]`.
+        """
+        spec_ext_reqs = getattr(self, 'extras_require', None) or {}
+        self._tmp_extras_require = defaultdict(list)
+        for section, v in spec_ext_reqs.items():
+            # Do not strip empty sections.
+            self._tmp_extras_require[section]
             for r in pkg_resources.parse_requirements(v):
-                marker = r.marker
-                if marker:
-                    r.marker = None
-                    extras_require[k + ':' + str(marker)].append(r)
-                else:
-                    extras_require[k].append(r)
-        install_requires = []
-        for r in pkg_resources.parse_requirements(
-            getattr(self, 'install_requires', None) or ()
-        ):
-            marker = r.marker
-            extras = r.extras
-            if not marker and not extras:
-                install_requires.append(r)
-                continue
-            r.extras = ()
-            r.marker = None
-            for e in extras or ('',):
-                section = e
-                if marker:
-                    section += ':' + str(marker)
-                extras_require[section].append(r)
+                suffix = self._suffix_for(r)
+                self._tmp_extras_require[section + suffix].append(r)
+
+    @staticmethod
+    def _suffix_for(req):
+        """
+        For a requirement, return the 'extras_require' suffix for
+        that requirement.
+        """
+        return ':' + str(req.marker) if req.marker else ''
+
+    def _move_install_requirements_markers(self):
+        """
+        Move requirements in `install_requires` that are using environment
+        markers `extras_require`.
+        """
+
+        # divide the install_requires into two sets, simple ones still
+        # handled by install_requires and more complex ones handled
+        # by extras_require.
+
+        def is_simple_req(req):
+            return not req.marker
+
+        spec_inst_reqs = getattr(self, 'install_requires', None) or ()
+        inst_reqs = list(pkg_resources.parse_requirements(spec_inst_reqs))
+        simple_reqs = filter(is_simple_req, inst_reqs)
+        complex_reqs = filterfalse(is_simple_req, inst_reqs)
+        self.install_requires = list(map(str, simple_reqs))
+
+        for r in complex_reqs:
+            self._tmp_extras_require[':' + str(r.marker)].append(r)
         self.extras_require = dict(
-            (k, [str(r) for r in v])
-            for k, v in extras_require.items()
+            (k, [str(r) for r in map(self._clean_req, v)])
+            for k, v in self._tmp_extras_require.items()
         )
-        self.install_requires = [str(r) for r in install_requires]
+
+    def _clean_req(self, req):
+        """
+        Given a Requirement, remove environment markers and return it.
+        """
+        req.marker = None
+        return req
 
     def parse_config_files(self, filenames=None):
         """Parses configuration files from various levels
