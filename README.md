@@ -19,14 +19,14 @@ Shall you have any question, please send email to "ralic.lo.eng@ieee.org".
 Please rememeber to unzip tensorflow.zip before use these packages.
 
 #### Reference 
-<u>Google-GCP API </u>
+ - <u>Google-GCP API </u>
 https://developers.google.com/api-client-library/python/start/installation (For Google API)
 https://cloud.google.com/compute/docs/tutorials/python-guide (For Google cloud platform)
-<u>Amazon-AWS API (Boto3)</u>
-https://aws.amazon.com/sdk-for-python/
-<u>Microsoft-Azure API </u>
+ - <u>Amazon-AWS API (Boto3)</u>
+#### https://aws.amazon.com/sdk-for-python/
+ - <u>Microsoft-Azure API </u>
 https://azure-sdk-for-python.readthedocs.io/en/latest/installation.html
-<u>Linkedin API</u>
+ - <u>Linkedin API</u>
 https://pypi.python.org/pypi/python-linkedin/4.0
-<u>Facebook API</u>
+ - <u>Facebook API</u>
 https://facebook-sdk.readthedocs.io/en/latest/
