@@ -23,7 +23,7 @@ Please rememeber to unzip tensorflow.zip before use these packages.
 https://developers.google.com/api-client-library/python/start/installation (For Google API)
 https://cloud.google.com/compute/docs/tutorials/python-guide (For Google cloud platform)
  - <u>Amazon-AWS API (Boto3)</u>
-#### https://aws.amazon.com/sdk-for-python/
+https://aws.amazon.com/sdk-for-python/
  - <u>Microsoft-Azure API </u>
 https://azure-sdk-for-python.readthedocs.io/en/latest/installation.html
  - <u>Linkedin API</u>
