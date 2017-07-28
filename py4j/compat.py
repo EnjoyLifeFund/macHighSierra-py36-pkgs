@@ -62,7 +62,6 @@ if version_info[0] < 3:
         return b
 
     import Queue
-    Empty = Queue.Empty
     Queue = Queue.Queue
 
 else:
@@ -111,7 +110,6 @@ else:
 
     import queue
     Queue = queue.Queue
-    Empty = queue.Empty
 
 
 if hasattr(inspect, "getattr_static"):

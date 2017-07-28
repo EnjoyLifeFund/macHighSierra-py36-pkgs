@@ -31,8 +31,7 @@ from py4j.finalizer import ThreadSafeFinalizer
 from py4j import protocol as proto
 from py4j.protocol import (
     Py4JError, Py4JNetworkError, escape_new_line, get_command_part,
-    get_return_value, is_error, register_output_converter, smart_decode,
-    is_fatal_error)
+    get_return_value, is_error, register_output_converter, smart_decode)
 from py4j.signals import Signal
 from py4j.version import __version__
 
@@ -195,16 +194,6 @@ def find_jar_path():
         os.path.realpath(__file__)), "../share/py4j/" + jar_file))
     paths.append("../../../current-release/" + jar_file)
     paths.append(os.path.join(sys.prefix, "share/py4j/" + jar_file))
-    # pip install py4j # On Ubuntu 16.04, where virtualenvepath=/usr/local
-    #   this file is here:
-    #     virtualenvpath/lib/pythonX/dist-packages/py4j/java_gateway.py
-    #   the jar file is here: virtualenvpath/share/py4j/py4j.jar
-    # pip install --user py4j # On Ubuntu 16.04, where virtualenvepath=~/.local
-    #   this file is here:
-    #     virtualenvpath/lib/pythonX/site-packages/py4j/java_gateway.py
-    #   the jar file is here: virtualenvpath/share/py4j/py4j.jar
-    paths.append(os.path.join(os.path.dirname(
-            os.path.realpath(__file__)), "../../../../share/py4j/" + jar_file))
 
     for path in paths:
         if os.path.exists(path):
@@ -290,10 +279,8 @@ def launch_gateway(port=0, jarpath="", classpath="", javaopts=[],
     logger.debug("Launching gateway with command {0}".format(command))
 
     # stderr redirection
-    close_stderr = False
     if redirect_stderr is None:
         stderr = open(os.devnull, "w")
-        close_stderr = True
     elif isinstance(redirect_stderr, Queue) or\
             isinstance(redirect_stderr, deque):
         stderr = PIPE
@@ -323,12 +310,6 @@ def launch_gateway(port=0, jarpath="", classpath="", javaopts=[],
         OutputConsumer(
             redirect_stderr, proc.stderr, daemon=daemonize_redirect).start()
     ProcessConsumer(proc, [redirect_stdout], daemon=daemonize_redirect).start()
-
-    if close_stderr:
-        # XXX This will quiet ResourceWarning in Python 3.5
-        # This only close the fd in this process, not in the JVM process, which
-        # makes sense.
-        quiet_close(stderr)
 
     return _port
 
@@ -563,7 +544,18 @@ def _garbage_collect_object(gateway_client, target_id):
             smart_decode(gateway_client.address) +
             smart_decode(gateway_client.port) +
             target_id)
-        gateway_client.garbage_collect_object(target_id)
+        if target_id != proto.ENTRY_POINT_OBJECT_ID and\
+                target_id != proto.GATEWAY_SERVER_OBJECT_ID and\
+                gateway_client.is_connected:
+            try:
+                gateway_client.send_command(
+                    proto.MEMORY_COMMAND_NAME +
+                    proto.MEMORY_DEL_SUBCOMMAND_NAME +
+                    target_id +
+                    "\ne\n")
+            except Exception:
+                logger.debug("Exception while garbage collecting an object",
+                             exc_info=True)
     except Exception:
         logger.debug("Exception while garbage collecting an object",
                      exc_info=True)
@@ -828,23 +820,6 @@ class GatewayClient(object):
         self.ssl_context = gateway_parameters.ssl_context
         self.deque = deque()
 
-    def garbage_collect_object(self, target_id):
-        """Tells the Java side that there is no longer a reference to this
-        JavaObject on the Python side.
-        """
-        if target_id != proto.ENTRY_POINT_OBJECT_ID and\
-                target_id != proto.GATEWAY_SERVER_OBJECT_ID and\
-                self.is_connected:
-            try:
-                self.send_command(
-                    proto.MEMORY_COMMAND_NAME +
-                    proto.MEMORY_DEL_SUBCOMMAND_NAME +
-                    target_id +
-                    "\ne\n")
-            except Exception:
-                logger.debug("Exception while garbage collecting an object",
-                             exc_info=True)
-
     def _get_connection(self):
         if not self.is_connected:
             raise Py4JNetworkError("Gateway is not connected.")
@@ -908,8 +883,6 @@ class GatewayClient(object):
             response = connection.send_command(command)
             if binary:
                 return response, self._create_connection_guard(connection)
-            elif is_fatal_error(response):
-                connection.close(False)
             else:
                 self._give_back_connection(connection)
         except Py4JNetworkError as pne:
