@@ -1,8 +1,8 @@
 # macSierra-py36-pkgs
 
 
-## <img src="https://cdn1.iconfinder.com/data/icons/banking/512/E1-256.png" width="30"></a> 
- Donation ($1.0 USD) <a href="https://goo.gl/BTFKsk">
+## <a href="https://goo.gl/BTFKsk"> <img src="https://cdn1.iconfinder.com/data/icons/banking/512/E1-256.png" width="30"></a> 
+ Donation ($1.0 USD) 
 
 Link: (https://goo.gl/BTFKsk)
 
