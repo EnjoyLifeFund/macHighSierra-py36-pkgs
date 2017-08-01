@@ -135,12 +135,6 @@ class ExpressRouteCircuitPeeringAdvertisedPublicPrefixState(Enum):
     validation_needed = "ValidationNeeded"
 
 
-class Access(Enum):
-
-    allow = "Allow"
-    deny = "Deny"
-
-
 class ExpressRouteCircuitPeeringType(Enum):
 
     azure_public_peering = "AzurePublicPeering"
@@ -152,6 +146,12 @@ class ExpressRouteCircuitPeeringState(Enum):
 
     disabled = "Disabled"
     enabled = "Enabled"
+
+
+class Access(Enum):
+
+    allow = "Allow"
+    deny = "Deny"
 
 
 class ExpressRouteCircuitSkuTier(Enum):

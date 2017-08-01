@@ -12,13 +12,6 @@
 from .shared_access_signature_authorization_rule import SharedAccessSignatureAuthorizationRule
 from .ip_filter_rule import IpFilterRule
 from .event_hub_properties import EventHubProperties
-from .routing_service_bus_queue_endpoint_properties import RoutingServiceBusQueueEndpointProperties
-from .routing_service_bus_topic_endpoint_properties import RoutingServiceBusTopicEndpointProperties
-from .routing_event_hub_properties import RoutingEventHubProperties
-from .routing_endpoints import RoutingEndpoints
-from .route_properties import RouteProperties
-from .fallback_route_properties import FallbackRouteProperties
-from .routing_properties import RoutingProperties
 from .storage_endpoint_properties import StorageEndpointProperties
 from .messaging_endpoint_properties import MessagingEndpointProperties
 from .feedback_properties import FeedbackProperties
@@ -48,7 +41,6 @@ from .shared_access_signature_authorization_rule_paged import SharedAccessSignat
 from .iot_hub_client_enums import (
     AccessRights,
     IpFilterActionType,
-    RoutingSource,
     OperationMonitoringLevel,
     Capabilities,
     IotHubSku,
@@ -63,13 +55,6 @@ __all__ = [
     'SharedAccessSignatureAuthorizationRule',
     'IpFilterRule',
     'EventHubProperties',
-    'RoutingServiceBusQueueEndpointProperties',
-    'RoutingServiceBusTopicEndpointProperties',
-    'RoutingEventHubProperties',
-    'RoutingEndpoints',
-    'RouteProperties',
-    'FallbackRouteProperties',
-    'RoutingProperties',
     'StorageEndpointProperties',
     'MessagingEndpointProperties',
     'FeedbackProperties',
@@ -98,7 +83,6 @@ __all__ = [
     'SharedAccessSignatureAuthorizationRulePaged',
     'AccessRights',
     'IpFilterActionType',
-    'RoutingSource',
     'OperationMonitoringLevel',
     'Capabilities',
     'IotHubSku',

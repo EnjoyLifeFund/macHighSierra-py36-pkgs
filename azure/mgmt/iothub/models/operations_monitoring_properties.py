@@ -15,8 +15,7 @@ from msrest.serialization import Model
 class OperationsMonitoringProperties(Model):
     """The operations monitoring properties for the IoT hub. The possible keys to
     the dictionary are Connections, DeviceTelemetry, C2DCommands,
-    DeviceIdentityOperations, FileUploadOperations, Routes, D2CTwinOperations,
-    C2DTwinOperations, TwinQueries, JobsOperations, DirectMethods.
+    DeviceIdentityOperations, FileUploadOperations.
 
     :param events:
     :type events: dict

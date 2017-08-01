@@ -32,7 +32,7 @@ class LocationThresholdRuleCondition(RuleCondition):
 
     _validation = {
         'odatatype': {'required': True},
-        'failed_location_count': {'required': True, 'minimum': 0},
+        'failed_location_count': {'required': True},
     }
 
     _attribute_map = {

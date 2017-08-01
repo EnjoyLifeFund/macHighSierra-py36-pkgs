@@ -13,7 +13,7 @@ from msrest.serialization import Model
 
 
 class Resource(Model):
-    """The common properties of an Azure resource.
+    """Resource.
 
     Variables are only populated by the server, and will be ignored when
     sending a request.

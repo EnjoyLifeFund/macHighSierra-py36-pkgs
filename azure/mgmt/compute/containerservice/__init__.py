@@ -6,5 +6,3 @@
 # --------------------------------------------------------------------------
 
 from .container_service_client import ContainerServiceClient
-
-__all__ = ['ContainerServiceClient']

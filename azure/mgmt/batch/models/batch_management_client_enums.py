@@ -39,9 +39,3 @@ class PackageState(Enum):
     pending = "pending"
     active = "active"
     unmapped = "unmapped"
-
-
-class NameAvailabilityReason(Enum):
-
-    invalid = "Invalid"
-    already_exists = "AlreadyExists"

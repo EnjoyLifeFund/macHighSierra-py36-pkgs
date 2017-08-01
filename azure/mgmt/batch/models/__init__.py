@@ -26,8 +26,6 @@ from .batch_location_quota import BatchLocationQuota
 from .resource import Resource
 from .operation_display import OperationDisplay
 from .operation import Operation
-from .check_name_availability_parameters import CheckNameAvailabilityParameters
-from .check_name_availability_result import CheckNameAvailabilityResult
 from .batch_account_paged import BatchAccountPaged
 from .application_paged import ApplicationPaged
 from .operation_paged import OperationPaged
@@ -36,7 +34,6 @@ from .batch_management_client_enums import (
     ProvisioningState,
     AccountKeyType,
     PackageState,
-    NameAvailabilityReason,
 )
 
 __all__ = [
@@ -57,8 +54,6 @@ __all__ = [
     'Resource',
     'OperationDisplay',
     'Operation',
-    'CheckNameAvailabilityParameters',
-    'CheckNameAvailabilityResult',
     'BatchAccountPaged',
     'ApplicationPaged',
     'OperationPaged',
@@ -66,5 +61,4 @@ __all__ = [
     'ProvisioningState',
     'AccountKeyType',
     'PackageState',
-    'NameAvailabilityReason',
 ]

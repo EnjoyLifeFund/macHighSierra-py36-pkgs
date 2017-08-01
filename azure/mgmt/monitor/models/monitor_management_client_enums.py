@@ -80,10 +80,3 @@ class TimeAggregationOperator(Enum):
     maximum = "Maximum"
     total = "Total"
     last = "Last"
-
-
-class ReceiverStatus(Enum):
-
-    not_specified = "NotSpecified"
-    enabled = "Enabled"
-    disabled = "Disabled"

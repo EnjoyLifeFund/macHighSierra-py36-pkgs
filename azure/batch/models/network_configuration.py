@@ -34,18 +34,11 @@ class NetworkConfiguration(Model):
      Batch account must have poolAllocationMode userSubscription in order to
      use a VNet.
     :type subnet_id: str
-    :param endpoint_configuration: The configuration for endpoints on compute
-     nodes in the Batch pool. Pool endpoint configuration is only supported on
-     pools with the virtualMachineConfiguration property.
-    :type endpoint_configuration: :class:`PoolEndpointConfiguration
-     <azure.batch.models.PoolEndpointConfiguration>`
     """
 
     _attribute_map = {
         'subnet_id': {'key': 'subnetId', 'type': 'str'},
-        'endpoint_configuration': {'key': 'endpointConfiguration', 'type': 'PoolEndpointConfiguration'},
     }
 
-    def __init__(self, subnet_id=None, endpoint_configuration=None):
+    def __init__(self, subnet_id=None):
         self.subnet_id = subnet_id
-        self.endpoint_configuration = endpoint_configuration
