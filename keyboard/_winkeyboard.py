@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+This is the Windows backend for keyboard events, and is implemented by
+invoking the Win32 API through the ctypes module. This is error prone
+and can introduce very unpythonic failure modes, such as segfaults and
+low level memory leaks. But it is also dependency-free, very performant
+well documented on Microsoft's webstie and scattered examples.
+"""
 import atexit
 from threading import Lock
 import re
@@ -6,12 +13,16 @@ import re
 from ._keyboard_event import KeyboardEvent, KEY_DOWN, KEY_UP, normalize_name
 from ._suppress import KeyTable
 
+# This part is just declaring Win32 API structures using ctypes. In C
+# this would be simply #include "windows.h".
+
 import ctypes
 from ctypes import c_short, c_char, c_uint8, c_int32, c_int, c_uint, c_uint32, c_long, Structure, CFUNCTYPE, POINTER
 from ctypes.wintypes import WORD, DWORD, BOOL, HHOOK, MSG, LPWSTR, WCHAR, WPARAM, LPARAM, LONG
 LPMSG = POINTER(MSG)
 ULONG_PTR = POINTER(DWORD)
 
+# Shortcut.
 user32 = ctypes.windll.user32
 
 VK_PACKET = 0xE7
@@ -30,6 +41,7 @@ class KBDLLHOOKSTRUCT(Structure):
                 ("time", c_int),
                 ("dwExtraInfo", ULONG_PTR)]
 
+# Included for completeness.
 class MOUSEINPUT(ctypes.Structure):
     _fields_ = (('dx', LONG),
                 ('dy', LONG),
@@ -62,11 +74,11 @@ class INPUT(ctypes.Structure):
 LowLevelKeyboardProc = CFUNCTYPE(c_int, WPARAM, LPARAM, POINTER(KBDLLHOOKSTRUCT))
 
 SetWindowsHookEx = user32.SetWindowsHookExA
-#SetWindowsHookEx.argtypes = [c_int, LowLevelKeyboardProc, c_int, c_int]
+SetWindowsHookEx.argtypes = [c_int, LowLevelKeyboardProc, c_int, c_int]
 SetWindowsHookEx.restype = HHOOK
 
 CallNextHookEx = user32.CallNextHookEx
-#CallNextHookEx.argtypes = [c_int , c_int, c_int, POINTER(KBDLLHOOKSTRUCT)]
+CallNextHookEx.argtypes = [c_int , c_int, c_int, POINTER(KBDLLHOOKSTRUCT)]
 CallNextHookEx.restype = c_int
 
 UnhookWindowsHookEx = user32.UnhookWindowsHookEx
@@ -121,6 +133,9 @@ WM_KEYUP = 0x0101
 WM_SYSKEYDOWN = 0x104 # Used for ALT key
 WM_SYSKEYUP = 0x105
 
+
+# This marks the end of Win32 API declarations. The rest is ours.
+
 keyboard_event_types = {
     WM_KEYDOWN: KEY_DOWN,
     WM_KEYUP: KEY_UP,
@@ -128,6 +143,8 @@ keyboard_event_types = {
     WM_SYSKEYUP: KEY_UP,
 }
 
+# List taken from the official documentation, but stripped of the OEM-specific keys.
+# Keys are virtual key codes, values are pairs (name, is_keypad).
 from_virtual_key = {
     0x03: ('control-break processing', False),
     0x08: ('backspace', False),
@@ -156,10 +173,10 @@ from_virtual_key = {
     0x22: ('page down', False),
     0x23: ('end', False),
     0x24: ('home', False),
-    0x25: ('left arrow', False),
-    0x26: ('up arrow', False),
-    0x27: ('right arrow', False),
-    0x28: ('down arrow', False),
+    0x25: ('left', False),
+    0x26: ('up', False),
+    0x27: ('right', False),
+    0x28: ('down', False),
     0x29: ('select', False),
     0x2a: ('print', False),
     0x2b: ('execute', False),
@@ -290,6 +307,7 @@ from_virtual_key = {
     0xfe: ('clear', False),
 }
 
+# Exceptions to our logic. Still trying to figure out what is happening.
 possible_extended_keys = [0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0xc, 0x6b, 0x2e, 0x2d, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f]
 reversed_extended_keys = [0x6f, 0xd]
 
@@ -306,7 +324,11 @@ alt_gr_scan_code = 541
 
 # These tables are used as backup when a key name can not be found by virtual
 # key code.
-def setup_tables():
+def _setup_tables():
+    """
+    Ensures the scan code/virtual key code/name translation tables are
+    filled.
+    """
     tables_lock.acquire()
 
     try:
@@ -359,11 +381,20 @@ def setup_tables():
 shift_is_pressed = False
 alt_gr_is_pressed = False
 
-init = setup_tables
+init = _setup_tables
 
-def listen(queue, is_allowed=lambda *args: True):
-    setup_tables()
+def prepare_intercept(callback):
+    """
+    Registers a Windows low level keyboard hook. The provided callback will
+    be invoked for each high-level keyboard event, and is expected to return
+    True if the key event should be passed to the next program, or False if
+    the event is to be blocked.
 
+    No event is processed until the Windows messages are pumped (see
+    start_intercept).
+    """
+    _setup_tables()
+    
     def process_key(event_type, vk, scan_code, is_extended):
         global alt_gr_is_pressed
         global shift_is_pressed
@@ -397,10 +428,7 @@ def listen(queue, is_allowed=lambda *args: True):
         elif event_type == KEY_UP and name == 'shift':
             shift_is_pressed = False
 
-        # Not sure how long this takes, but may need to move it?
-        queue.put(KeyboardEvent(event_type=event_type, scan_code=scan_code, name=name, is_keypad=is_keypad))
-
-        return is_allowed(name, event_type == KEY_UP)
+        return callback(KeyboardEvent(event_type=event_type, scan_code=scan_code, name=name, is_keypad=is_keypad))
 
     def low_level_keyboard_handler(nCode, wParam, lParam):
         try:
@@ -426,50 +454,59 @@ def listen(queue, is_allowed=lambda *args: True):
     # try/finally block doesn't seem to work here.
     atexit.register(UnhookWindowsHookEx, keyboard_callback)
 
-    msg = LPMSG()
-    while not GetMessage(msg, NULL, NULL, NULL):
-        TranslateMessage(msg)
-        DispatchMessage(msg)
+def _start_intercept():
+    """
+    Starts pumping Windows messages, which invokes the registered low
+    level keyboard hook.
+    """
+    # TODO: why does this work, without the whole Translate/Dispatch dance?
+    GetMessage(LPMSG(), NULL, NULL, NULL)
+    #msg = LPMSG()
+    #while not GetMessage(msg, NULL, NULL, NULL):
+    #    TranslateMessage(msg)
+    #    DispatchMessage(msg)
 
-# HACK: use negative scan codes to identify virtual key codes.
-# This is required to correctly associate media keys, since they report a scan
-# code of 0 but still have valid virtual key codes.
+def listen(queue, is_allowed=lambda *args: True):
+    prepare_intercept(lambda e: queue.put(e) or is_allowed(e.name, e.event_type == KEY_UP))
+    _start_intercept()
 
 def map_char(name):
-    setup_tables()
-    vk = media_name_to_vk(name)
-    if vk:
-        return -vk, []
-    elif name in to_scan_code:
+    _setup_tables()
+
+    wants_keypad = name.startswith('keypad ')
+    if wants_keypad:
+        name = name[len('keypad '):]
+
+    for vk in from_virtual_key:
+        candidate_name, is_keypad = from_virtual_key[vk]
+        if candidate_name in (name, 'left ' + name, 'right ' + name) and is_keypad == wants_keypad:
+            # HACK: use negative scan codes to identify virtual key codes.
+            # This is required to correctly associate media keys, since they report a scan
+            # code of 0 but still have valid virtual key codes. It also helps standardizing
+            # the key names, since the virtual key code table is constant.
+            return -vk, []
+
+    if name in to_scan_code:
         scan_code, shift = to_scan_code[name]
         return scan_code, ['shift'] if shift else []
     else:
         raise ValueError('Key name {} is not mapped to any known key.'.format(repr(name)))
 
-def media_name_to_vk(name):
-    wants_keypad = name.startswith('keypad ')
-    if wants_keypad:
-        name = name[len('keypad '):]
-    for vk in from_virtual_key:
-        candidate_name, is_keypad = from_virtual_key[vk]
-        if candidate_name in (name, 'left ' + name, 'right ' + name) and is_keypad == wants_keypad:
-            return vk
-
-def press(scan_code):
-    if scan_code < 0:
-        vk = -scan_code
-        scan_code = vk_to_scan_code[vk]
+# For pressing and releasing, we need both the scan code and virtual key code.
+# Only one is necessary most of the time, but some intrusive software require both.
+def _send_event(code, event_type):
+    if code < 0:
+        vk = -code
+        code = vk_to_scan_code[vk]
     else:
-        vk = scan_code_to_vk.get(scan_code, 0)
-    user32.keybd_event(vk, scan_code, 0, 0)
+        vk = scan_code_to_vk.get(code, 0)
+    user32.keybd_event(vk, code, event_type, 0)
 
-def release(scan_code):
-    if scan_code < 0:
-        vk = -scan_code
-        scan_code = vk_to_scan_code[vk]
-    else:
-        vk = scan_code_to_vk.get(scan_code, 0)
-    user32.keybd_event(vk, scan_code, 2, 0)
+def press(code):
+    _send_event(code, 0)
+
+def release(code):
+    _send_event(code, 2)
 
 def type_unicode(character):
     # This code and related structures are based on

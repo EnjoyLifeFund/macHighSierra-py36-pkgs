@@ -21,6 +21,7 @@ __all__ = ['Integer', 'Boolean', 'BitString', 'OctetString', 'Null',
 
 # "Simple" ASN.1 types (yet incomplete)
 
+
 class Integer(base.AbstractSimpleAsn1Item):
     """Create |ASN.1| type or object.
 
@@ -45,14 +46,14 @@ class Integer(base.AbstractSimpleAsn1Item):
     : :py:class:`pyasn1.error.PyAsn1Error`
         On constraint violation or bad initializer.
     """
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x02)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -167,7 +168,8 @@ class Integer(base.AbstractSimpleAsn1Item):
         return int(self._value)
 
     if sys.version_info[0] <= 2:
-        def __long__(self): return long(self._value)
+        def __long__(self):
+            return long(self._value)
 
     def __float__(self):
         return float(self._value)
@@ -317,14 +319,14 @@ class Integer(base.AbstractSimpleAsn1Item):
 class Boolean(Integer):
     __doc__ = Integer.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x01),
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = Integer.subtypeSpec + constraint.SingleValueConstraint(0, 1)
@@ -371,14 +373,14 @@ class BitString(base.AbstractSimpleAsn1Item):
     : :py:class:`pyasn1.error.PyAsn1Error`
         On constraint violation or bad initializer.
     """
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x03)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -482,7 +484,7 @@ class BitString(base.AbstractSimpleAsn1Item):
 
         Parameters
         ----------
-        value : :class:`int`, :class:`str` or |ASN.1| object
+        value: :class:`int`, :class:`str` or |ASN.1| object
             Initialization value to pass to new ASN.1 object instead of
             inheriting one from the caller.
 
@@ -632,10 +634,17 @@ class BitString(base.AbstractSimpleAsn1Item):
         """Get |ASN.1| value as a text string of bits.
         """
         binString = binary.bin(self._value)[2:]
-        return '0'*(len(self._value) - len(binString)) + binString
+        return '0' * (len(self._value) - len(binString)) + binString
 
     @classmethod
     def fromHexString(cls, value):
+        """Create a |ASN.1| object initialized from the hex string.
+        
+        Parameters
+        ----------
+        value: :class:`str`
+            Text string like 'DEADBEEF'
+        """
         try:
             return cls.SizedInteger(value, 16).setBitLength(len(value) * 4)
 
@@ -644,6 +653,13 @@ class BitString(base.AbstractSimpleAsn1Item):
 
     @classmethod
     def fromBinaryString(cls, value):
+        """Create a |ASN.1| object initialized from a string of '0' and '1'.
+
+        Parameters
+        ----------
+        value: :class:`str`
+            Text string like '1010111'
+        """
         try:
             return cls.SizedInteger(value or '0', 2).setBitLength(len(value))
 
@@ -652,6 +668,13 @@ class BitString(base.AbstractSimpleAsn1Item):
 
     @classmethod
     def fromOctetString(cls, value, padding=0):
+        """Create a |ASN.1| object initialized from a string.
+
+        Parameters
+        ----------
+        value: :class:`str` (Py2) or :class:`bytes` (Py3)
+            Text string like '\\\\x01\\\\xff' (Py2) or b'\\\\x01\\\\xff' (Py3)
+        """
         return cls(cls.SizedInteger(integer.from_bytes(value) >> padding).setBitLength(len(value) * 8 - padding))
 
     def prettyIn(self, value):
@@ -764,14 +787,14 @@ class OctetString(base.AbstractSimpleAsn1Item):
     : :py:class:`pyasn1.error.PyAsn1Error`
         On constraint violation or bad initializer.
     """
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x04)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -928,9 +951,7 @@ class OctetString(base.AbstractSimpleAsn1Item):
             return str(self._value)
 
         def asNumbers(self):
-            if self.__asNumbersCache is None:
-                self.__asNumbersCache = tuple([ord(x) for x in self._value])
-            return self.__asNumbersCache
+            return tuple([ord(x) for x in self._value])
 
     else:
         def prettyIn(self, value):
@@ -968,9 +989,7 @@ class OctetString(base.AbstractSimpleAsn1Item):
             return bytes(self._value)
 
         def asNumbers(self):
-            if self.__asNumbersCache is None:
-                self.__asNumbersCache = tuple(self._value)
-            return self.__asNumbersCache
+            return tuple(self._value)
 
     def prettyOut(self, value):
         if sys.version_info[0] <= 2:
@@ -986,12 +1005,18 @@ class OctetString(base.AbstractSimpleAsn1Item):
 
             except UnicodeDecodeError:
                 raise error.PyAsn1Error(
-                    'Can\'t decode string \'%s\' with \'%s\' codec at \'%s\'' % (
-                    value, self.encoding, self.__class__.__name__)
+                    "Can't decode string '%s' with '%s' codec at '%s'" % (value, self.encoding, self.__class__.__name__)
                 )
 
     @staticmethod
     def fromBinaryString(value):
+        """Create a |ASN.1| object initialized from a string of '0' and '1'.
+
+        Parameters
+        ----------
+        value: :class:`str`
+            Text string like '1010111'
+        """
         bitNo = 8
         byte = 0
         r = []
@@ -1016,6 +1041,13 @@ class OctetString(base.AbstractSimpleAsn1Item):
 
     @staticmethod
     def fromHexString(value):
+        """Create a |ASN.1| object initialized from the hex string.
+
+        Parameters
+        ----------
+        value: :class:`str`
+            Text string like 'DEADBEEF'
+        """
         r = []
         p = []
         for v in value:
@@ -1110,7 +1142,7 @@ class Null(OctetString):
     """
     defaultValue = ''.encode()  # This is tightly constrained
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
@@ -1202,14 +1234,14 @@ class ObjectIdentifier(base.AbstractSimpleAsn1Item):
     : :py:class:`pyasn1.error.PyAsn1Error`
         On constraint violation or bad initializer.
     """
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x06)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -1342,14 +1374,14 @@ class Real(base.AbstractSimpleAsn1Item):
         _plusInf = _minusInf = None
         _inf = ()
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x09)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -1559,7 +1591,8 @@ class Real(base.AbstractSimpleAsn1Item):
         return int(float(self))
 
     if sys.version_info[0] <= 2:
-        def __long__(self): return long(float(self))
+        def __long__(self):
+            return long(float(self))
 
     def __float__(self):
         if self._value in self._inf:
@@ -1592,7 +1625,8 @@ class Real(base.AbstractSimpleAsn1Item):
         return self.clone(math.ceil(float(self)))
 
     if sys.version_info[0:2] > (2, 5):
-        def __trunc__(self): return self.clone(math.trunc(float(self)))
+        def __trunc__(self):
+            return self.clone(math.trunc(float(self)))
 
     def __lt__(self, value):
         return float(self) < value
@@ -1642,14 +1676,14 @@ class Real(base.AbstractSimpleAsn1Item):
 class Enumerated(Integer):
     __doc__ = Integer.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatSimple, 0x0A)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -1683,6 +1717,17 @@ class SequenceOfAndSetOfBase(base.AbstractConstructedAsn1Item):
     sizeSpec: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection`
         Object representing collection size constraint
      """
+
+    def __init__(self, *args, **kwargs):
+        # support positional params for backward compatibility
+        if args:
+            for key, value in zip(('componentType', 'tagSet',
+                                   'subtypeSpec', 'sizeSpec'), args):
+                if key in kwargs:
+                    raise error.PyAsn1Error('Conflicting positional and keyword params!')
+                kwargs['componentType'] = value
+
+        base.AbstractConstructedAsn1Item.__init__(self, **kwargs)
 
     # Python list protocol
 
@@ -1732,7 +1777,7 @@ class SequenceOfAndSetOfBase(base.AbstractConstructedAsn1Item):
         ----------
         idx : :class:`int`
             Component index (zero-based). Must either refer to an existing
-            component or to N+1 component (of *componentType is set). In the latter
+            component or to N+1 component (if *componentType* is set). In the latter
             case a new component type gets instantiated and appended to the |ASN.1|
             sequence.
 
@@ -1833,15 +1878,17 @@ class SequenceOfAndSetOfBase(base.AbstractConstructedAsn1Item):
 
     @property
     def componentTagMap(self):
-        if self.componentType.asn1Object is not None:
-            return self.componentType.asn1Object.tagMap
+        if (self.componentType is not None and
+                self.componentType is not noValue):
+            return self.componentType.tagMap
 
     def prettyPrint(self, scope=0):
         scope += 1
         representation = self.__class__.__name__ + ':\n'
         for idx in range(len(self._componentValues)):
             representation += ' ' * scope
-            if self._componentValues[idx] is None:
+            if (self._componentValues[idx] is None and
+                    self.componentType is not noValue):
                 representation += '<empty>'
             else:
                 representation += self._componentValues[idx].prettyPrint(scope)
@@ -1850,32 +1897,39 @@ class SequenceOfAndSetOfBase(base.AbstractConstructedAsn1Item):
     def prettyPrintType(self, scope=0):
         scope += 1
         representation = '%s -> %s {\n' % (self.tagSet, self.__class__.__name__)
-        if self.componentType.asn1Object is not None:
+        if (self.componentType is not None and
+                self.componentType is not noValue):
             representation += ' ' * scope
-            representation += self.componentType.asn1Object.prettyPrintType(scope)
+            representation += self.componentType.prettyPrintType(scope)
         return representation + '\n' + ' ' * (scope - 1) + '}'
 
 
     @property
     def isValue(self):
-        """Indicate if |ASN.1| object components represent ASN.1 type or ASN.1 value.
+        """Indicate if |ASN.1| object represents ASN.1 type or ASN.1 value.
 
-        The PyASN1 type objects can only participate in types comparison
-        and serve as a blueprint for serialization codecs to resolve
-        ambiguous types.
+        In other words, if *isValue* is `True`, then the ASN.1 object is
+        initialized.
 
-        The PyASN1 value objects can additionally participate in most
-        of built-in Python operations.
+        For the purpose of this check, empty |ASN.1| object is considered
+        as initialized.
 
         Returns
         -------
         : :class:`bool`
-            :class:`True` if all |ASN.1| components represent value and type,
-            :class:`False` if at least one |ASN.1| component represents just ASN.1 type.
-        """
-        if not self._componentValues:
-            return False
+            :class:`True` if object represents ASN.1 value and type,
+            :class:`False` if object represents just ASN.1 type.
 
+        Note
+        ----
+        There is an important distinction between PyASN1 type and value objects.
+        The PyASN1 type objects can only participate in ASN.1 type
+        operations (subtyping, comparison etc) and serve as a
+        blueprint for serialization codecs to resolve ambiguous types.
+
+        The PyASN1 value objects can additionally participate in most
+        of built-in Python operations.
+        """
         for componentValue in self._componentValues:
             if not componentValue.isValue:
                 return False
@@ -1886,7 +1940,7 @@ class SequenceOfAndSetOfBase(base.AbstractConstructedAsn1Item):
 class SequenceOf(SequenceOfAndSetOfBase):
     __doc__ = SequenceOfAndSetOfBase.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
@@ -1897,7 +1951,7 @@ class SequenceOf(SequenceOfAndSetOfBase):
     #: object representing ASN.1 type allowed within |ASN.1| type
     componentType = None
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -1913,7 +1967,7 @@ class SequenceOf(SequenceOfAndSetOfBase):
 class SetOf(SequenceOfAndSetOfBase):
     __doc__ = SequenceOfAndSetOfBase.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
@@ -1924,7 +1978,7 @@ class SetOf(SequenceOfAndSetOfBase):
     #: object representing ASN.1 type allowed within |ASN.1| type
     componentType = None
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -2188,20 +2242,29 @@ class SequenceAndSetBase(base.AbstractConstructedAsn1Item):
 
     @property
     def isValue(self):
-        """Indicate if |ASN.1| object components represent ASN.1 type or ASN.1 value.
+        """Indicate if |ASN.1| object represents ASN.1 type or ASN.1 value.
 
-        The PyASN1 type objects can only participate in types comparison
-        and serve as a blueprint for serialization codecs to resolve
-        ambiguous types.
+        In other words, if *isValue* is `True`, then the ASN.1 object is
+        initialized.
 
-        The PyASN1 value objects can additionally participate in most
-        of built-in Python operations.
+        For the purpose of check, the *OPTIONAL* and *DEFAULT* fields are
+        unconditionally considered as initialized.
 
         Returns
         -------
         : :class:`bool`
-            :class:`True` if all |ASN.1| components represent value and type,
-            :class:`False` if at least one |ASN.1| component represents just ASN.1 type.
+            :class:`True` if object represents ASN.1 value and type,
+            :class:`False` if object represents just ASN.1 type.
+
+        Note
+        ----
+        There is an important distinction between PyASN1 type and value objects.
+        The PyASN1 type objects can only participate in ASN.1 type
+        operations (subtyping, comparison etc) and serve as a
+        blueprint for serialization codecs to resolve ambiguous types.
+
+        The PyASN1 value objects can additionally participate in most
+        of built-in Python operations.
         """
         componentType = self.componentType
 
@@ -2209,7 +2272,9 @@ class SequenceAndSetBase(base.AbstractConstructedAsn1Item):
             for idx, subComponentType in enumerate(componentType.namedTypes):
                 if subComponentType.isDefaulted or subComponentType.isOptional:
                     continue
-                if not self._componentValues or self._componentValues[idx] is None or not self._componentValues[idx].isValue:
+                if (not self._componentValues or
+                        self._componentValues[idx] is None or
+                        not self._componentValues[idx].isValue):
                     return False
 
         else:
@@ -2262,14 +2327,14 @@ class SequenceAndSetBase(base.AbstractConstructedAsn1Item):
 class Sequence(SequenceAndSetBase):
     __doc__ = SequenceAndSetBase.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
         tag.Tag(tag.tagClassUniversal, tag.tagFormatConstructed, 0x10)
     )
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -2299,7 +2364,7 @@ class Sequence(SequenceAndSetBase):
 class Set(SequenceAndSetBase):
     __doc__ = SequenceAndSetBase.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.initTagSet(
@@ -2310,7 +2375,7 @@ class Set(SequenceAndSetBase):
     #: object representing ASN.1 type allowed within |ASN.1| type
     componentType = namedtype.NamedTypes()
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -2410,7 +2475,7 @@ class Set(SequenceAndSetBase):
 class Choice(Set):
     __doc__ = Set.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.TagSet()  # untagged
@@ -2419,7 +2484,7 @@ class Choice(Set):
     #: object representing ASN.1 type allowed within |ASN.1| type
     componentType = namedtype.NamedTypes()
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()
@@ -2660,12 +2725,12 @@ class Choice(Set):
 class Any(OctetString):
     __doc__ = OctetString.__doc__
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.tag.TagSet` object representing ASN.1 tag(s)
     #: associated with |ASN.1| type.
     tagSet = tag.TagSet()  # untagged
 
-    #: Set (class attribute) or return (class or instance attribute) a
+    #: Set (on class, not on instance) or return a
     #: :py:class:`~pyasn1.type.constraint.ConstraintsIntersection` object
     #: imposing constraints on |ASN.1| type initialization values.
     subtypeSpec = constraint.ConstraintsIntersection()

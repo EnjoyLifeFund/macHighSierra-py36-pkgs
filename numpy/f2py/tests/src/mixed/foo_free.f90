@@ -1,8 +1,1 @@
-module foo_free
-contains
-  subroutine bar13(a)
-    !f2py intent(out) a
-    integer a
-    a = 13
-  end subroutine bar13
-end module foo_free
+../../../../../../../../Cellar/numpy/1.13.1_1/lib/python3.6/site-packages/numpy/f2py/tests/src/mixed/foo_free.f90

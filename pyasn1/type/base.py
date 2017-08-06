@@ -85,12 +85,7 @@ class Asn1ItemBase(Asn1Item):
     def tagMap(self):
         """Return a :class:`~pyasn1.type.tagmap.TagMap` object mapping ASN.1 tags to ASN.1 objects within callee object.
         """
-        try:
-            return self._tagMap
-
-        except AttributeError:
-            self._tagMap = tagmap.TagMap({self.tagSet: self})
-            return self._tagMap
+        return tagmap.TagMap({self.tagSet: self})
 
     def isSameTypeWith(self, other, matchTags=True, matchConstraints=True):
         """Examine |ASN.1| type for equality with other ASN.1 type.
@@ -235,7 +230,6 @@ class AbstractSimpleAsn1Item(Asn1ItemBase):
                 exType, exValue, exTb = sys.exc_info()
                 raise exType('%s at %s' % (exValue, self.__class__.__name__))
 
-        self.__hashedValue = None
         self._value = value
         self._len = None
 
@@ -278,20 +272,14 @@ class AbstractSimpleAsn1Item(Asn1ItemBase):
             return self._value and True or False
 
     def __hash__(self):
-        if self.__hashedValue is None:
-            self.__hashedValue = hash(self._value)
-        return self.__hashedValue
+        return hash(self._value)
 
     @property
     def isValue(self):
         """Indicate if |ASN.1| object represents ASN.1 type or ASN.1 value.
 
-        The PyASN1 type objects can only participate in types comparison
-        and serve as a blueprint for serialization codecs to resolve
-        ambiguous types.
-
-        The PyASN1 value objects can additionally participate in most
-        of built-in Python operations.
+        In other words, if *isValue* is `True`, then the ASN.1 object is
+        initialized.
 
         Returns
         -------
@@ -299,6 +287,15 @@ class AbstractSimpleAsn1Item(Asn1ItemBase):
             :class:`True` if object represents ASN.1 value and type,
             :class:`False` if object represents just ASN.1 type.
 
+        Note
+        ----
+        There is an important distinction between PyASN1 type and value objects.
+        The PyASN1 type objects can only participate in ASN.1 type
+        operations (subtyping, comparison etc) and serve as a
+        blueprint for serialization codecs to resolve ambiguous types.
+
+        The PyASN1 value objects can additionally participate in most
+        of built-in Python operations.
         """
         return self._value is not noValue
 
