@@ -4,8 +4,12 @@ import time as _time
 import platform as _platform
 if _platform.system() == 'Windows':
     from. import _winmouse as _os_mouse
-else:
+elif _platform.system() == 'Linux':
     from. import _nixmouse as _os_mouse
+elif _platform.system() == 'Darwin':
+    from. import _darwinmouse as _os_mouse
+else:
+    raise OSError("Unsupported platform '{}'".format(_platform.system()))
 
 from ._mouse_event import ButtonEvent, MoveEvent, WheelEvent, LEFT, RIGHT, MIDDLE, X, X2, UP, DOWN, DOUBLE
 from ._generic import GenericListener as _GenericListener
@@ -20,7 +24,6 @@ class _MouseListener(_GenericListener):
                 _pressed_events.discard(event.button)
             else:
                 _pressed_events.add(event.button)
-
         return True
 
     def listen(self):
@@ -92,6 +95,19 @@ def move(x, y, absolute=True, duration=0):
                 _time.sleep(duration/steps)
     else:
         _os_mouse.move_to(x, y)
+
+def drag(start_x, start_y, end_x, end_y, absolute=True, duration=0):
+    """
+    Holds the left mouse button, moving from start to end position, then
+    releases. `absolute` and `duration` are parameters regarding the mouse
+    movement.
+    """
+    if is_pressed():
+        release()
+    move(start_x, start_y, absolute, 0)
+    press()
+    move(end_x, end_y, absolute, duration)
+    release()
 
 def on_button(callback, args=(), buttons=(LEFT, MIDDLE, RIGHT, X, X2), types=(UP, DOWN, DOUBLE)):
     """ Invokes `callback` with `args` when the specified event happens. """
@@ -205,6 +221,7 @@ def play(events, speed_factor=1.0, include_clicks=True, include_moves=True, incl
             _os_mouse.wheel(event.delta)
 
 replay = play
+hold = press
 
 if __name__ == '__main__':
     print('Recording... Double click to stop and replay.')

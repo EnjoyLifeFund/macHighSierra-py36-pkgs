@@ -1,7 +1,7 @@
 """
 Support for playing AudioSegments. Pyaudio will be used if it's installed,
 otherwise will fallback to ffplay. Pyaudio is a *much* nicer solution, but
-is tricky to install. See my notes on installing pyaudio in a virtualenv (on 
+is tricky to install. See my notes on installing pyaudio in a virtualenv (on
 OSX 10.10): https://gist.github.com/jiaaro/9767512210a1d80a8a0d
 """
 
@@ -16,14 +16,14 @@ PLAYER = get_player_name()
 def _play_with_ffplay(seg):
     with NamedTemporaryFile("w+b", suffix=".wav") as f:
         seg.export(f.name, "wav")
-        subprocess.call([PLAYER, "-nodisp", "-autoexit", f.name])
+        subprocess.call([PLAYER, "-nodisp", "-autoexit", "-hide_banner", f.name])
 
 
 def _play_with_pyaudio(seg):
     import pyaudio
 
     p = pyaudio.PyAudio()
-    stream = p.open(format=p.get_format_from_width(seg.sample_width),  
+    stream = p.open(format=p.get_format_from_width(seg.sample_width),
                     channels=seg.channels,
                     rate=seg.frame_rate,
                     output=True)
@@ -32,10 +32,10 @@ def _play_with_pyaudio(seg):
     for chunk in make_chunks(seg, 500):
         stream.write(chunk._data)
 
-    stream.stop_stream()  
-    stream.close()  
+    stream.stop_stream()
+    stream.close()
 
-    p.terminate()  
+    p.terminate()
 
 
 def play(audio_segment):
