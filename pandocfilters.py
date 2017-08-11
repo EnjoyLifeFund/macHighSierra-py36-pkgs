@@ -102,7 +102,7 @@ def walk(x, action, format, meta):
       list is merged with the neighbors of the orignal objects (spliced into
       the list the original object belongs to); returning an empty list deletes
       the object
-"""
+    """
     if isinstance(x, list):
         array = []
         for item in x:
@@ -245,7 +245,7 @@ def elt(eltType, numargs):
         elif len(args) == 1:
             xs = args[0]
         else:
-            xs = args
+            xs = list(args)
         return {'t': eltType, 'c': xs}
     return fun
 

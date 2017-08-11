@@ -11,7 +11,7 @@ from setuptools.extern import six
 from setuptools.extern.six.moves import map, filter
 
 from pkg_resources import (resource_listdir, resource_exists, normalize_path,
-                           working_set, _namespace_packages, evaluate_marker,
+                           working_set, _namespace_packages,
                            add_activation_listener, require, EntryPoint)
 from setuptools import Command
 from setuptools.py31compat import unittest_main
@@ -67,7 +67,7 @@ class test(Command):
     user_options = [
         ('test-module=', 'm', "Run 'test_suite' in specified module"),
         ('test-suite=', 's',
-         "Run single test, case or suite (e.g. 'module.test_suite')"),
+         "Test suite to run (e.g. 'some_module.test_suite')"),
         ('test-runner=', 'r', "Test runner to use"),
     ]
 
@@ -191,13 +191,9 @@ class test(Command):
         Install the requirements indicated by self.distribution and
         return an iterable of the dists that were built.
         """
-        ir_d = dist.fetch_build_eggs(dist.install_requires)
+        ir_d = dist.fetch_build_eggs(dist.install_requires or [])
         tr_d = dist.fetch_build_eggs(dist.tests_require or [])
-        er_d = dist.fetch_build_eggs(
-            v for k, v in dist.extras_require.items()
-            if k.startswith(':') and evaluate_marker(k[1:])
-        )
-        return itertools.chain(ir_d, tr_d, er_d)
+        return itertools.chain(ir_d, tr_d)
 
     def run(self):
         installed_dists = self.install_dists(self.distribution)

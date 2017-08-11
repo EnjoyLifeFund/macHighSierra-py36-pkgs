@@ -1,6 +1,6 @@
 # This file is created by Homebrew and is executed on each python startup.
 # Don't print from here, or else python command line scripts may fail!
-# <http://docs.brew.sh/Homebrew-and-Python.html>
+# <https://docs.brew.sh/Homebrew-and-Python.html>
 import re
 import os
 import sys

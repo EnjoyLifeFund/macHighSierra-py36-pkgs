@@ -47,22 +47,11 @@ class DjangoModelWriter(SheetWriter):
 
     def close(self):
         if self.__bulk_save:
-            try:
-                self.__model.objects.bulk_create(
-                    self.__objs, batch_size=self.__batch_size)
-            except Exception as bulk_create_exception:
-                log.info(constants.MESSAGE_DB_EXCEPTION)
-                log.exception(bulk_create_exception)
-                raise
-
+            self.__model.objects.bulk_create(
+                self.__objs, batch_size=self.__batch_size)
         else:
             for an_object in self.__objs:
-                try:
-                    an_object.save()
-                except Exception as single_save_exception:
-                    log.info(constants.MESSAGE_IGNORE_ROW)
-                    log.exception(single_save_exception)
-                    raise
+                an_object.save()
 
 
 class DjangoBookWriter(BookWriter):
@@ -82,4 +71,6 @@ class DjangoBookWriter(BookWriter):
             sheet_writer = DjangoModelWriter(
                 self.__importer, model,
                 batch_size=self._keywords.get('batch_size', None))
+        else:
+            raise Exception("No django model found!")
         return sheet_writer

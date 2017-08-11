@@ -116,7 +116,9 @@ class PoolAddParameter(Model):
     :type certificate_references: list of :class:`CertificateReference
      <azure.batch.models.CertificateReference>`
     :param application_package_references: The list of application packages to
-     be installed on each compute node in the pool.
+     be installed on each compute node in the pool. This property is currently
+     not supported on pools created using the virtualMachineConfiguration
+     (IaaS) property.
     :type application_package_references: list of
      :class:`ApplicationPackageReference
      <azure.batch.models.ApplicationPackageReference>`
