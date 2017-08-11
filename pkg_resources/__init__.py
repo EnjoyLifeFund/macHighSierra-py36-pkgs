@@ -37,6 +37,7 @@ import email.parser
 import tempfile
 import textwrap
 import itertools
+import inspect
 from pkgutil import get_importer
 
 try:
@@ -67,12 +68,14 @@ try:
 except ImportError:
     importlib_machinery = None
 
+from . import py31compat
 from pkg_resources.extern import appdirs
 from pkg_resources.extern import packaging
 __import__('pkg_resources.extern.packaging.version')
 __import__('pkg_resources.extern.packaging.specifiers')
 __import__('pkg_resources.extern.packaging.requirements')
 __import__('pkg_resources.extern.packaging.markers')
+
 
 if (3, 0) < sys.version_info < (3, 3):
     raise RuntimeError("Python 3.3 or later is required")
@@ -786,7 +789,7 @@ class WorkingSet(object):
         self._added_new(dist)
 
     def resolve(self, requirements, env=None, installer=None,
-            replace_conflicting=False):
+                replace_conflicting=False, extras=None):
         """List all distributions needed to (recursively) meet `requirements`
 
         `requirements` must be a sequence of ``Requirement`` objects.  `env`,
@@ -802,6 +805,12 @@ class WorkingSet(object):
         the wrong version.  Otherwise, if an `installer` is supplied it will be
         invoked to obtain the correct version of the requirement and activate
         it.
+
+        `extras` is a list of the extras to be used with these requirements.
+        This is important because extra requirements may look like `my_req;
+        extra = "my_extra"`, which would otherwise be interpreted as a purely
+        optional requirement.  Instead, we want to be able to assert that these
+        requirements are truly required.
         """
 
         # set up the stack
@@ -825,7 +834,7 @@ class WorkingSet(object):
                 # Ignore cyclic or redundant dependencies
                 continue
 
-            if not req_extras.markers_pass(req):
+            if not req_extras.markers_pass(req, extras):
                 continue
 
             dist = best.get(req.key)
@@ -1004,7 +1013,7 @@ class _ReqExtras(dict):
     Map each requirement to the extras that demanded it.
     """
 
-    def markers_pass(self, req):
+    def markers_pass(self, req, extras=None):
         """
         Evaluate markers for req against each extra that
         demanded it.
@@ -1014,7 +1023,7 @@ class _ReqExtras(dict):
         """
         extra_evals = (
             req.marker.evaluate({'extra': extra})
-            for extra in self.get(req, ()) + (None,)
+            for extra in self.get(req, ()) + (extras or (None,))
         )
         return not req.marker or any(extra_evals)
 
@@ -1544,7 +1553,7 @@ class EggProvider(NullProvider):
         path = self.module_path
         old = None
         while path != old:
-            if _is_unpacked_egg(path):
+            if _is_egg_path(path):
                 self.egg_name = os.path.basename(path)
                 self.egg_info = os.path.join(path, 'EGG-INFO')
                 self.egg_root = path
@@ -1947,10 +1956,16 @@ def find_eggs_in_zip(importer, path_item, only=False):
         # don't yield nested distros
         return
     for subitem in metadata.resource_listdir('/'):
-        if _is_unpacked_egg(subitem):
+        if _is_egg_path(subitem):
             subpath = os.path.join(path_item, subitem)
             for dist in find_eggs_in_zip(zipimport.zipimporter(subpath), subpath):
                 yield dist
+        elif subitem.lower().endswith('.dist-info'):
+            subpath = os.path.join(path_item, subitem)
+            submeta = EggMetadata(zipimport.zipimporter(subpath))
+            submeta.egg_info = subpath
+            yield Distribution.from_location(path_item, subitem, submeta)
+
 
 
 register_finder(zipimport.zipimporter, find_eggs_in_zip)
@@ -2018,7 +2033,7 @@ def find_on_path(importer, path_item, only=False):
                     yield Distribution.from_location(
                         path_item, entry, metadata, precedence=DEVELOP_DIST
                     )
-                elif not only and _is_unpacked_egg(entry):
+                elif not only and _is_egg_path(entry):
                     dists = find_distributions(os.path.join(path_item, entry))
                     for dist in dists:
                         yield dist
@@ -2206,12 +2221,22 @@ def _normalize_cached(filename, _cache={}):
         return result
 
 
+def _is_egg_path(path):
+    """
+    Determine if given path appears to be an egg.
+    """
+    return (
+        path.lower().endswith('.egg')
+    )
+
+
 def _is_unpacked_egg(path):
     """
     Determine if given path appears to be an unpacked egg.
     """
     return (
-        path.lower().endswith('.egg')
+        _is_egg_path(path) and
+        os.path.isfile(os.path.join(path, 'EGG-INFO', 'PKG-INFO'))
     )
 
 
@@ -2303,8 +2328,14 @@ class EntryPoint(object):
     def require(self, env=None, installer=None):
         if self.extras and not self.dist:
             raise UnknownExtra("Can't require() without a distribution", self)
+
+        # Get the requirements for this entry point with all its extras and
+        # then resolve them. We have to pass `extras` along when resolving so
+        # that the working set knows what extras we want. Otherwise, for
+        # dist-info distributions, the working set will assume that the
+        # requirements for that extra are purely optional and skip over them.
         reqs = self.dist.requires(self.extras)
-        items = working_set.resolve(reqs, env, installer)
+        items = working_set.resolve(reqs, env, installer, extras=self.extras)
         list(map(working_set.add, items))
 
     pattern = re.compile(
@@ -2919,20 +2950,20 @@ class Requirement(packaging.requirements.Requirement):
         return req
 
 
-def _get_mro(cls):
-    """Get an mro for a type or classic class"""
-    if not isinstance(cls, type):
-
-        class cls(cls, object):
-            pass
-
-        return cls.__mro__[1:]
-    return cls.__mro__
+def _always_object(classes):
+    """
+    Ensure object appears in the mro even
+    for old-style classes.
+    """
+    if object not in classes:
+        return classes + (object,)
+    return classes
 
 
 def _find_adapter(registry, ob):
     """Return an adapter factory for `ob` from `registry`"""
-    for t in _get_mro(getattr(ob, '__class__', type(ob))):
+    types = _always_object(inspect.getmro(getattr(ob, '__class__', type(ob))))
+    for t in types:
         if t in registry:
             return registry[t]
 
@@ -2940,8 +2971,7 @@ def _find_adapter(registry, ob):
 def ensure_directory(path):
     """Ensure that the parent directory of `path` exists"""
     dirname = os.path.dirname(path)
-    if not os.path.isdir(dirname):
-        os.makedirs(dirname)
+    py31compat.makedirs(dirname, exist_ok=True)
 
 
 def _bypass_ensure_directory(path):
