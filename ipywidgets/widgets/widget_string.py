@@ -6,7 +6,7 @@
 Represents a unicode string using a widget.
 """
 
-from .domwidget import LabeledWidget
+from .widget_description import DescriptionWidget
 from .valuewidget import ValueWidget
 from .widget import CallbackDispatcher, register
 from .widget_core import CoreWidget
@@ -14,14 +14,10 @@ from traitlets import Unicode, Bool, Int
 from warnings import warn
 
 
-class _String(LabeledWidget, ValueWidget, CoreWidget):
+class _String(DescriptionWidget, ValueWidget, CoreWidget):
     """Base class used to create widgets that represent a string."""
 
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
-
     value = Unicode(help="String value").tag(sync=True)
-    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
 
     # We set a zero-width space as a default placeholder to make sure the baseline matches
     # the text, not the bottom margin. See the last paragraph of
@@ -37,20 +33,20 @@ class _String(LabeledWidget, ValueWidget, CoreWidget):
     _model_name = Unicode('StringModel').tag(sync=True)
 
 
-@register('Jupyter.HTML')
+@register
 class HTML(_String):
     """Renders the string `value` as HTML."""
     _view_name = Unicode('HTMLView').tag(sync=True)
     _model_name = Unicode('HTMLModel').tag(sync=True)
 
-@register('Jupyter.HTMLMath')
+@register
 class HTMLMath(_String):
     """Renders the string `value` as HTML, and render mathematics."""
     _view_name = Unicode('HTMLMathView').tag(sync=True)
     _model_name = Unicode('HTMLMathModel').tag(sync=True)
 
 
-@register('Jupyter.Label')
+@register
 class Label(_String):
     """Label widget.
 
@@ -61,22 +57,22 @@ class Label(_String):
     _model_name = Unicode('LabelModel').tag(sync=True)
 
 
-@register('Jupyter.Textarea')
+@register
 class Textarea(_String):
     """Multiline text area widget."""
     _view_name = Unicode('TextareaView').tag(sync=True)
     _model_name = Unicode('TextareaModel').tag(sync=True)
-    rows = Int(None, allow_none=True).tag(sync=True)
+    rows = Int(None, allow_none=True, help="The number of rows to display.").tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+    continuous_update = Bool(True, help="Update the value as the user types. If False, update on submission, e.g., pressing Enter or navigating away.").tag(sync=True)
 
-    def scroll_to_bottom(self):
-        self.send({"method": "scroll_to_bottom"})
-
-
-@register('Jupyter.Text')
+@register
 class Text(_String):
     """Single line textbox widget."""
     _view_name = Unicode('TextView').tag(sync=True)
     _model_name = Unicode('TextModel').tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+    continuous_update = Bool(True, help="Update the value as the user types. If False, update on submission, e.g., pressing Enter or navigating away.").tag(sync=True)
 
     def __init__(self, *args, **kwargs):
         super(Text, self).__init__(*args, **kwargs)
@@ -106,4 +102,21 @@ class Text(_String):
         remove: bool (optional)
             Whether to unregister the callback
         """
+        import warnings
+        warnings.warn("on_submit is deprecated. Instead, set the .continuous_update attribute to False and observe the value changing with: mywidget.observe(callback, 'value').", DeprecationWarning)
         self._submission_callbacks.register_callback(callback, remove=remove)
+
+
+@register
+class Password(Text):
+    """Single line textbox widget."""
+    _view_name = Unicode('PasswordView').tag(sync=True)
+    _model_name = Unicode('PasswordModel').tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+
+    def _repr_keys(self):
+        # Don't include password value in repr!
+        super_keys = super(Password, self)._repr_keys()
+        for key in super_keys:
+            if key != 'value':
+                yield key

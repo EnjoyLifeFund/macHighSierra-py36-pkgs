@@ -6,13 +6,12 @@
 Represents an unbounded int using a widget.
 """
 
-from .domwidget import LabeledWidget
+from .widget_description import DescriptionWidget, DescriptionStyle
 from .valuewidget import ValueWidget
 from .widget import register, widget_serialization
 from .widget_core import CoreWidget
-from .widget_style import Style
 from traitlets import Instance
-from .trait_types import Color
+from .trait_types import Color, InstanceDict, NumberFormat
 from traitlets import (
     Unicode, CInt, Bool, CaselessStrEnum, Tuple, TraitError, default, validate
 )
@@ -66,13 +65,9 @@ def _bounded_int_doc(cls):
     return cls
 
 
-class _Int(LabeledWidget, ValueWidget, CoreWidget):
+class _Int(DescriptionWidget, ValueWidget, CoreWidget):
     """Base class for widgets that represent an integer."""
     value = CInt(0, help="Int value").tag(sync=True)
-    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
-
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
 
     def __init__(self, value=None, **kwargs):
         if value is not None:
@@ -83,7 +78,6 @@ class _Int(LabeledWidget, ValueWidget, CoreWidget):
 class _BoundedInt(_Int):
     """Base class for widgets that represent an integer bounded from above and below.
     """
-    step = CInt(1, help="Minimum step to increment the value (ignored by some views)").tag(sync=True)
     max = CInt(100, help="Max value").tag(sync=True)
     min = CInt(0, help="Min value").tag(sync=True)
 
@@ -126,66 +120,69 @@ class _BoundedInt(_Int):
             self.value = max
         return max
 
-@register('Jupyter.IntText')
+@register
 @_int_doc
 class IntText(_Int):
     """Textbox widget that represents an integer."""
     _view_name = Unicode('IntTextView').tag(sync=True)
     _model_name = Unicode('IntTextModel').tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+    continuous_update = Bool(False, help="Update the value as the user types. If False, update on submission, e.g., pressing Enter or navigating away.").tag(sync=True)
+    step = CInt(1, help="Minimum step to increment the value").tag(sync=True)
 
 
-@register('Jupyter.BoundedIntText')
+@register
 @_bounded_int_doc
 class BoundedIntText(_BoundedInt):
     """Textbox widget that represents an integer bounded from above and below.
     """
     _view_name = Unicode('IntTextView').tag(sync=True)
-    _model_name = Unicode('IntTextModel').tag(sync=True)
+    _model_name = Unicode('BoundedIntTextModel').tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+    continuous_update = Bool(False, help="Update the value as the user types. If False, update on submission, e.g., pressing Enter or navigating away.").tag(sync=True)
+    step = CInt(1, help="Minimum step to increment the value").tag(sync=True)
 
 
-@register('Jupyter.SliderStyle')
-class SliderStyle(Style, CoreWidget):
+@register
+class SliderStyle(DescriptionStyle, CoreWidget):
     """Button style widget."""
     _model_name = Unicode('SliderStyleModel').tag(sync=True)
-    handle_color = Color(None, allow_none=True).tag(sync=True)
+    handle_color = Color(None, allow_none=True, help="Color of the slider handle.").tag(sync=True)
 
 
-@register('Jupyter.IntSlider')
+@register
 @_bounded_int_doc
 class IntSlider(_BoundedInt):
     """Slider widget that represents an integer bounded from above and below.
     """
     _view_name = Unicode('IntSliderView').tag(sync=True)
     _model_name = Unicode('IntSliderModel').tag(sync=True)
+    step = CInt(1, help="Minimum step to increment the value").tag(sync=True)
     orientation = CaselessStrEnum(values=['horizontal', 'vertical'],
         default_value='horizontal', help="Vertical or horizontal.").tag(sync=True)
-    _range = Bool(False, help="Display a range selector").tag(sync=True)
     readout = Bool(True, help="Display the current value of the slider next to it.").tag(sync=True)
-    readout_format = Unicode('d', help="Format for the readout").tag(sync=True)
+    readout_format = NumberFormat(
+        'd', help="Format for the readout").tag(sync=True)
     continuous_update = Bool(True, help="Update the value of the widget as the user is holding the slider.").tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
 
-    style = Instance(SliderStyle).tag(sync=True, **widget_serialization)
-
-    @default('style')
-    def _default_style(self):
-        return SliderStyle()
+    style = InstanceDict(SliderStyle).tag(sync=True, **widget_serialization)
 
 
-@register('Jupyter.ProgressStyle')
-class ProgressStyle(Style, CoreWidget):
+@register
+class ProgressStyle(DescriptionStyle, CoreWidget):
     """Button style widget."""
     _model_name = Unicode('ProgressStyleModel').tag(sync=True)
-    bar_color = Color(None, allow_none=True).tag(sync=True)
+    bar_color = Color(None, allow_none=True, help="Color of the progress bar.").tag(sync=True)
 
 
-@register('Jupyter.IntProgress')
+@register
 @_bounded_int_doc
 class IntProgress(_BoundedInt):
     """Progress bar that represents an integer bounded from above and below.
     """
     _view_name = Unicode('ProgressView').tag(sync=True)
-    _model_name = Unicode('ProgressModel').tag(sync=True)
-
+    _model_name = Unicode('IntProgressModel').tag(sync=True)
     orientation = CaselessStrEnum(values=['horizontal', 'vertical'],
         default_value='horizontal', help="Vertical or horizontal.").tag(sync=True)
 
@@ -193,11 +190,7 @@ class IntProgress(_BoundedInt):
         values=['success', 'info', 'warning', 'danger', ''], default_value='',
         help="""Use a predefined styling for the progess bar.""").tag(sync=True)
 
-    style = Instance(ProgressStyle).tag(sync=True, **widget_serialization)
-
-    @default('style')
-    def _default_style(self):
-        return ProgressStyle()
+    style = InstanceDict(ProgressStyle).tag(sync=True, **widget_serialization)
 
 
 class _IntRange(_Int):
@@ -227,9 +220,22 @@ class _IntRange(_Int):
             raise TraitError('setting lower > upper')
         return lower, upper
 
+@register
+class Play(_BoundedInt):
+    """Play/repeat buttons to step through values automatically, and optionally loop.
+    """
+    interval = CInt(100, help="The maximum value for the play control.").tag(sync=True)
+    step = CInt(1, help="Increment step").tag(sync=True)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)
+
+    _view_name = Unicode('PlayView').tag(sync=True)
+    _model_name = Unicode('PlayModel').tag(sync=True)
+
+    _playing = Bool(help="Whether the control is currently playing.").tag(sync=True)
+    _repeat = Bool(help="Whether the control will repeat in a continous loop.").tag(sync=True)
+    show_repeat = Bool(True, help="Show the repeat toggle button in the widget.").tag(sync=True)
 
 class _BoundedIntRange(_IntRange):
-    step = CInt(1, help="Minimum step that the value can take (ignored by some views)").tag(sync=True)
     max = CInt(100, help="Max value").tag(sync=True)
     min = CInt(0, help="Min value").tag(sync=True)
 
@@ -262,7 +268,7 @@ class _BoundedIntRange(_IntRange):
         return lower, upper
 
 
-@register('Jupyter.IntRangeSlider')
+@register
 class IntRangeSlider(_BoundedIntRange):
     """Slider/trackbar that represents a pair of ints bounded by minimum and maximum value.
 
@@ -275,23 +281,14 @@ class IntRangeSlider(_BoundedIntRange):
     max : int
         The highest allowed value for `upper`
     """
-    _view_name = Unicode('IntSliderView').tag(sync=True)
-    _model_name = Unicode('IntSliderModel').tag(sync=True)
+    _view_name = Unicode('IntRangeSliderView').tag(sync=True)
+    _model_name = Unicode('IntRangeSliderModel').tag(sync=True)
+    step = CInt(1, help="Minimum step that the value can take").tag(sync=True)
     orientation = CaselessStrEnum(values=['horizontal', 'vertical'],
         default_value='horizontal', help="Vertical or horizontal.").tag(sync=True)
-    _range = Bool(True, help="Display a range selector").tag(sync=True)
     readout = Bool(True, help="Display the current value of the slider next to it.").tag(sync=True)
-    slider_color = Color(None, allow_none=True).tag(sync=True)
+    readout_format = NumberFormat(
+        'd', help="Format for the readout").tag(sync=True)
     continuous_update = Bool(True, help="Update the value of the widget as the user is sliding the slider.").tag(sync=True)
-
-
-@register('Jupyter.Play')
-class Play(_BoundedInt):
-    interval = CInt(100).tag(sync=True)
-
-    _view_name = Unicode('PlayView').tag(sync=True)
-    _model_name = Unicode('PlayModel').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-
-    _playing = Bool().tag(sync=True)
+    style = InstanceDict(SliderStyle, help="Slider style customizations.").tag(sync=True, **widget_serialization)
+    disabled = Bool(False, help="Enable or disable user changes").tag(sync=True)

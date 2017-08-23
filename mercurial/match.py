@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import copy
 import os
@@ -362,6 +362,9 @@ class nevermatcher(basematcher):
 
     def prefix(self):
         return True
+
+    def visitdir(self, dir):
+        return False
 
     def __repr__(self):
         return '<nevermatcher>'
@@ -1004,7 +1007,7 @@ def readpatternfile(filepath, warn, sourceinfo=False):
             continue
 
         linesyntax = syntax
-        for s, rels in syntaxes.items():
+        for s, rels in syntaxes.iteritems():
             if line.startswith(rels):
                 linesyntax = rels
                 line = line[len(rels):]

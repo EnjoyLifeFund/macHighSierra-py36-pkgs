@@ -5,14 +5,13 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 from .i18n import _
 from . import (
     error,
     pycompat,
 )
-import collections
 
 # Set of flags to not apply boolean negation logic on
 nevernegate = {
@@ -96,7 +95,7 @@ def fancyopts(args, options, state, gnu=False):
         # copy defaults to state
         if isinstance(default, list):
             state[name] = default[:]
-        elif isinstance(default, collections.Callable):
+        elif callable(default):
             state[name] = None
         else:
             state[name] = default
@@ -141,7 +140,7 @@ def fancyopts(args, options, state, gnu=False):
         name = argmap[opt]
         obj = defmap[name]
         t = type(obj)
-        if isinstance(obj, collections.Callable):
+        if callable(obj):
             state[name] = defmap[name](val)
         elif t is type(1):
             try:

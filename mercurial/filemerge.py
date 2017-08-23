@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import filecmp
 import os
@@ -202,8 +202,8 @@ def _picktool(repo, ui, path, binary, symlink, changedelete):
             tools[t] = int(_toolstr(ui, t, "priority", "0"))
         if _toolbool(ui, t, "disabled", False):
             disabled.add(t)
-    names = list(tools.keys())
-    tools = sorted([(-p, tool) for tool, p in list(tools.items())
+    names = tools.keys()
+    tools = sorted([(-p, tool) for tool, p in tools.items()
                     if tool not in disabled])
     uimerge = ui.config("ui", "merge")
     if uimerge:
@@ -744,4 +744,4 @@ def filemerge(repo, mynode, orig, fcd, fco, fca, labels=None):
     return _filemerge(False, repo, mynode, orig, fcd, fco, fca, labels=labels)
 
 # tell hggettext to extract docstrings from these functions:
-i18nfunctions = list(internals.values())
+i18nfunctions = internals.values()

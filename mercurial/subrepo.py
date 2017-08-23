@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import copy
 import errno
@@ -143,7 +143,7 @@ def state(ctx, ui):
         return src
 
     state = {}
-    for path, src in list(p[''].items()):
+    for path, src in p[''].items():
         kind = 'hg'
         if src.startswith('['):
             if ']' not in src:
@@ -196,7 +196,7 @@ def submerge(repo, wctx, mctx, actx, overwrite, labels=None):
         repo.ui.debug("  subrepo %s: %s %s\n" % (s, msg, r))
 
     promptssrc = filemerge.partextras(labels)
-    for s, l in sorted(s1.items()):
+    for s, l in sorted(s1.iteritems()):
         prompts = None
         a = sa.get(s, nullstate)
         ld = l # local state with possible dirty flag for compares
@@ -979,7 +979,7 @@ class hgsubrepo(abstractsubrepo):
     def files(self):
         rev = self._state[1]
         ctx = self._repo[rev]
-        return list(ctx.manifest().keys())
+        return ctx.manifest().keys()
 
     def filedata(self, name, decode):
         rev = self._state[1]
@@ -1281,6 +1281,10 @@ class svnsubrepo(abstractsubrepo):
         # The revision must be specified at the end of the URL to properly
         # update to a directory which has since been deleted and recreated.
         args.append('%s@%s' % (state[0], state[1]))
+
+        # SEC: check that the ssh url is safe
+        util.checksafessh(state[0])
+
         status, err = self._svncommand(args, failok=True)
         _sanitize(self.ui, self.wvfs, '.svn')
         if not re.search('Checked out revision [0-9]+.', status):
@@ -1546,6 +1550,9 @@ class gitsubrepo(abstractsubrepo):
 
     def _fetch(self, source, revision):
         if self._gitmissing():
+            # SEC: check for safe ssh url
+            util.checksafessh(source)
+
             source = self._abssource(source)
             self.ui.status(_('cloning subrepo %s from %s\n') %
                             (self._relpath, source))
@@ -1635,7 +1642,7 @@ class gitsubrepo(abstractsubrepo):
             checkout([firstlocalbranch])
             return
 
-        tracking = self._gittracking(list(branch2rev.keys()))
+        tracking = self._gittracking(branch2rev.keys())
         # choose a remote branch already tracked if possible
         remote = branches[0]
         if remote not in tracking:
@@ -1719,7 +1726,7 @@ class gitsubrepo(abstractsubrepo):
             for b in rev2branch[self._state[1]]:
                 if b.startswith('refs/remotes/origin/'):
                     return True
-        for b, revision in branch2rev.items():
+        for b, revision in branch2rev.iteritems():
             if b.startswith('refs/remotes/origin/'):
                 if self._gitisancestor(self._state[1], revision):
                     return True

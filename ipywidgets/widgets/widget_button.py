@@ -11,21 +11,21 @@ from .domwidget import DOMWidget
 from .widget import CallbackDispatcher, register, widget_serialization
 from .widget_core import CoreWidget
 from .widget_style import Style
-from .trait_types import Color
+from .trait_types import Color, InstanceDict
 
 from traitlets import Unicode, Bool, CaselessStrEnum, Instance, validate, default
 import warnings
 
 
-@register('Jupyter.ButtonStyle')
+@register
 class ButtonStyle(Style, CoreWidget):
     """Button style widget."""
     _model_name = Unicode('ButtonStyleModel').tag(sync=True)
-    button_color = Color(None, allow_none=True).tag(sync=True)
-    font_weight = Unicode().tag(sync=True)
+    button_color = Color(None, allow_none=True, help="Color of the button").tag(sync=True)
+    font_weight = Unicode(help="Button text font weight.").tag(sync=True)
 
 
-@register('Jupyter.Button')
+@register
 class Button(DOMWidget, CoreWidget):
     """Button widget.
 
@@ -40,9 +40,9 @@ class Button(DOMWidget, CoreWidget):
        tooltip caption of the toggle button
     icon: str
        font-awesome icon name
+    disabled: bool
+       whether user interaction is enabled
     """
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
     _view_name = Unicode('ButtonView').tag(sync=True)
     _model_name = Unicode('ButtonModel').tag(sync=True)
 
@@ -55,11 +55,7 @@ class Button(DOMWidget, CoreWidget):
         values=['primary', 'success', 'info', 'warning', 'danger', ''], default_value='',
         help="""Use a predefined styling for the button.""").tag(sync=True)
 
-    style = Instance(ButtonStyle).tag(sync=True, **widget_serialization)
-
-    @default('style')
-    def _default_style(self):
-        return ButtonStyle()
+    style = InstanceDict(ButtonStyle).tag(sync=True, **widget_serialization)
 
     def __init__(self, **kwargs):
         super(Button, self).__init__(**kwargs)

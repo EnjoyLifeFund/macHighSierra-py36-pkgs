@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 import os
@@ -43,7 +43,6 @@ from . import (
     subrepo,
     util,
 )
-import collections
 
 propertycache = util.propertycache
 
@@ -133,7 +132,7 @@ class basectx(object):
         deleted, unknown, ignored = s.deleted, s.unknown, s.ignored
         deletedset = set(deleted)
         d = mf1.diff(mf2, match=match, clean=listclean)
-        for fn, value in d.items():
+        for fn, value in d.iteritems():
             if fn in deletedset:
                 continue
             if value is None:
@@ -418,7 +417,7 @@ class changectx(basectx):
                 self._node = repo.changelog.node(changeid)
                 self._rev = changeid
                 return
-            if not pycompat.ispy3 and isinstance(changeid, int):
+            if not pycompat.ispy3 and isinstance(changeid, long):
                 changeid = str(changeid)
             if changeid == 'null':
                 self._node = nullid
@@ -515,7 +514,7 @@ class changectx(basectx):
         except AttributeError:
             return id(self)
 
-    def __bool__(self):
+    def __nonzero__(self):
         return self._rev != nullrev
 
     __bool__ = __nonzero__
@@ -699,7 +698,7 @@ class basefilectx(object):
     def _repopath(self):
         return self._path
 
-    def __bool__(self):
+    def __nonzero__(self):
         try:
             self._filenode
             return True
@@ -944,7 +943,7 @@ class basefilectx(object):
 
         if linenumber:
             def decorate(text, rev):
-                return ([(rev, i) for i in range(1, lines(text) + 1)], text)
+                return ([(rev, i) for i in xrange(1, lines(text) + 1)], text)
         else:
             def decorate(text, rev):
                 return ([(rev, False)] * lines(text), text)
@@ -1039,7 +1038,7 @@ class basefilectx(object):
                 hist[f] = curr
                 del pcache[f]
 
-        return list(zip(hist[base][0], hist[base][1].splitlines(True)))
+        return zip(hist[base][0], hist[base][1].splitlines(True))
 
     def ancestors(self, followfirst=False):
         visit = {}
@@ -1150,7 +1149,7 @@ def _annotatepair(parents, childfctx, child, skipchild, diffopts):
         for idx, (parent, blocks) in enumerate(pblocks):
             for (a1, a2, b1, b2), _t in blocks:
                 if a2 - a1 >= b2 - b1:
-                    for bk in range(b1, b2):
+                    for bk in xrange(b1, b2):
                         if child[0][bk][0] == childfctx:
                             ak = min(a1 + (bk - b1), a2 - 1)
                             child[0][bk] = parent[0][ak]
@@ -1161,7 +1160,7 @@ def _annotatepair(parents, childfctx, child, skipchild, diffopts):
         # line.
         for parent, blocks in remaining:
             for a1, a2, b1, b2 in blocks:
-                for bk in range(b1, b2):
+                for bk in xrange(b1, b2):
                     if child[0][bk][0] == childfctx:
                         ak = min(a1 + (bk - b1), a2 - 1)
                         child[0][bk] = parent[0][ak]
@@ -1306,7 +1305,7 @@ class committablectx(basectx):
 
     __str__ = encoding.strmethod(__bytes__)
 
-    def __bool__(self):
+    def __nonzero__(self):
         return True
 
     __bool__ = __nonzero__
@@ -1832,7 +1831,7 @@ class committablefilectx(basefilectx):
         if ctx:
             self._changectx = ctx
 
-    def __bool__(self):
+    def __nonzero__(self):
         return True
 
     __bool__ = __nonzero__
@@ -2062,7 +2061,7 @@ class memctx(committablectx):
 
         if isinstance(filectxfn, patch.filestore):
             filectxfn = memfilefrompatch(filectxfn)
-        elif not isinstance(filectxfn, collections.Callable):
+        elif not callable(filectxfn):
             # if store is not callable, wrap it in a function
             filectxfn = memfilefromctx(filectxfn)
 

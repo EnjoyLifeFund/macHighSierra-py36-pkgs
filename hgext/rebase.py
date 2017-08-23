@@ -14,7 +14,7 @@ For more information:
 https://mercurial-scm.org/wiki/RebaseExtension
 '''
 
-
+from __future__ import absolute_import
 
 import errno
 import os
@@ -177,7 +177,7 @@ class rebaseruntime(object):
         f.write('%d\n' % int(self.keepf))
         f.write('%d\n' % int(self.keepbranchesf))
         f.write('%s\n' % (self.activebookmark or ''))
-        for d, v in self.state.items():
+        for d, v in self.state.iteritems():
             oldrev = repo[d].hex()
             if v >= 0:
                 newrev = repo[v].hex()
@@ -299,8 +299,8 @@ class rebaseruntime(object):
             return abort(self.repo, self.originalwd, self.dest,
                          self.state, activebookmark=self.activebookmark)
 
-        obsrevs = (r for r, st in list(self.state.items()) if st == revprecursor)
-        self._handleskippingobsolete(list(self.state.keys()), obsrevs, self.dest)
+        obsrevs = (r for r, st in self.state.items() if st == revprecursor)
+        self._handleskippingobsolete(self.state.keys(), obsrevs, self.dest)
 
     def _preparenewrebase(self, dest, rebaseset):
         if dest is None:
@@ -373,7 +373,7 @@ class rebaseruntime(object):
         self.storestatus()
 
         sortedrevs = repo.revs('sort(%ld, -topo)', self.state)
-        cands = [k for k, v in self.state.items() if v == revtodo]
+        cands = [k for k, v in self.state.iteritems() if v == revtodo]
         total = len(cands)
         pos = 0
         for rev in sortedrevs:
@@ -472,7 +472,7 @@ class rebaseruntime(object):
                 commitmsg = self.collapsemsg
             else:
                 commitmsg = 'Collapsed revision'
-                for rebased in self.state:
+                for rebased in sorted(self.state):
                     if rebased not in self.skipped and\
                        self.state[rebased] > nullmerge:
                         commitmsg += '\n* %s' % repo[rebased].description()
@@ -489,7 +489,7 @@ class rebaseruntime(object):
                 newrev = self.dest
             else:
                 newrev = repo[newnode].rev()
-            for oldrev in self.state.keys():
+            for oldrev in self.state.iterkeys():
                 if self.state[oldrev] > nullmerge:
                     self.state[oldrev] = newrev
 
@@ -512,7 +512,8 @@ class rebaseruntime(object):
             collapsedas = None
             if self.collapsef:
                 collapsedas = newnode
-            clearrebased(ui, repo, self.state, self.skipped, collapsedas)
+            clearrebased(ui, repo, self.dest, self.state, self.skipped,
+                         collapsedas)
 
         clearstatus(repo)
         clearcollapsemsg(repo)
@@ -774,7 +775,7 @@ def _definesets(ui, repo, destf=None, srcf=None, basef=None, revf=None,
             # emulate the old behavior, showing "nothing to rebase" (a better
             # behavior may be abort with "cannot find branching point" error)
             bpbase.clear()
-        for bp, bs in bpbase.items(): # calculate roots
+        for bp, bs in bpbase.iteritems(): # calculate roots
             roots += list(repo.revs('children(%d) & ancestors(%ld)', bp, bs))
 
         rebaseset = repo.revs('%ld::', roots)
@@ -896,6 +897,58 @@ def rebasenode(repo, rev, p1, base, state, collapse, dest):
         p1rev = repo[rev].p1().rev()
         copies.duplicatecopies(repo, rev, p1rev, skiprev=dest)
     return stats
+
+def adjustdest(repo, rev, dest, state):
+    """adjust rebase destination given the current rebase state
+
+    rev is what is being rebased. Return a list of two revs, which are the
+    adjusted destinations for rev's p1 and p2, respectively. If a parent is
+    nullrev, return dest without adjustment for it.
+
+    For example, when doing rebase -r B+E -d F, rebase will first move B to B1,
+    and E's destination will be adjusted from F to B1.
+
+        B1 <- written during rebasing B
+        |
+        F <- original destination of B, E
+        |
+        | E <- rev, which is being rebased
+        | |
+        | D <- prev, one parent of rev being checked
+        | |
+        | x <- skipped, ex. no successor or successor in (::dest)
+        | |
+        | C
+        | |
+        | B <- rebased as B1
+        |/
+        A
+
+    Another example about merge changeset, rebase -r C+G+H -d K, rebase will
+    first move C to C1, G to G1, and when it's checking H, the adjusted
+    destinations will be [C1, G1].
+
+            H       C1 G1
+           /|       | /
+          F G       |/
+        K | |  ->   K
+        | C D       |
+        | |/        |
+        | B         | ...
+        |/          |/
+        A           A
+    """
+    result = []
+    for prev in repo.changelog.parentrevs(rev):
+        adjusted = dest
+        if prev != nullrev:
+            # pick already rebased revs from state
+            source = [s for s, d in state.items() if d > 0]
+            candidate = repo.revs('max(%ld and (::%d))', source, prev).first()
+            if candidate is not None:
+                adjusted = state[candidate]
+        result.append(adjusted)
+    return result
 
 def nearestrebased(repo, rev, state):
     """return the nearest ancestors of rev in the rebase result"""
@@ -1057,7 +1110,7 @@ def updatemq(repo, state, skipped, **opts):
             skippedpatches.add(p.name)
 
     if mqrebase:
-        mq.finish(repo, list(mqrebase.keys()))
+        mq.finish(repo, mqrebase.keys())
 
         # We must start import from the newest revision
         for rev in sorted(mqrebase, reverse=True):
@@ -1126,7 +1179,7 @@ def needupdate(repo, state):
         return False
 
     # We should be standing on the first as-of-yet unrebased commit.
-    firstunrebased = min([old for old, new in state.items()
+    firstunrebased = min([old for old, new in state.iteritems()
                           if new == nullrev])
     if firstunrebased in parents:
         return True
@@ -1143,7 +1196,7 @@ def abort(repo, originalwd, dest, state, activebookmark=None):
         # If the first commits in the rebased set get skipped during the rebase,
         # their values within the state mapping will be the dest rev id. The
         # dstates list must must not contain the dest rev (issue4896)
-        dstates = [s for s in list(state.values()) if s >= 0 and s != dest]
+        dstates = [s for s in state.values() if s >= 0 and s != dest]
         immutable = [d for d in dstates if not repo[d].mutable()]
         cleanup = True
         if immutable:
@@ -1162,7 +1215,7 @@ def abort(repo, originalwd, dest, state, activebookmark=None):
 
         if cleanup:
             shouldupdate = False
-            rebased = [x for x in list(state.values()) if x >= 0 and x != dest]
+            rebased = filter(lambda x: x >= 0 and x != dest, state.values())
             if rebased:
                 strippoints = [
                         c.node() for c in repo.set('roots(%ld)', rebased)]
@@ -1301,12 +1354,21 @@ def buildstate(repo, dest, rebaseset, collapse, obsoletenotrebased):
             state[r] = revprecursor
     return originalwd, dest.rev(), state
 
-def clearrebased(ui, repo, state, skipped, collapsedas=None):
+def clearrebased(ui, repo, dest, state, skipped, collapsedas=None):
     """dispose of rebased revision at the end of the rebase
 
     If `collapsedas` is not None, the rebase was a collapse whose result if the
     `collapsedas` node."""
     tonode = repo.changelog.node
+    # Move bookmark of skipped nodes to destination. This cannot be handled
+    # by scmutil.cleanupnodes since it will treat rev as removed (no successor)
+    # and move bookmark backwards.
+    bmchanges = [(name, tonode(max(adjustdest(repo, rev, dest, state))))
+                 for rev in skipped
+                 for name in repo.nodebookmarks(tonode(rev))]
+    if bmchanges:
+        with repo.transaction('rebase') as tr:
+            repo._bookmarks.applychanges(repo, tr, bmchanges)
     mapping = {}
     for rev, newrev in sorted(state.items()):
         if newrev >= 0 and newrev != rev:
@@ -1436,7 +1498,7 @@ def _computeobsoletenotrebased(repo, rebaseobsrevs, dest):
             if s in ancs:
                 obsoletenotrebased[allsuccessors[s]] = s
             elif (s == allsuccessors[s] and
-                  list(allsuccessors.values()).count(s) == 1):
+                  allsuccessors.values().count(s) == 1):
                 # plain prune
                 obsoletenotrebased[s] = None
 
@@ -1454,7 +1516,7 @@ def summaryhook(ui, repo):
         msg = _('rebase: (use "hg rebase --abort" to clear broken state)\n')
         ui.write(msg)
         return
-    numrebased = len([i for i in state.values() if i >= 0])
+    numrebased = len([i for i in state.itervalues() if i >= 0])
     # i18n: column positioning for "hg summary"
     ui.write(_('rebase: %s, %s (rebase --continue)\n') %
              (ui.label(_('%d rebased'), 'rebase.rebased') % numrebased,

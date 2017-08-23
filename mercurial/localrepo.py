@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 import hashlib
@@ -339,11 +339,11 @@ class localrepository(object):
         # only used when writing this comment: basectx.match
         self.auditor = pathutil.pathauditor(self.root, self._checknested)
         self.nofsauditor = pathutil.pathauditor(self.root, self._checknested,
-                                                realfs=False)
+                                                realfs=False, cached=True)
         self.baseui = baseui
         self.ui = baseui.copy()
         self.ui.copy = baseui.copy # prevent copying repo configuration
-        self.vfs = vfsmod.vfs(self.path)
+        self.vfs = vfsmod.vfs(self.path, cacheaudited=True)
         if (self.ui.configbool('devel', 'all-warnings') or
             self.ui.configbool('devel', 'check-locks')):
             self.vfs.audit = self._getvfsward(self.vfs.audit)
@@ -426,12 +426,13 @@ class localrepository(object):
                                     '"sparse" extensions to access'))
 
         self.store = store.store(
-                self.requirements, self.sharedpath, vfsmod.vfs)
+            self.requirements, self.sharedpath,
+            lambda base: vfsmod.vfs(base, cacheaudited=True))
         self.spath = self.store.path
         self.svfs = self.store.vfs
         self.sjoin = self.store.join
         self.vfs.createmode = self.store.createmode
-        self.cachevfs = vfsmod.vfs(cachepath)
+        self.cachevfs = vfsmod.vfs(cachepath, cacheaudited=True)
         self.cachevfs.createmode = self.store.createmode
         if (self.ui.configbool('devel', 'all-warnings') or
             self.ui.configbool('devel', 'check-locks')):
@@ -709,7 +710,7 @@ class localrepository(object):
         if isinstance(changeid, slice):
             # wdirrev isn't contiguous so the slice shouldn't include it
             return [context.changectx(self, i)
-                    for i in range(*changeid.indices(len(self)))
+                    for i in xrange(*changeid.indices(len(self)))
                     if i not in self.changelog.filteredrevs]
         try:
             return context.changectx(self, changeid)
@@ -727,7 +728,7 @@ class localrepository(object):
         except error.RepoLookupError:
             return False
 
-    def __bool__(self):
+    def __nonzero__(self):
         return True
 
     __bool__ = __nonzero__
@@ -824,7 +825,7 @@ class localrepository(object):
             tags, tt = self._findtags()
         else:
             tags = self._tagscache.tags
-        for k, v in tags.items():
+        for k, v in tags.iteritems():
             try:
                 # ignore tags to unknown nodes
                 self.changelog.rev(v)
@@ -860,12 +861,12 @@ class localrepository(object):
         # writing to the cache), but the rest of Mercurial wants them in
         # local encoding.
         tags = {}
-        for (name, (node, hist)) in alltags.items():
+        for (name, (node, hist)) in alltags.iteritems():
             if node != nullid:
                 tags[encoding.tolocal(name)] = node
         tags['tip'] = self.changelog.tip()
         tagtypes = dict([(encoding.tolocal(name), value)
-                         for (name, value) in tagtypes.items()])
+                         for (name, value) in tagtypes.iteritems()])
         return (tags, tagtypes)
 
     def tagtype(self, tagname):
@@ -883,7 +884,7 @@ class localrepository(object):
         '''return a list of tags ordered by revision'''
         if not self._tagscache.tagslist:
             l = []
-            for t, n in self.tags().items():
+            for t, n in self.tags().iteritems():
                 l.append((self.changelog.rev(n), t, n))
             self._tagscache.tagslist = [(t, n) for r, t, n in sorted(l)]
 
@@ -893,9 +894,9 @@ class localrepository(object):
         '''return the tags associated with a node'''
         if not self._tagscache.nodetagscache:
             nodetagscache = {}
-            for t, n in self._tagscache.tags.items():
+            for t, n in self._tagscache.tags.iteritems():
                 nodetagscache.setdefault(n, []).append(t)
-            for tags in nodetagscache.values():
+            for tags in nodetagscache.itervalues():
                 tags.sort()
             self._tagscache.nodetagscache = nodetagscache
         return self._tagscache.nodetagscache.get(node, [])
@@ -903,7 +904,7 @@ class localrepository(object):
     def nodebookmarks(self, node):
         """return the list of bookmarks pointing to the specified node"""
         marks = []
-        for bookmark, n in self._bookmarks.items():
+        for bookmark, n in self._bookmarks.iteritems():
             if n == node:
                 marks.append(bookmark)
         return sorted(marks)
@@ -1028,7 +1029,7 @@ class localrepository(object):
                 mf = matchmod.match(self.root, '', [pat])
                 fn = None
                 params = cmd
-                for name, filterfn in self._datafilters.items():
+                for name, filterfn in self._datafilters.iteritems():
                     if cmd.startswith(name):
                         fn = filterfn
                         params = cmd[len(name):].lstrip()
@@ -1490,7 +1491,7 @@ class localrepository(object):
     @unfilteredmethod
     def _refreshfilecachestats(self, tr):
         """Reload stats of cached files so that they are flagged as valid"""
-        for k, ce in list(self._filecache.items()):
+        for k, ce in self._filecache.items():
             if k == 'dirstate' or k not in self.__dict__:
                 continue
             ce.refresh()

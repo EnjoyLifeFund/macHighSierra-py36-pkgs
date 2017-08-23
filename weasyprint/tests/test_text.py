@@ -23,12 +23,13 @@ FONTS = FONTS.split(', ')
 
 def make_text(text, width=None, **style):
     """Wrapper for split_first_line() creating a StyleDict."""
-    new_style = StyleDict(INITIAL_VALUES)
+    new_style = dict(INITIAL_VALUES)
     new_style['font_family'] = [
         'Nimbus Mono L', 'Liberation Mono', 'FreeMono', 'monospace']
     new_style.update(style)
     return split_first_line(
-        text, new_style, context=None, max_width=width, line_width=None)
+        text, StyleDict(new_style), context=None, max_width=width,
+        line_width=None, justification_spacing=0)
 
 
 @assert_no_logs
@@ -366,8 +367,8 @@ def test_text_indent():
 def test_hyphenate_character():
     page, = parse(
         '<html style="width: 5em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-character: \'!\'" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-character: \'!\'" lang=fr>'
         'hyphénation')
     html, = page.children
     body, = html.children
@@ -379,8 +380,8 @@ def test_hyphenate_character():
 
     page, = parse(
         '<html style="width: 5em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-character: \'à\'" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-character: \'à\'" lang=fr>'
         'hyphénation')
     html, = page.children
     body, = html.children
@@ -392,8 +393,8 @@ def test_hyphenate_character():
 
     page, = parse(
         '<html style="width: 5em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-character: \'ù ù\'" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-character: \'ù ù\'" lang=fr>'
         'hyphénation')
     html, = page.children
     body, = html.children
@@ -405,8 +406,8 @@ def test_hyphenate_character():
 
     page, = parse(
         '<html style="width: 5em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-character: \'\'" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-character: \'\'" lang=fr>'
         'hyphénation')
     html, = page.children
     body, = html.children
@@ -417,8 +418,8 @@ def test_hyphenate_character():
 
     page, = parse(
         '<html style="width: 5em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-character: \'———\'" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-character: \'———\'" lang=fr>'
         'hyphénation')
     html, = page.children
     body, = html.children
@@ -436,8 +437,8 @@ def test_manual_hyphenation():
             word = 'hyphénation'[:i] + '\u00ad' + 'hyphénation'[i:]
             page, = parse(
                 '<html style="width: 5em; font-family: ahem">'
-                '<body style="-weasy-hyphens: manual;'
-                '-weasy-hyphenate-character: \'%s\'"'
+                '<body style="hyphens: manual;'
+                'hyphenate-character: \'%s\'"'
                 'lang=fr>%s' % (hyphenate_character, word))
             html, = page.children
             body, = html.children
@@ -453,8 +454,8 @@ def test_manual_hyphenation():
             word = 'hy phénation'[:i] + '\u00ad' + 'hy phénation'[i:]
             page, = parse(
                 '<html style="width: 5em; font-family: ahem">'
-                '<body style="-weasy-hyphens: manual;'
-                '-weasy-hyphenate-character: \'%s\'"'
+                '<body style="hyphens: manual;'
+                'hyphenate-character: \'%s\'"'
                 'lang=fr>%s' % (hyphenate_character, word))
             html, = page.children
             body, = html.children
@@ -476,8 +477,8 @@ def test_manual_hyphenation():
 def test_hyphenate_limit_zone():
     page, = parse(
         '<html style="width: 12em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-limit-zone: 0" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-limit-zone: 0" lang=fr>'
         'mmmmm hyphénation')
     html, = page.children
     body, = html.children
@@ -489,8 +490,8 @@ def test_hyphenate_limit_zone():
 
     page, = parse(
         '<html style="width: 12em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-limit-zone: 9em" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-limit-zone: 9em" lang=fr>'
         'mmmmm hyphénation')
     html, = page.children
     body, = html.children
@@ -502,8 +503,8 @@ def test_hyphenate_limit_zone():
 
     page, = parse(
         '<html style="width: 12em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-limit-zone: 5%" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-limit-zone: 5%" lang=fr>'
         'mmmmm hyphénation')
     html, = page.children
     body, = html.children
@@ -515,8 +516,8 @@ def test_hyphenate_limit_zone():
 
     page, = parse(
         '<html style="width: 12em; font-family: ahem">'
-        '<body style="-weasy-hyphens: auto;'
-        '-weasy-hyphenate-limit-zone: 95%" lang=fr>'
+        '<body style="hyphens: auto;'
+        'hyphenate-limit-zone: 95%" lang=fr>'
         'mmmmm hyphénation')
     html, = page.children
     body, = html.children
@@ -532,8 +533,8 @@ def test_hyphenate_limit_chars():
     def line_count(limit_chars):
         page, = parse((
             '<html style="width: 1em; font-family: ahem">'
-            '<body style="-weasy-hyphens: auto;'
-            '-weasy-hyphenate-limit-chars: %s" lang=en>'
+            '<body style="hyphens: auto;'
+            'hyphenate-limit-chars: %s" lang=en>'
             'hyphen') % limit_chars)
         html, = page.children
         body, = html.children
@@ -563,7 +564,7 @@ def test_overflow_wrap():
                 body {width: 80px; overflow: hidden; font-family: ahem; }
                 span {overflow-wrap: %s; white-space: normal; }
             </style>
-            <body style="-weasy-hyphens: auto;" lang="en">
+            <body style="hyphens: auto;" lang="en">
                 <span>%s
         ''' % (wrap, text))
         html, = page.children

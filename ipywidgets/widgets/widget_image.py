@@ -15,7 +15,7 @@ from .widget import register
 from traitlets import Unicode, CUnicode, Bytes, observe
 
 
-@register('Jupyter.Image')
+@register
 class Image(DOMWidget, ValueWidget, CoreWidget):
     """Displays an image as a widget.
 
@@ -26,17 +26,9 @@ class Image(DOMWidget, ValueWidget, CoreWidget):
     """
     _view_name = Unicode('ImageView').tag(sync=True)
     _model_name = Unicode('ImageModel').tag(sync=True)
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
 
     # Define the custom state properties to sync with the front-end
-    format = Unicode('png').tag(sync=True)
-    width = CUnicode().tag(sync=True)
-    height = CUnicode().tag(sync=True)
-    _b64value = Unicode().tag(sync=True)
-
-    value = Bytes()
-
-    @observe('value')
-    def _value_changed(self, change):
-        self._b64value = base64.b64encode(change['new'])
+    format = Unicode('png', help="The format of the image.").tag(sync=True)
+    width = CUnicode(help="Width of the image in pixels.").tag(sync=True)
+    height = CUnicode(help="Height of the image in pixels.").tag(sync=True)
+    value = Bytes(help="The image data as a byte string.").tag(sync=True)

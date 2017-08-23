@@ -11,7 +11,7 @@ The :hg:`releasenotes` command provided by this extension makes the
 process simpler by automating it.
 """
 
-
+from __future__ import absolute_import
 
 import errno
 import re
@@ -119,7 +119,7 @@ class releasenotessections(object):
             custom_sections = getcustomadmonitions(repo)
             if custom_sections:
                 sections.update(custom_sections)
-            self._sections = list(sections.items())
+            self._sections = list(sections.iteritems())
         else:
             self._sections = list(DEFAULT_SECTIONS)
 

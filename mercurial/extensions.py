@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import imp
 import inspect
@@ -24,7 +24,6 @@ from . import (
     pycompat,
     util,
 )
-import collections
 
 _extensions = {}
 _disabledextensions = {}
@@ -61,7 +60,7 @@ def find(name):
     try:
         mod = _extensions[name]
     except KeyError:
-        for k, v in _extensions.items():
+        for k, v in _extensions.iteritems():
             if k.endswith('.' + name) or k.endswith('/' + name):
                 mod = v
                 break
@@ -133,7 +132,7 @@ _cmdfuncattrs = ('norepo', 'optionalrepo', 'inferrepo')
 
 def _validatecmdtable(ui, cmdtable):
     """Check if extension commands have required attributes"""
-    for c, e in cmdtable.items():
+    for c, e in cmdtable.iteritems():
         f = e[0]
         if getattr(f, '_deprecatedregistrar', False):
             ui.deprecwarn("cmdutil.command is deprecated, use "
@@ -318,7 +317,7 @@ def bind(func, *args):
       to func.  For example,
 
           f(1, 2, bar=3) === bind(f, 1)(2, bar=3)'''
-    assert isinstance(func, collections.Callable)
+    assert callable(func)
     def closure(*a, **kw):
         return func(*(args + a), **kw)
     return closure
@@ -360,9 +359,9 @@ def wrapcommand(table, command, wrapper, synopsis=None, docstring=None):
       extensions.wrapcommand(commands.table, 'bookmarks', exbookmarks,
                              synopsis, docstring)
     '''
-    assert isinstance(wrapper, collections.Callable)
+    assert callable(wrapper)
     aliases, entry = cmdutil.findcmd(command, table)
-    for alias, e in table.items():
+    for alias, e in table.iteritems():
         if e is entry:
             key = alias
             break
@@ -385,11 +384,11 @@ def wrapfilecache(cls, propname, wrapper):
 
     These can't be wrapped using the normal wrapfunction.
     """
-    assert isinstance(wrapper, collections.Callable)
+    assert callable(wrapper)
     for currcls in cls.__mro__:
         if propname in currcls.__dict__:
             origfn = currcls.__dict__[propname].func
-            assert isinstance(origfn, collections.Callable)
+            assert callable(origfn)
             def wrap(*args, **kwargs):
                 return wrapper(origfn, *args, **kwargs)
             currcls.__dict__[propname].func = wrap
@@ -432,10 +431,10 @@ def wrapfunction(container, funcname, wrapper):
     your end users, you should play nicely with others by using the
     subclass trick.
     '''
-    assert isinstance(wrapper, collections.Callable)
+    assert callable(wrapper)
 
     origfn = getattr(container, funcname)
-    assert isinstance(origfn, collections.Callable)
+    assert callable(origfn)
     wrap = bind(wrapper, origfn)
     _updatewrapper(wrap, origfn, wrapper)
     setattr(container, funcname, wrap)
@@ -472,7 +471,7 @@ def getwrapperchain(container, funcname):
     result = []
     fn = getattr(container, funcname)
     while fn:
-        assert isinstance(fn, collections.Callable)
+        assert callable(fn)
         result.append(getattr(fn, '_unboundwrapper', fn))
         fn = getattr(fn, '_origfunc', None)
     return result
@@ -503,7 +502,7 @@ def _disabledpaths(strip_init=False):
         if name in exts or name in _order or name == '__init__':
             continue
         exts[name] = path
-    for name, path in _disabledextensions.items():
+    for name, path in _disabledextensions.iteritems():
         # If no path was provided for a disabled extension (e.g. "color=!"),
         # don't replace the path we already found by the scan above.
         if path:
@@ -562,7 +561,7 @@ def disabled():
     try:
         from hgext import __index__
         return dict((name, gettext(desc))
-                    for name, desc in __index__.docs.items()
+                    for name, desc in __index__.docs.iteritems()
                     if name not in _order)
     except (ImportError, AttributeError):
         pass
@@ -572,7 +571,7 @@ def disabled():
         return {}
 
     exts = {}
-    for name, path in paths.items():
+    for name, path in paths.iteritems():
         doc = _disabledhelp(path)
         if doc:
             exts[name] = doc.splitlines()[0]
@@ -631,7 +630,7 @@ def disabledcmd(ui, cmd, strict=False):
         ext = findcmd(cmd, cmd, path)
     if not ext:
         # otherwise, interrogate each extension until there's a match
-        for name, path in paths.items():
+        for name, path in paths.iteritems():
             ext = findcmd(cmd, name, path)
             if ext:
                 break
@@ -653,12 +652,12 @@ def enabled(shortname=True):
 
 def notloaded():
     '''return short names of extensions that failed to load'''
-    return [name for name, mod in _extensions.items() if mod is None]
+    return [name for name, mod in _extensions.iteritems() if mod is None]
 
 def moduleversion(module):
     '''return version information from given module as a string'''
     if (util.safehasattr(module, 'getversion')
-          and isinstance(module.getversion, collections.Callable)):
+          and callable(module.getversion)):
         version = module.getversion()
     elif util.safehasattr(module, '__version__'):
         version = module.__version__

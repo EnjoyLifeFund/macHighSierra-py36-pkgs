@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 from .i18n import _
 from .node import (
@@ -89,7 +89,7 @@ def unwraphybrid(thing):
 
 def showdict(name, data, mapping, plural=None, key='key', value='value',
              fmt='%s=%s', separator=' '):
-    c = [{key: k, value: v} for k, v in data.items()]
+    c = [{key: k, value: v} for k, v in data.iteritems()]
     f = _showlist(name, c, mapping, plural, separator)
     return hybriddict(data, key=key, value=value, fmt=fmt, gen=f)
 
@@ -561,7 +561,7 @@ def shownamespaces(**args):
     colornames = {}
     builtins = {}
 
-    for k, ns in repo.names.items():
+    for k, ns in repo.names.iteritems():
         namespaces[k] = showlist('name', ns.names(repo, ctx.node()), args)
         colornames[k] = ns.colorname
         builtins[k] = ns.builtin
@@ -599,10 +599,10 @@ def showpeerpaths(repo, **args):
     of your configuration file. (EXPERIMENTAL)"""
     # see commands.paths() for naming of dictionary keys
     paths = util.sortdict()
-    for k, p in sorted(repo.ui.paths.items()):
+    for k, p in sorted(repo.ui.paths.iteritems()):
         d = util.sortdict()
         d['url'] = p.rawloc
-        d.update((o, v) for o, v in sorted(p.suboptions.items()))
+        d.update((o, v) for o, v in sorted(p.suboptions.iteritems()))
         def f():
             yield d['url']
         paths[k] = hybriddict(d, gen=f())
@@ -617,7 +617,7 @@ def showpredecessors(repo, ctx, **args):
     """Returns the list if the closest visible successors
     """
     predecessors = sorted(obsutil.closestpredecessors(repo, ctx.node()))
-    predecessors = list(map(hex, predecessors))
+    predecessors = map(hex, predecessors)
 
     return _hybrid(None, predecessors,
                    lambda x: {'ctx': repo[x], 'revcache': {}},
@@ -756,7 +756,7 @@ def showtags(**args):
 def loadkeyword(ui, extname, registrarobj):
     """Load template keyword from specified registrarobj
     """
-    for name, func in registrarobj._table.items():
+    for name, func in registrarobj._table.iteritems():
         keywords[name] = func
 
 @templatekeyword('termwidth')
@@ -774,4 +774,4 @@ def showtroubles(**args):
     return showlist('trouble', args['ctx'].troubles(), args)
 
 # tell hggettext to extract docstrings from these functions:
-i18nfunctions = list(keywords.values())
+i18nfunctions = keywords.values()

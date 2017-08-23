@@ -8,7 +8,7 @@
 This contains aliases to hide python version-specific details from the core.
 """
 
-
+from __future__ import absolute_import
 
 import getopt
 import os
@@ -16,14 +16,15 @@ import shlex
 import sys
 
 ispy3 = (sys.version_info[0] >= 3)
+ispypy = (r'__pypy__' in sys.builtin_module_names)
 
 if not ispy3:
-    import http.cookiejar
-    import pickle as pickle
-    import http.client
-    import queue as _queue
-    import socketserver as socketserver
-    import xmlrpc.client
+    import cookielib
+    import cPickle as pickle
+    import httplib
+    import Queue as _queue
+    import SocketServer as socketserver
+    import xmlrpclib
 else:
     import http.cookiejar as cookielib
     import http.client as httplib
@@ -138,8 +139,8 @@ if ispy3:
             if isinstance(s, bytestr):
                 return s
             if (not isinstance(s, (bytes, bytearray))
-                and not hasattr(s, '__bytes__')):  # hasattr-py3-only
-                s = str(s).encode('ascii')
+                and not hasattr(s, u'__bytes__')):  # hasattr-py3-only
+                s = str(s).encode(u'ascii')
             return bytes.__new__(cls, s)
 
         def __getitem__(self, key):
@@ -153,7 +154,7 @@ if ispy3:
 
     def iterbytestr(s):
         """Iterate bytes as if it were a str object of Python 2"""
-        return list(map(bytechr, s))
+        return map(bytechr, s)
 
     def sysbytes(s):
         """Convert an internal str (e.g. keyword, __doc__) back to bytes
@@ -161,7 +162,7 @@ if ispy3:
         This never raises UnicodeEncodeError, but only ASCII characters
         can be round-trip by sysstr(sysbytes(s)).
         """
-        return s.encode('utf-8')
+        return s.encode(u'utf-8')
 
     def sysstr(s):
         """Return a keyword str to be passed to Python functions such as
@@ -173,15 +174,15 @@ if ispy3:
         """
         if isinstance(s, builtins.str):
             return s
-        return s.decode('latin-1')
+        return s.decode(u'latin-1')
 
     def strurl(url):
         """Converts a bytes url back to str"""
-        return url.decode('ascii')
+        return url.decode(u'ascii')
 
     def bytesurl(url):
         """Converts a str url to bytes by encoding in ascii"""
-        return url.encode('ascii')
+        return url.encode(u'ascii')
 
     def raisewithtb(exc, tb):
         """Raise exception with the given traceback"""
@@ -190,7 +191,7 @@ if ispy3:
     def getdoc(obj):
         """Get docstring as bytes; may be None so gettext() won't confuse it
         with _('')"""
-        doc = getattr(obj, '__doc__', None)
+        doc = getattr(obj, u'__doc__', None)
         if doc is None:
             return doc
         return sysbytes(doc)
@@ -207,7 +208,7 @@ if ispy3:
     hasattr = _wrapattrfunc(builtins.hasattr)
     setattr = _wrapattrfunc(builtins.setattr)
     xrange = builtins.range
-    str = str
+    unicode = str
 
     def open(name, mode='r', buffering=-1):
         return builtins.open(name, sysstr(mode), buffering)
@@ -234,7 +235,7 @@ if ispy3:
         they can be passed as keyword arguments as dictonaries with bytes keys
         can't be passed as keyword arguments to functions on Python 3.
         """
-        dic = dict((k.decode('latin-1'), v) for k, v in dic.items())
+        dic = dict((k.decode('latin-1'), v) for k, v in dic.iteritems())
         return dic
 
     def byteskwargs(dic):
@@ -242,7 +243,7 @@ if ispy3:
         Converts keys of python dictonaries to bytes as they were converted to
         str to pass that dictonary as a keyword argument on Python 3.
         """
-        dic = dict((k.encode('latin-1'), v) for k, v in dic.items())
+        dic = dict((k.encode('latin-1'), v) for k, v in dic.iteritems())
         return dic
 
     # TODO: handle shlex.shlex().
@@ -256,7 +257,7 @@ if ispy3:
         return [a.encode('latin-1') for a in ret]
 
 else:
-    import io
+    import cStringIO
 
     bytechr = chr
     bytestr = str
@@ -309,7 +310,7 @@ else:
     getcwd = os.getcwd
     sysexecutable = sys.executable
     shlexsplit = shlex.split
-    stringio = io.StringIO
+    stringio = cStringIO.StringIO
     maplist = map
 
 class _pycompatstub(object):
@@ -318,7 +319,7 @@ class _pycompatstub(object):
 
     def _registeraliases(self, origin, items):
         """Add items that will be populated at the first access"""
-        items = list(map(sysstr, items))
+        items = map(sysstr, items)
         self._aliases.update(
             (item.replace(sysstr('_'), sysstr('')).lower(), (origin, item))
             for item in items)
@@ -339,12 +340,12 @@ httpserver = _pycompatstub()
 urlreq = _pycompatstub()
 urlerr = _pycompatstub()
 if not ispy3:
-    import http.server
-    import http.server
-    import http.server
-    import urllib.request, urllib.error, urllib.parse
-    import urllib.request, urllib.parse, urllib.error
-    import urllib.parse
+    import BaseHTTPServer
+    import CGIHTTPServer
+    import SimpleHTTPServer
+    import urllib2
+    import urllib
+    import urlparse
     urlreq._registeraliases(urllib, (
         "addclosehook",
         "addinfourl",

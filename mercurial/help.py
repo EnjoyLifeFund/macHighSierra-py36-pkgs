@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import itertools
 import os
@@ -33,7 +33,6 @@ from . import (
 from .hgweb import (
     webcommands,
 )
-import collections
 
 _exclkeywords = {
     "(ADVANCED)",
@@ -51,7 +50,7 @@ def listexts(header, exts, indent=1, showdeprecated=False):
     '''return a text listing of the given extensions'''
     rst = []
     if exts:
-        for name, desc in sorted(exts.items()):
+        for name, desc in sorted(exts.iteritems()):
             if not showdeprecated and any(w in desc for w in _exclkeywords):
                 continue
             rst.append('%s:%s: %s\n' % (' ' * indent, name, desc))
@@ -137,9 +136,9 @@ def topicmatch(ui, commands, kw):
         # Old extensions may use a str as doc.
         if (sum(map(lowercontains, names))
             or lowercontains(header)
-            or (isinstance(doc, collections.Callable) and lowercontains(doc(ui)))):
+            or (callable(doc) and lowercontains(doc(ui)))):
             results['topics'].append((names[0], header))
-    for cmd, entry in commands.table.items():
+    for cmd, entry in commands.table.iteritems():
         if len(entry) == 3:
             summary = entry[2]
         else:
@@ -155,8 +154,8 @@ def topicmatch(ui, commands, kw):
                 continue
             results['commands'].append((cmdname, summary))
     for name, docs in itertools.chain(
-        iter(extensions.enabled(False).items()),
-        iter(extensions.disabled().items())):
+        extensions.enabled(False).iteritems(),
+        extensions.disabled().iteritems()):
         if not docs:
             continue
         mod = extensions.load(ui, name, '')
@@ -164,7 +163,7 @@ def topicmatch(ui, commands, kw):
         if lowercontains(name) or lowercontains(docs):
             # extension docs are already translated
             results['extensions'].append((name, docs.splitlines()[0]))
-        for cmd, entry in getattr(mod, 'cmdtable', {}).items():
+        for cmd, entry in getattr(mod, 'cmdtable', {}).iteritems():
             if kw in cmd or (len(entry) > 2 and lowercontains(entry[2])):
                 cmdname = cmd.partition('|')[0].lstrip('^')
                 cmddoc = pycompat.getdoc(entry[0])
@@ -411,7 +410,7 @@ def help_(ui, commands, name, unknowncmd=False, full=True, subtopic=None,
 
         h = {}
         cmds = {}
-        for c, e in commands.table.items():
+        for c, e in commands.table.iteritems():
             f = c.partition("|")[0]
             if select and not select(f):
                 continue
@@ -476,7 +475,7 @@ def help_(ui, commands, name, unknowncmd=False, full=True, subtopic=None,
             elif name and not full:
                 rst.append(_("\n(use 'hg help %s' to show the full help "
                              "text)\n") % name)
-            elif name and cmds and name in list(cmds.keys()):
+            elif name and cmds and name in cmds.keys():
                 rst.append(_("\n(use 'hg help -v -e %s' to show built-in "
                              "aliases and global options)\n") % name)
             else:
@@ -505,7 +504,7 @@ def help_(ui, commands, name, unknowncmd=False, full=True, subtopic=None,
         # description
         if not doc:
             rst.append("    %s\n" % _("(no help text available)"))
-        if isinstance(doc, collections.Callable):
+        if callable(doc):
             rst += ["    %s\n" % l for l in doc(ui).splitlines()]
 
         if not ui.verbose:

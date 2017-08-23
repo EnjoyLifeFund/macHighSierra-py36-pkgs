@@ -5,13 +5,12 @@ import sys
 
 from webencodings import ascii_lower
 
-from .ast import (
-    AtKeywordToken, Comment, CurlyBracketsBlock, DimensionToken, FunctionBlock,
-    HashToken, IdentToken, LiteralToken, NumberToken, ParenthesesBlock,
-    ParseError, PercentageToken, SquareBracketsBlock, StringToken, URLToken,
-    UnicodeRangeToken, WhitespaceToken)
 from ._compat import unichr
-
+from .ast import (AtKeywordToken, Comment, CurlyBracketsBlock, DimensionToken,
+                  FunctionBlock, HashToken, IdentToken, LiteralToken,
+                  NumberToken, ParenthesesBlock, ParseError, PercentageToken,
+                  SquareBracketsBlock, StringToken, UnicodeRangeToken,
+                  URLToken, WhitespaceToken)
 
 _NUMBER_RE = re.compile(r'[-+]?([0-9]*\.)?[0-9]+([eE][+-]?[0-9]+)?')
 _HEX_ESCAPE_RE = re.compile(r'([0-9A-Fa-f]{1,6})[ \n\t]?')
@@ -56,8 +55,8 @@ def parse_component_value_list(css, skip_comments=False):
             value = css[token_start_pos:pos]
             tokens.append(WhitespaceToken(line, column, value))
             continue
-        elif (c in 'Uu' and pos + 2 < length and css[pos + 1] == '+'
-                and css[pos + 2] in '0123456789abcdefABCDEF?'):
+        elif (c in 'Uu' and pos + 2 < length and css[pos + 1] == '+' and
+              css[pos + 2] in '0123456789abcdefABCDEF?'):
             start, end, pos = _consume_unicode_range(css, pos + 2)
             tokens.append(UnicodeRangeToken(line, column, start, end))
             continue
@@ -112,10 +111,10 @@ def parse_component_value_list(css, skip_comments=False):
             pos += 1
             if pos < length and (
                     css[pos] in '0123456789abcdefghijklmnopqrstuvwxyz'
-                                '-_ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                    or ord(css[pos]) > 0x7F  # Non-ASCII
+                                '-_ABCDEFGHIJKLMNOPQRSTUVWXYZ' or
+                    ord(css[pos]) > 0x7F or  # Non-ASCII
                     # Valid escape:
-                    or (css[pos] == '\\' and not css.startswith('\\\n', pos))):
+                    (css[pos] == '\\' and not css.startswith('\\\n', pos))):
                 is_identifier = _is_ident_start(css, pos)
                 value, pos = _consume_ident(css, pos)
                 tokens.append(HashToken(line, column, value, is_identifier))
@@ -186,22 +185,30 @@ def parse_component_value_list(css, skip_comments=False):
     return root
 
 
+def _is_name_start(css, pos):
+    """Return true if the given character is a name-start code point."""
+    # https://www.w3.org/TR/css-syntax-3/#name-start-code-point
+    c = css[pos]
+    return (
+        c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_' or
+        ord(c) > 0x7F)
+
+
 def _is_ident_start(css, pos):
     """Return True if the given position is the start of a CSS identifier."""
-    c = css[pos]
-    length = len(css)
-#    if c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_':
-#        return True  # Fast path XXX
-    if c == '-' and pos + 1 < length:
+    # https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
+    if _is_name_start(css, pos):
+        return True
+    elif css[pos] == '-':
         pos += 1
-        c = css[pos]
-        if c == '-':
-            return True
-    return (
-        c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
-        or ord(c) > 0x7F  # Non-ASCII
-        # Valid escape:
-        or (c == '\\' and not css.startswith('\\\n', pos)))
+        return (
+            # Name-start code point:
+            (pos < len(css) and _is_name_start(css, pos)) or
+            # Valid escape:
+            (css.startswith('\\', pos) and not css.startswith('\\\n', pos)))
+    elif css[pos] == '\\':
+        return not css.startswith('\\\n', pos)
+    return False
 
 
 def _consume_ident(css, pos):
@@ -382,8 +389,8 @@ def _consume_unicode_range(css, pos):
     if question_marks:
         end = start + 'F' * question_marks
         start = start + '0' * question_marks
-    elif (pos + 1 < length and css[pos] == '-'
-            and css[pos + 1] in '0123456789abcdefABCDEF'):
+    elif (pos + 1 < length and css[pos] == '-' and
+          css[pos + 1] in '0123456789abcdefABCDEF'):
         pos += 1
         start_pos = pos
         max_pos = min(pos + 6, length)

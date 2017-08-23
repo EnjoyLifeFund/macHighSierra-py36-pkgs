@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import struct
 
@@ -30,16 +30,16 @@ def blocks(sa, sb):
         if count < 0:
             raise MemoryError
         rl = [None] * count
-        h = l.__next__
+        h = l.next
         i = 0
         while h:
             rl[i] = (h.a1, h.a2, h.b1, h.b2)
-            h = h.__next__
+            h = h.next
             i += 1
     finally:
         lib.free(a[0])
         lib.free(b[0])
-        lib.bdiff_freehunks(l.__next__)
+        lib.bdiff_freehunks(l.next)
     return rl
 
 def bdiff(sa, sb):
@@ -57,7 +57,7 @@ def bdiff(sa, sb):
         if count < 0:
             raise MemoryError
         rl = []
-        h = l.__next__
+        h = l.next
         la = lb = 0
         while h:
             if h.a1 != la or h.b1 != lb:
@@ -67,10 +67,10 @@ def bdiff(sa, sb):
                 rl.append(str(ffi.buffer((b[0] + lb).l, lgt)))
             la = h.a2
             lb = h.b2
-            h = h.__next__
+            h = h.next
 
     finally:
         lib.free(a[0])
         lib.free(b[0])
-        lib.bdiff_freehunks(l.__next__)
+        lib.bdiff_freehunks(l.next)
     return "".join(rl)

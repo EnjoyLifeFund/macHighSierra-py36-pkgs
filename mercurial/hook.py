@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import os
 import sys
@@ -19,7 +19,6 @@ from . import (
     pycompat,
     util,
 )
-import collections
 
 def _pythonhook(ui, repo, htype, hname, funcname, args, throw):
     '''call python hook. hook is callable object, looked up as
@@ -31,7 +30,7 @@ def _pythonhook(ui, repo, htype, hname, funcname, args, throw):
     unmodified commands (e.g. mercurial.commands.update) can
     be run as hooks without wrappers to convert return values.'''
 
-    if isinstance(funcname, collections.Callable):
+    if callable(funcname):
         obj = funcname
         funcname = pycompat.sysbytes(obj.__module__ + r"." + obj.__name__)
     else:
@@ -83,7 +82,7 @@ def _pythonhook(ui, repo, htype, hname, funcname, args, throw):
             raise error.HookLoadError(
                 _('%s hook is invalid: "%s" is not defined')
                 % (hname, funcname))
-        if not isinstance(obj, collections.Callable):
+        if not callable(obj):
             raise error.HookLoadError(
                 _('%s hook is invalid: "%s" is not callable')
                 % (hname, funcname))
@@ -131,14 +130,14 @@ def _exthook(ui, repo, htype, name, cmd, args, throw):
     env['HG_HOOKTYPE'] = htype
     env['HG_HOOKNAME'] = name
 
-    for k, v in args.items():
-        if isinstance(v, collections.Callable):
+    for k, v in args.iteritems():
+        if callable(v):
             v = v()
         if isinstance(v, dict):
             # make the dictionary element order stable across Python
             # implementations
             v = ('{' +
-                 ', '.join('%r: %r' % i for i in sorted(v.items())) +
+                 ', '.join('%r: %r' % i for i in sorted(v.iteritems())) +
                  '}')
         env['HG_' + k.upper()] = v
 
@@ -168,7 +167,7 @@ def _allhooks(ui):
     # sources would create a security vulnerability, make sure anything altered
     # in that section uses "_fromuntrusted" as its command.
     untrustedhooks = _hookitems(ui, _untrusted=True)
-    for name, value in list(untrustedhooks.items()):
+    for name, value in untrustedhooks.items():
         trustedvalue = hooks.get(name, (None, None, name, _fromuntrusted))
         if value != trustedvalue:
             (lp, lo, lk, lv) = trustedvalue
@@ -233,7 +232,7 @@ def runhooks(ui, repo, htype, hooks, throw=False, **args):
                 ui.warn(_('warning: untrusted hook %s not executed\n') % hname)
                 r = 1
                 raised = False
-            elif isinstance(cmd, collections.Callable):
+            elif callable(cmd):
                 r, raised = _pythonhook(ui, repo, htype, hname, cmd, args,
                                         throw)
             elif cmd.startswith('python:'):

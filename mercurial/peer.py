@@ -6,7 +6,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 from .i18n import _
 from . import (
@@ -102,7 +102,7 @@ def batchable(f):
         if not encresref:
             return encargsorres # a local result in this case
         self = args[0]
-        encresref.set(self._submitone(f.__name__, encargsorres))
+        encresref.set(self._submitone(f.func_name, encargsorres))
         return next(batchable)
     setattr(plain, 'batchable', f)
     return plain

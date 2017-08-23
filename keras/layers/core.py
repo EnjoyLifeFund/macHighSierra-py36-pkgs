@@ -61,7 +61,7 @@ class Masking(Layer):
     def call(self, inputs):
         boolean_mask = K.any(K.not_equal(inputs, self.mask_value),
                              axis=-1, keepdims=True)
-        return inputs * K.cast(boolean_mask, K.floatx())
+        return inputs * K.cast(boolean_mask, inputs.dtype)
 
     def get_config(self):
         config = {'mask_value': self.mask_value}
@@ -637,8 +637,11 @@ class Lambda(Layer):
         else:
             shape = self._output_shape(input_shape)
             if not isinstance(shape, (list, tuple)):
-                raise ValueError('`output_shape` function must return a tuple.')
-            return tuple(shape)
+                raise ValueError('`output_shape` function must return a tuple or a list of tuples.')
+            if isinstance(shape, list):
+                if isinstance(shape[0], int) or shape[0] is None:
+                    shape = tuple(shape)
+            return shape
 
     def call(self, inputs, mask=None):
         arguments = self.arguments

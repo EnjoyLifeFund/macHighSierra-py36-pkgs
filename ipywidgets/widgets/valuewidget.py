@@ -4,10 +4,13 @@
 """Contains the ValueWidget class"""
 
 from .widget import Widget
+from traitlets import Any
 
 
 class ValueWidget(Widget):
     """Widget that can be used for the input of an interactive function"""
+
+    value = Any(help="The value of the widget.")
 
     def get_interact_value(self):
         """Return the value for this widget which should be passed to
@@ -15,3 +18,10 @@ class ValueWidget(Widget):
         to process the raw value ``self.value``.
         """
         return self.value
+
+    def _repr_keys(self):
+        # Ensure value key comes first, and is always present
+        yield 'value'
+        for key in super(ValueWidget, self)._repr_keys():
+            if key != 'value':
+                yield key

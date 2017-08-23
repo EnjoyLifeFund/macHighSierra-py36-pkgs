@@ -89,7 +89,7 @@ will disable itself if any of those are active.
 # The issues related to nested repos and subrepos are probably not fundamental
 # ones. Patches to fix them are welcome.
 
-
+from __future__ import absolute_import
 
 import codecs
 import hashlib
@@ -370,26 +370,26 @@ def overridewalk(orig, self, match, subrepos, unknown, ignored, full=True):
                          if f not in results and matchfn(f))
     else:
         if matchalways:
-            visit.update(f for f, st in dmap.items()
+            visit.update(f for f, st in dmap.iteritems()
                          if (f not in results and
                              (st[2] < 0 or st[0] != 'n' or fresh_instance)))
             visit.update(f for f in copymap if f not in results)
         else:
-            visit.update(f for f, st in dmap.items()
+            visit.update(f for f, st in dmap.iteritems()
                          if (f not in results and
                              (st[2] < 0 or st[0] != 'n' or fresh_instance)
                              and matchfn(f)))
             visit.update(f for f in copymap
                          if f not in results and matchfn(f))
 
-    audit = pathutil.pathauditor(self._root).check
+    audit = pathutil.pathauditor(self._root, cached=True).check
     auditpass = [f for f in visit if audit(f)]
     auditpass.sort()
     auditfail = visit.difference(auditpass)
     for f in auditfail:
         results[f] = None
 
-    nf = iter(auditpass).__next__
+    nf = iter(auditpass).next
     for st in util.statfiles([join(f) for f in auditpass]):
         f = nf()
         if st or f in dmap:

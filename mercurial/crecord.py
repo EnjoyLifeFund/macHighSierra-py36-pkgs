@@ -8,7 +8,7 @@
 # This code is based on the Mark Edgington's crecord extension.
 # (Itself based on Bryan O'Sullivan's record extension.)
 
-
+from __future__ import absolute_import
 
 import locale
 import os
@@ -27,7 +27,7 @@ stringio = util.stringio
 
 # This is required for ncurses to display non-ASCII characters in default user
 # locale encoding correctly.  --immerrr
-locale.setlocale(locale.LC_ALL, '')
+locale.setlocale(locale.LC_ALL, u'')
 
 # patch comments based on the git one
 diffhelptext = _("""# To remove '-' lines, make them ' ' lines (context).
@@ -547,7 +547,7 @@ def testchunkselector(testfn, ui, headerlist, operation=None):
     chunkselector = curseschunkselector(headerlist, ui, operation)
     if testfn and os.path.exists(testfn):
         testf = open(testfn)
-        testcommands = [x.rstrip('\n') for x in testf.readlines()]
+        testcommands = map(lambda x: x.rstrip('\n'), testf.readlines())
         testf.close()
         while True:
             if chunkselector.handlekeypressed(testcommands.pop(0), test=True):

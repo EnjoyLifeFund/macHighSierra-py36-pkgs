@@ -17,8 +17,10 @@ import functools
 import pprint
 
 from .. import images
-from ..css import get_all_computed_styles
+from ..css import PageType, get_all_computed_styles
 from ..formatting_structure import boxes, build, counters
+from ..layout.pages import set_page_type_computed_styles
+from ..urls import path2url
 from .testing_utils import (
     FakeHTML, assert_no_logs, capture_logs, resource_filename)
 
@@ -37,6 +39,9 @@ PROPER_CHILDREN = dict((key, tuple(map(tuple, value))) for key, value in {
     boxes.TableRowGroupBox: [[boxes.TableRowBox]],
     boxes.TableRowBox: [[boxes.TableCellBox]],
 }.items())
+
+# Dummy filename, but in the right directory.
+BASE_URL = path2url(resource_filename('<test>'))
 
 
 def serialize(box_list):
@@ -77,15 +82,12 @@ def to_lists(box_tree):
     return serialize(unwrap_html_body(box_tree))
 
 
-def _parse_base(
-        html_content,
-        # Dummy filename, but in the right directory.
-        base_url=resource_filename('<test>')):
+def _parse_base(html_content, base_url=BASE_URL):
     document = FakeHTML(string=html_content, base_url=base_url)
-    style_for = get_all_computed_styles(document)
+    style_for, _, _ = get_all_computed_styles(document)
     get_image_from_uri = functools.partial(
         images.get_image_from_uri, {}, document.url_fetcher)
-    return document.root_element, style_for, get_image_from_uri
+    return document.etree_element, style_for, get_image_from_uri, base_url
 
 
 def parse(html_content):
@@ -94,7 +96,7 @@ def parse(html_content):
     return box
 
 
-def parse_all(html_content, base_url=resource_filename('<test>')):
+def parse_all(html_content, base_url=BASE_URL):
     """Like parse() but also run all corrections on boxes."""
     box = build.build_formatting_structure(*_parse_base(
         html_content, base_url))
@@ -105,7 +107,7 @@ def parse_all(html_content, base_url=resource_filename('<test>')):
 def render_pages(html_content):
     """Lay out a document and return a list of PageBox objects."""
     return [p._page_box for p in FakeHTML(
-            string=html_content, base_url=resource_filename('<test>')
+            string=html_content, base_url=BASE_URL
             ).render(enable_hinting=True).pages]
 
 
@@ -399,14 +401,16 @@ def test_whitespace():
 @assert_no_logs
 def test_page_style():
     """Test the management of page styles."""
-    style_for = get_all_computed_styles(FakeHTML(string='''
+    document = FakeHTML(string='''
         <style>
             @page { margin: 3px }
             @page :first { margin-top: 20px }
             @page :right { margin-right: 10px; margin-top: 10px }
             @page :left { margin-left: 10px; margin-top: 10px }
         </style>
-    '''))
+    ''')
+    style_for, cascaded_styles, computed_styles = get_all_computed_styles(
+        document)
 
     def assert_page_margins(page_type, top, right, bottom, left):
         """Check the page margin values."""
@@ -416,10 +420,25 @@ def test_page_style():
         assert style.margin_bottom == (bottom, 'px')
         assert style.margin_left == (left, 'px')
 
-    assert_page_margins('first_left_page', top=20, right=3, bottom=3, left=10)
-    assert_page_margins('first_right_page', top=20, right=10, bottom=3, left=3)
-    assert_page_margins('left_page', top=10, right=3, bottom=3, left=10)
-    assert_page_margins('right_page', top=10, right=10, bottom=3, left=3)
+    # Force the generation of the style for all possible page types as it's
+    # generally only done during the rendering for needed page types.
+    standard_page_type = PageType(
+        side=None, blank=False, first=False, name=None)
+    set_page_type_computed_styles(
+        standard_page_type, cascaded_styles, computed_styles, document)
+
+    assert_page_margins(
+        PageType(side='left', first=True, blank=False, name=None),
+        top=20, right=3, bottom=3, left=10)
+    assert_page_margins(
+        PageType(side='right', first=True, blank=False, name=None),
+        top=20, right=10, bottom=3, left=3)
+    assert_page_margins(
+        PageType(side='left', first=False, blank=False, name=None),
+        top=10, right=3, bottom=3, left=10)
+    assert_page_margins(
+        PageType(side='right', first=False, blank=False, name=None),
+        top=10, right=10, bottom=3, left=3)
 
 
 @assert_no_logs
@@ -432,7 +451,7 @@ def test_images():
                 /><img src=inexistent.jpg alt="Inexistent src" /></p>
         ''')
     assert len(logs) == 1
-    assert 'WARNING: Failed to load image' in logs[0]
+    assert 'ERROR: Failed to load image' in logs[0]
     assert 'inexistent.jpg' in logs[0]
     assert_tree(result, [
         ('p', 'Block', [
@@ -447,7 +466,7 @@ def test_images():
         result = parse_all('<p><img src=pattern.png alt="No base_url">',
                            base_url=None)
     assert len(logs) == 1
-    assert 'WARNING: Relative URI reference without a base URI' in logs[0]
+    assert 'ERROR: Relative URI reference without a base URI' in logs[0]
     assert_tree(result, [
         ('p', 'Block', [
             ('p', 'Line', [
@@ -1236,7 +1255,7 @@ def test_margin_box_string_set():
                 @bottom-center { content: string(text_header); }
             }
             p{
-                -weasy-string-set: text_header content();
+                string-set: text_header content();
             }
             .page{
                 page-break-before: always;
@@ -1263,7 +1282,7 @@ def test_margin_box_string_set():
                     @top-center { content: string(text_header); }
                 }
                 p{
-                    -weasy-string-set: text_header content(%(content_val)s);
+                    string-set: text_header content(%(content_val)s);
                 }
                 %(extra_style)s
             </style>
@@ -1293,7 +1312,7 @@ def test_margin_box_string_set():
                 @top-center { content: string(text_header, first); }
             }
             p{
-                -weasy-string-set: text_header content();
+                string-set: text_header content();
             }
         </style>
         <p>first assignment</p>
@@ -1312,7 +1331,7 @@ def test_margin_box_string_set():
                 @top-center { content: string(header_nofirst, first-except); }
             }
             p{
-                -weasy-string-set: header_nofirst content();
+                string-set: header_nofirst content();
             }
             .page{
                 page-break-before: always;
@@ -1336,7 +1355,7 @@ def test_margin_box_string_set():
                 @top-center { content: string(header_last, last); }
             }
             p{
-                -weasy-string-set: header_last content();
+                string-set: header_last content();
             }
         </style>
         <p>String set</p>
@@ -1361,7 +1380,7 @@ def test_margin_box_string_set():
             ul { counter-reset: b }
             li {
               counter-increment: b;
-              -weasy-string-set:
+              string-set:
                 text_header content(before) "-" content() "-" content(after)
                             counter(a, upper-roman) '.' counters(b, '|'),
                 text_footer content(before) '-' attr(class)

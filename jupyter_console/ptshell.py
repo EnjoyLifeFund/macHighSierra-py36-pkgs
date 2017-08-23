@@ -30,6 +30,7 @@ from .zmqhistory import ZMQHistoryManager
 from . import __version__
 
 from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.document import Document
 from prompt_toolkit.enums import DEFAULT_BUFFER, EditingMode
 from prompt_toolkit.filters import HasFocus, HasSelection, ViInsertMode, EmacsInsertMode
 from prompt_toolkit.history import InMemoryHistory
@@ -122,6 +123,7 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
     _execution_state = Unicode('')
     _pending_clearoutput = False
     _eventloop = None
+    own_kernel = False  # Changed by ZMQTerminalIPythonApp
 
     editing_mode = Unicode('emacs', config=True,
         help="Shortcut style to use at the prompt. 'vi' or 'emacs'.",
@@ -358,6 +360,10 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
                 b.newline()
                 return
 
+            # Pressing enter flushes any pending display. This also ensures
+            # the displayed execution_count is correct.
+            self.handle_iopub()
+
             more, indent = self.check_complete(d.text)
 
             if (not more) and b.accept_action.is_returnable:
@@ -369,13 +375,17 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
         def _(event):
             event.current_buffer.reset()
 
+        @kbmanager.registry.add_binding(Keys.ControlBackslash, filter=HasFocus(DEFAULT_BUFFER))
+        def _(event):
+            raise EOFError
+
         # Pre-populate history from IPython's history database
         history = InMemoryHistory()
         last_cell = u""
         for _, _, cell in self.history_manager.get_tail(self.history_load_length,
                                                         include_latest=True):
             # Ignore blank lines and consecutive duplicates
-            cell = cell.rstrip()
+            cell = cast_unicode_py2(cell.rstrip())
             if cell and (cell != last_cell):
                 history.append(cell)
 
@@ -460,11 +470,19 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
 
     def pre_prompt(self):
         if self.next_input:
-            b = self.pt_cli.application.buffer
-            b.text = cast_unicode_py2(self.next_input)
+            # We can't set the buffer here, because it will be reset just after
+            # this. Adding a callable to pre_run_callables does what we need
+            # after the buffer is reset.
+            s = cast_unicode_py2(self.next_input)
+            def set_doc():
+                self.pt_cli.application.buffer.document = Document(s)
+            if hasattr(self.pt_cli, 'pre_run_callables'):
+                self.pt_cli.pre_run_callables.append(set_doc)
+            else:
+                # Older version of prompt_toolkit; it's OK to set the document
+                # directly here.
+                set_doc()
             self.next_input = None
-            # Move the cursor to the end
-            b.cursor_position += b.document.get_end_of_document_position()
 
     def interact(self, display_banner=None):
         while self.keep_running:
@@ -482,7 +500,7 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
                     self.run_cell(code, store_history=True)
 
     def mainloop(self):
-        self.keepkernel = False
+        self.keepkernel = not self.own_kernel
         # An extra layer of protection in case someone mashing Ctrl-C breaks
         # out of our internal code.
         while True:
@@ -662,6 +680,10 @@ class ZMQTerminalInteractiveShell(SingletonConfigurable):
             sub_msg = self.client.iopub_channel.get_msg()
             msg_type = sub_msg['header']['msg_type']
             parent = sub_msg["parent_header"]
+
+            # Update execution_count in case it changed in another session
+            if msg_type == "execute_input":
+                self.execution_count = int(sub_msg["content"]["execution_count"]) + 1
 
             if self.include_output(sub_msg):
                 if msg_type == 'status':

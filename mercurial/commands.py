@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import difflib
 import errno
@@ -397,7 +397,7 @@ def annotate(ui, repo, *pats, **opts):
                 formats.append(['%s' for x in l])
             pieces.append(l)
 
-        for f, p, l in zip(list(zip(*formats)), list(zip(*pieces)), lines):
+        for f, p, l in zip(zip(*formats), zip(*pieces), lines):
             fm.startitem()
             fm.write(fields, "".join(f), *p)
             fm.write('line', ": %s", l[1])
@@ -1188,14 +1188,14 @@ def bundle(ui, repo, fname, dest=None, **opts):
             raise error.Abort(_("--base is incompatible with specifying "
                                "a destination"))
         common = [repo.lookup(rev) for rev in base]
-        heads = revs and list(map(repo.lookup, revs)) or None
+        heads = revs and map(repo.lookup, revs) or None
         outgoing = discovery.outgoing(repo, common, heads)
     else:
         dest = ui.expandpath(dest or 'default-push', dest or 'default')
         dest, branches = hg.parseurl(dest, opts.get('branch'))
         other = hg.peer(repo, opts, dest)
         revs, checkout = hg.addbranchrevs(repo, repo, branches, revs)
-        heads = revs and list(map(repo.lookup, revs)) or revs
+        heads = revs and map(repo.lookup, revs) or revs
         outgoing = discovery.findcommonoutgoing(repo, other,
                                                 onlyheads=heads,
                                                 force=opts.get('force'),
@@ -1728,7 +1728,7 @@ def copy(ui, repo, *pats, **opts):
 @command('debugcommands', [], _('[COMMAND]'), norepo=True)
 def debugcommands(ui, cmd='', *args):
     """list all available commands and options"""
-    for cmd, vals in sorted(table.items()):
+    for cmd, vals in sorted(table.iteritems()):
         cmd = cmd.split('|')[0].strip('^')
         opts = ', '.join([i[1] for i in vals[1]])
         ui.write('%s: %s\n' % (cmd, opts))
@@ -1758,7 +1758,7 @@ def debugcomplete(ui, cmd='', **opts):
 
     cmdlist, unused_allcmds = cmdutil.findpossible(cmd, table)
     if ui.verbose:
-        cmdlist = [' '.join(c[0]) for c in list(cmdlist.values())]
+        cmdlist = [' '.join(c[0]) for c in cmdlist.values()]
     ui.write("%s\n" % "\n".join(sorted(cmdlist)))
 
 @command('^diff',
@@ -2398,15 +2398,15 @@ def grep(ui, repo, pattern, *pats, **opts):
         sm = difflib.SequenceMatcher(None, a, b)
         for tag, alo, ahi, blo, bhi in sm.get_opcodes():
             if tag == 'insert':
-                for i in range(blo, bhi):
+                for i in xrange(blo, bhi):
                     yield ('+', b[i])
             elif tag == 'delete':
-                for i in range(alo, ahi):
+                for i in xrange(alo, ahi):
                     yield ('-', a[i])
             elif tag == 'replace':
-                for i in range(alo, ahi):
+                for i in xrange(alo, ahi):
                     yield ('-', a[i])
-                for i in range(blo, bhi):
+                for i in xrange(blo, bhi):
                     yield ('+', b[i])
 
     def display(fm, fn, ctx, pstates, states):
@@ -2748,7 +2748,7 @@ def identify(ui, repo, source=None, rev=None,
 
             if 'bookmarks' in peer.listkeys('namespaces'):
                 hexremoterev = hex(remoterev)
-                bms = [bm for bm, bmr in peer.listkeys('bookmarks').items()
+                bms = [bm for bm, bmr in peer.listkeys('bookmarks').iteritems()
                        if bmr == hexremoterev]
 
             return sorted(bms)
@@ -3686,10 +3686,10 @@ def paths(ui, repo, search=None, **opts):
     opts = pycompat.byteskwargs(opts)
     ui.pager('paths')
     if search:
-        pathitems = [(name, path) for name, path in ui.paths.items()
+        pathitems = [(name, path) for name, path in ui.paths.iteritems()
                      if name == search]
     else:
-        pathitems = sorted(ui.paths.items())
+        pathitems = sorted(ui.paths.iteritems())
 
     fm = ui.formatter('paths', opts)
     if fm.isplain():
@@ -4741,7 +4741,7 @@ def status(ui, repo, *pats, **opts):
     if terse:
         stat = cmdutil.tersestatus(repo.root, stat, terse,
                                     repo.dirstate._ignore, opts.get('ignored'))
-    changestates = list(zip(states, pycompat.iterbytestr('MAR!?IC'), stat))
+    changestates = zip(states, pycompat.iterbytestr('MAR!?IC'), stat)
 
     if (opts.get('all') or opts.get('copies')
         or ui.configbool('ui', 'statuscopies')) and not opts.get('no_status'):
@@ -4849,7 +4849,7 @@ def summary(ui, repo, **opts):
 
     c = repo.dirstate.copies()
     copied, renamed = [], []
-    for d, s in c.items():
+    for d, s in c.iteritems():
         if s in status.removed:
             status.removed.remove(s)
             renamed.append(d)

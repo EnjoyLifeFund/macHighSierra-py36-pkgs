@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import collections
 import contextlib
@@ -61,7 +61,7 @@ def nonnormalentries(dmap):
     except AttributeError:
         nonnorm = set()
         otherparent = set()
-        for fname, e in dmap.items():
+        for fname, e in dmap.iteritems():
             if e[0] != 'n' or e[3] == -1:
                 nonnorm.add(fname)
             if e[0] == 'n' and e[2] == -2:
@@ -184,7 +184,7 @@ class dirstate(object):
 
         f = {}
         normcase = util.normcase
-        for name, s in self._map.items():
+        for name, s in self._map.iteritems():
             if s[0] != 'r':
                 f[normcase(name)] = name
         f['.'] = '.' # prevents useless util.fspath() invocation
@@ -363,7 +363,7 @@ class dirstate(object):
             yield x
 
     def items(self):
-        return iter(self._map.items())
+        return self._map.iteritems()
 
     iteritems = items
 
@@ -819,7 +819,7 @@ class dirstate(object):
     def _writedirstate(self, st):
         # notify callbacks about parents change
         if self._origpl is not None and self._origpl != self._pl:
-            for c, callback in sorted(self._plchangecallbacks.items()):
+            for c, callback in sorted(self._plchangecallbacks.iteritems()):
                 callback(self, self._origpl, self._pl)
             self._origpl = None
         # use the modification time of the newly created temporary file as the
@@ -831,7 +831,7 @@ class dirstate(object):
         delaywrite = self._ui.configint('debug', 'dirstate.delaywrite', 0)
         if delaywrite > 0:
             # do we have any files to delay for?
-            for f, e in self._map.items():
+            for f, e in self._map.iteritems():
                 if e[0] == 'n' and e[3] == now:
                     import time # to avoid useless import
                     # rather than sleep n seconds, sleep until the next
@@ -997,7 +997,7 @@ class dirstate(object):
         if match.isexact() and self._checkcase:
             normed = {}
 
-            for f, st in results.items():
+            for f, st in results.iteritems():
                 if st is None:
                     continue
 
@@ -1010,7 +1010,7 @@ class dirstate(object):
 
                 paths.add(f)
 
-            for norm, paths in normed.items():
+            for norm, paths in normed.iteritems():
                 if len(paths) > 1:
                     for path in paths:
                         folded = self._discoverpath(path, norm, True, None,
@@ -1153,7 +1153,7 @@ class dirstate(object):
                 # that wasn't ignored, and everything that matched was stat'ed
                 # and is already in results.
                 # The rest must thus be ignored or under a symlink.
-                audit_path = pathutil.pathauditor(self._root)
+                audit_path = pathutil.pathauditor(self._root, cached=True)
 
                 for nf in iter(visit):
                     # If a stat for the same file was already added with a
@@ -1225,7 +1225,7 @@ class dirstate(object):
         #   be called for every dir in the working dir
         full = listclean or match.traversedir is not None
         for fn, st in self.walk(match, subrepos, listunknown, listignored,
-                                full=full).items():
+                                full=full).iteritems():
             if fn not in dmap:
                 if (listignored or mexact(fn)) and dirignore(fn):
                     if listignored:
@@ -1282,7 +1282,7 @@ class dirstate(object):
         '''
         dmap = self._map
         if match.always():
-            return list(dmap.keys())
+            return dmap.keys()
         files = match.files()
         if match.isexact():
             # fast path -- filter the other way around, since typically files is

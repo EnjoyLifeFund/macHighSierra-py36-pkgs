@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import collections
 import contextlib
@@ -41,7 +41,7 @@ from . import (
 urlreq = util.urlreq
 
 # for use with str.translate(None, _keepalnum), to keep just alphanumerics
-_keepalnum = ''.join(c for c in map(pycompat.bytechr, list(range(256)))
+_keepalnum = ''.join(c for c in map(pycompat.bytechr, range(256))
                      if not c.isalnum())
 
 # The config knobs that will be altered (if unset) by ui.tweakdefaults.
@@ -330,7 +330,7 @@ class ui(object):
     def readconfig(self, filename, root=None, trust=False,
                    sections=None, remap=None):
         try:
-            fp = open(filename, 'rb')
+            fp = open(filename, u'rb')
         except IOError:
             if not sections: # ignore unless we were looking for something
                 return
@@ -462,7 +462,7 @@ class ui(object):
                 msg = "config item requires an explicit default value: '%s.%s'"
                 msg %= (section, name)
                 self.develwarn(msg, 2, 'warn-config-default')
-            elif isinstance(item.default, collections.Callable):
+            elif callable(item.default):
                     value = item.default()
             else:
                 value = item.default
@@ -508,7 +508,7 @@ class ui(object):
                 sub[k[len(prefix):]] = v
 
         if self.debugflag and not untrusted and self._reportuntrusted:
-            for k, v in list(sub.items()):
+            for k, v in sub.items():
                 uvalue = self._ucfg.get(section, '%s:%s' % (name, k))
                 if uvalue is not None and uvalue != v:
                     self.debug('ignoring untrusted configuration option '
@@ -648,7 +648,7 @@ class ui(object):
             if default is _unset:
                 default = 0
             value = default
-        if not isinstance(value, str):
+        if not isinstance(value, bytes):
             return value
         try:
             return util.sizetoint(value)
@@ -703,7 +703,7 @@ class ui(object):
             for k, v in items:
                 if ':' not in k:
                     newitems[k] = v
-            items = list(newitems.items())
+            items = newitems.items()
         if self.debugflag and not untrusted and self._reportuntrusted:
             for k, v in self._ucfg.items(section):
                 if self._tcfg.get(section, k) != v:
@@ -945,8 +945,14 @@ class ui(object):
                    not "history, "summary" not "summ", etc.
         """
         if (self._disablepager
-            or self.pageractive
-            or command in self.configlist('pager', 'ignore')
+            or self.pageractive):
+            # how pager should do is already determined
+            return
+
+        if not command.startswith('internal-always-') and (
+            # explicit --pager=on (= 'internal-always-' prefix) should
+            # take precedence over disabling factors below
+            command in self.configlist('pager', 'ignore')
             or not self.configbool('ui', 'paginate')
             or not self.configbool('pager', 'attend-' + command, True)
             # TODO: if we want to allow HGPLAINEXCEPT=pager,
@@ -965,7 +971,7 @@ class ui(object):
             return
 
         pagerenv = {}
-        for name, value in list(rcutil.defaultpagerenv().items()):
+        for name, value in rcutil.defaultpagerenv().items():
             if name not in encoding.environ:
                 pagerenv[name] = value
 
@@ -1095,7 +1101,7 @@ class ui(object):
         }
 
         # Feature-specific interface
-        if feature not in list(featureinterfaces.keys()):
+        if feature not in featureinterfaces.keys():
             # Programming error, not user error
             raise ValueError("Unknown feature requested %s" % feature)
 
@@ -1209,6 +1215,7 @@ class ui(object):
         # call write() so output goes through subclassed implementation
         # e.g. color extension on Windows
         self.write(prompt, prompt=True)
+        self.flush()
 
         # instead of trying to emulate raw_input, swap (self.fin,
         # self.fout) with (sys.stdin, sys.stdout)
@@ -1219,7 +1226,7 @@ class ui(object):
         # prompt ' ' must exist; otherwise readline may delete entire line
         # - http://bugs.python.org/issue12833
         with self.timeblockedsection('stdio'):
-            line = input(' ')
+            line = raw_input(' ')
         sys.stdin = oldin
         sys.stdout = oldout
 
@@ -1585,12 +1592,12 @@ class ui(object):
         {(section, name) : value}"""
         backups = {}
         try:
-            for (section, name), value in list(overrides.items()):
+            for (section, name), value in overrides.items():
                 backups[(section, name)] = self.backupconfig(section, name)
                 self.setconfig(section, name, value, source)
             yield
         finally:
-            for __, backup in list(backups.items()):
+            for __, backup in backups.items():
                 self.restoreconfig(backup)
             # just restoring ui.quiet config to the previous value is not enough
             # as it does not update ui.quiet class member
@@ -1736,7 +1743,7 @@ class path(object):
         # Now process the sub-options. If a sub-option is registered, its
         # attribute will always be present. The value will be None if there
         # was no valid sub-option.
-        for suboption, (attr, func) in _pathsuboptions.items():
+        for suboption, (attr, func) in _pathsuboptions.iteritems():
             if suboption not in suboptions:
                 setattr(self, attr, None)
                 continue
@@ -1758,7 +1765,7 @@ class path(object):
         This is intended to be used for presentation purposes.
         """
         d = {}
-        for subopt, (attr, _func) in _pathsuboptions.items():
+        for subopt, (attr, _func) in _pathsuboptions.iteritems():
             value = getattr(self, attr)
             if value is not None:
                 d[subopt] = value

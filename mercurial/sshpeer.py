@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import re
 
@@ -139,6 +139,8 @@ class sshpeer(wireproto.wirepeer):
         if u.scheme != 'ssh' or not u.host or u.path is None:
             self._abort(error.RepoError(_("couldn't parse location %s") % path))
 
+        util.checksafessh(path)
+
         self.user = u.user
         if u.passwd is not None:
             self._abort(error.RepoError(_("password in URL not supported")))
@@ -149,10 +151,7 @@ class sshpeer(wireproto.wirepeer):
         sshcmd = self.ui.config("ui", "ssh")
         remotecmd = self.ui.config("ui", "remotecmd")
 
-        args = util.sshargs(sshcmd,
-                            _serverquote(self.host),
-                            _serverquote(self.user),
-                            _serverquote(self.port))
+        args = util.sshargs(sshcmd, self.host, self.user, self.port)
 
         if create:
             cmd = '%s %s %s' % (sshcmd, args,
@@ -273,10 +272,10 @@ class sshpeer(wireproto.wirepeer):
             else:
                 wireargs[k] = args[k]
                 del args[k]
-        for k, v in sorted(wireargs.items()):
+        for k, v in sorted(wireargs.iteritems()):
             self.pipeo.write("%s %d\n" % (k, len(v)))
             if isinstance(v, dict):
-                for dk, dv in v.items():
+                for dk, dv in v.iteritems():
                     self.pipeo.write("%s %d\n" % (dk, len(dv)))
                     self.pipeo.write(dv)
             else:

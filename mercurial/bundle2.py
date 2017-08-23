@@ -145,7 +145,7 @@ future, dropping the stream may become an option for channel we do not care to
 preserve.
 """
 
-
+from __future__ import absolute_import
 
 import errno
 import re
@@ -271,7 +271,7 @@ class unbundlerecords(object):
     def __len__(self):
         return len(self._sequences)
 
-    def __bool__(self):
+    def __nonzero__(self):
         return bool(self._sequences)
 
     __bool__ = __nonzero__
@@ -1225,7 +1225,7 @@ class unbundlepart(unpackermixin):
         fparamsizes = _makefpartparamsizes(mancount + advcount)
         paramsizes = self._unpackheader(fparamsizes)
         # make it a list of couple again
-        paramsizes = list(zip(paramsizes[::2], paramsizes[1::2]))
+        paramsizes = zip(paramsizes[::2], paramsizes[1::2])
         # split mandatory from advisory
         mansizes = paramsizes[:mancount]
         advsizes = paramsizes[mancount:]
@@ -1559,7 +1559,7 @@ def handlechangegroup(op, inpart):
     assert not inpart.read()
 
 _remotechangegroupparams = tuple(['url', 'size', 'digests'] +
-    ['digest:%s' % k for k in list(util.DIGESTS.keys())])
+    ['digest:%s' % k for k in util.DIGESTS.keys()])
 @parthandler('remote-changegroup', _remotechangegroupparams)
 def handleremotechangegroup(op, inpart):
     """apply a bundle10 on the repo, given an url and validation information
@@ -1672,7 +1672,7 @@ def handlecheckupdatedheads(op, inpart):
         op.gettransaction()
 
     currentheads = set()
-    for ls in op.repo.branchmap().values():
+    for ls in op.repo.branchmap().itervalues():
         currentheads.update(ls)
 
     for h in heads:

@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import re
 
@@ -193,7 +193,7 @@ def func(repo, subset, a, b, order):
 
     keep = lambda fn: getattr(fn, '__doc__', None) is not None
 
-    syms = [s for (s, fn) in list(symbols.items()) if keep(fn)]
+    syms = [s for (s, fn) in symbols.items() if keep(fn)]
     raise error.UnknownIdentifier(f, syms)
 
 # functions
@@ -400,7 +400,7 @@ def bookmark(repo, subset, x):
             bms.add(repo[bmrev].rev())
         else:
             matchrevs = set()
-            for name, bmrev in repo._bookmarks.items():
+            for name, bmrev in repo._bookmarks.iteritems():
                 if matcher(name):
                     matchrevs.add(bmrev)
             if not matchrevs:
@@ -409,7 +409,7 @@ def bookmark(repo, subset, x):
             for bmrev in matchrevs:
                 bms.add(repo[bmrev].rev())
     else:
-        bms = {repo[r].rev() for r in list(repo._bookmarks.values())}
+        bms = {repo[r].rev() for r in repo._bookmarks.values()}
     bms -= {node.nullrev}
     return subset & bms
 
@@ -1051,7 +1051,7 @@ def head(repo, subset, x):
     getargs(x, 0, 0, _("head takes no arguments"))
     hs = set()
     cl = repo.changelog
-    for ls in repo.branchmap().values():
+    for ls in repo.branchmap().itervalues():
         hs.update(cl.rev(h) for h in ls)
     return subset & baseset(hs)
 
@@ -1225,7 +1225,7 @@ def named(repo, subset, x):
                                         % ns)
         namespaces.add(repo.names[pattern])
     else:
-        for name, ns in repo.names.items():
+        for name, ns in repo.names.iteritems():
             if matcher(name):
                 namespaces.add(ns)
         if not namespaces:
@@ -1835,18 +1835,18 @@ def subrepo(repo, subset, x):
             return s.added or s.modified or s.removed
 
         if s.added:
-            return any(submatches(list(c.substate.keys())))
+            return any(submatches(c.substate.keys()))
 
         if s.modified:
             subs = set(c.p1().substate.keys())
-            subs.update(list(c.substate.keys()))
+            subs.update(c.substate.keys())
 
             for path in submatches(subs):
                 if c.p1().substate.get(path) != c.substate.get(path):
                     return True
 
         if s.removed:
-            return any(submatches(list(c.p1().substate.keys())))
+            return any(submatches(c.p1().substate.keys()))
 
         return False
 
@@ -2083,7 +2083,7 @@ def matchany(ui, specs, repo=None, order=defineorder, localalias=None):
         aliases.extend(ui.configitems('revsetalias'))
         warn = ui.warn
     if localalias:
-        aliases.extend(list(localalias.items()))
+        aliases.extend(localalias.items())
     if aliases:
         tree = revsetlang.expandaliases(tree, aliases, warn=warn)
     tree = revsetlang.foldconcat(tree)
@@ -2103,7 +2103,7 @@ def makematcher(tree):
 def loadpredicate(ui, extname, registrarobj):
     """Load revset predicates from specified registrarobj
     """
-    for name, func in registrarobj._table.items():
+    for name, func in registrarobj._table.iteritems():
         symbols[name] = func
         if func._safe:
             safesymbols.add(name)
@@ -2112,4 +2112,4 @@ def loadpredicate(ui, extname, registrarobj):
 loadpredicate(None, None, predicate)
 
 # tell hggettext to extract docstrings from these functions:
-i18nfunctions = list(symbols.values())
+i18nfunctions = symbols.values()

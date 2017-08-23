@@ -3,6 +3,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 
+import os
 import os.path
 import re
 import sys
@@ -1834,6 +1835,10 @@ class ConsoleWidget(MetaQObjectHasTraits('NewBase', (LoggingConfigurable, superQ
                         cursor.joinPreviousEditBlock()
                         cursor.deletePreviousChar()
 
+                        if os.name == 'nt':
+                            cursor.select(QtGui.QTextCursor.Document)
+                            cursor.removeSelectedText()
+
                     elif act.action == 'carriage-return':
                         cursor.movePosition(
                             cursor.StartOfLine, cursor.KeepAnchor)
@@ -2123,8 +2128,13 @@ class ConsoleWidget(MetaQObjectHasTraits('NewBase', (LoggingConfigurable, superQ
         # We can't leave the cursor at the end of the document though, because
         # that would cause any further additions to move the cursor. Therefore,
         # we move it back one place and move it forward again at the end of
-        # this method.
-        self._append_before_prompt_cursor.setPosition(cursor.position() - 1)
+        # this method. However, we only do this if the cursor isn't already
+        # at the start of the text.
+        if cursor.position() == 0:
+            move_forward = False
+        else:
+            move_forward = True
+            self._append_before_prompt_cursor.setPosition(cursor.position() - 1)
 
         # Insert a preliminary newline, if necessary.
         if newline and cursor.position() > 0:
@@ -2151,8 +2161,10 @@ class ConsoleWidget(MetaQObjectHasTraits('NewBase', (LoggingConfigurable, superQ
 
         self._flush_pending_stream()
         self._prompt_cursor.setPosition(self._get_end_pos() - 1)
-        self._append_before_prompt_cursor.setPosition(
-            self._append_before_prompt_cursor.position() + 1)
+
+        if move_forward:
+            self._append_before_prompt_cursor.setPosition(
+                self._append_before_prompt_cursor.position() + 1)
         self._prompt_started()
 
     #------ Signal handlers ----------------------------------------------------

@@ -6,7 +6,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 import os
@@ -45,7 +45,7 @@ def encodevalueinheaders(value, header, limit):
     result = []
 
     n = 0
-    for i in range(0, len(value), valuelen):
+    for i in xrange(0, len(value), valuelen):
         n += 1
         result.append((fmt % str(n), value[i:i + valuelen]))
 
@@ -151,13 +151,13 @@ class httppeer(wireproto.wirepeer):
         postargsok = self.caps is not None and 'httppostargs' in self.caps
         # TODO: support for httppostargs when data is a file-like
         # object rather than a basestring
-        canmungedata = not data or isinstance(data, str)
+        canmungedata = not data or isinstance(data, basestring)
         if postargsok and canmungedata:
             strargs = urlreq.urlencode(sorted(args.items()))
             if strargs:
                 if not data:
                     data = strargs
-                elif isinstance(data, str):
+                elif isinstance(data, basestring):
                     data = strargs + data
                 headers['X-HgArgs-Post'] = len(strargs)
         else:

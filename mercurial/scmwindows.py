@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import
 
 import os
 
@@ -10,7 +10,7 @@ from . import (
 )
 
 try:
-    import winreg as winreg
+    import _winreg as winreg
     winreg.CloseKey
 except ImportError:
     import winreg

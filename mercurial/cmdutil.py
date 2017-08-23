@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 import itertools
@@ -26,6 +26,7 @@ from . import (
     changelog,
     copies,
     crecord as crecordmod,
+    dirstateguard,
     encoding,
     error,
     formatter,
@@ -348,7 +349,7 @@ def dorecord(ui, repo, commitfunc, cmdsuggest, backupall,
             # 3a. apply filtered patch to clean repo  (clean)
             if backups:
                 # Equivalent to hg.revert
-                m = scmutil.matchfiles(repo, list(backups.keys()))
+                m = scmutil.matchfiles(repo, backups.keys())
                 mergemod.update(repo, repo.dirstate.p1(),
                         False, True, matcher=m)
 
@@ -373,7 +374,7 @@ def dorecord(ui, repo, commitfunc, cmdsuggest, backupall,
             # 5. finally restore backed-up files
             try:
                 dirstate = repo.dirstate
-                for realname, tmpname in backups.items():
+                for realname, tmpname in backups.iteritems():
                     ui.debug('restoring %r to %r\n' % (tmpname, realname))
 
                     if dirstate[realname] == 'n':
@@ -534,7 +535,7 @@ def tersestatus(root, statlist, status, ignorefn, ignore):
 
         rs = []
         newls = []
-        for par, files in pardict.items():
+        for par, files in pardict.iteritems():
             lenpar = numfiles(par)
             if lenpar == len(files):
                 newls.append(par)
@@ -555,7 +556,7 @@ def tersestatus(root, statlist, status, ignorefn, ignore):
                 newls.append(parn)
 
         # dict.values() for Py3 compatibility
-        for files in list(pardict.values()):
+        for files in pardict.values():
             rs.extend(files)
 
         rs.sort()
@@ -566,7 +567,7 @@ def tersestatus(root, statlist, status, ignorefn, ignore):
     if not didsomethingchanged:
         return statlist
 
-    for x in range(len(indexes)):
+    for x in xrange(len(indexes)):
         if not finalrs[x]:
             finalrs[x] = statlist[x]
 
@@ -585,7 +586,7 @@ def findpossible(cmd, table, strict=False):
         # short-circuit exact matches, "log" alias beats "^log|history"
         keys = [cmd]
     else:
-        keys = list(table.keys())
+        keys = table.keys()
 
     allcmds = []
     for e in keys:
@@ -1542,7 +1543,7 @@ class changeset_printer(object):
             self.ui.write(_("branch:      %s\n") % branch,
                           label='log.branch')
 
-        for nsname, ns in self.repo.names.items():
+        for nsname, ns in self.repo.names.iteritems():
             # branches has special logic already handled above, so here we just
             # skip it
             if nsname == 'branches':
@@ -1714,7 +1715,7 @@ class jsonchangeset(changeset_printer):
 
             self.ui.write((',\n  "extra": {%s}') %
                           ", ".join('"%s": "%s"' % (j(k), j(v))
-                                    for k, v in list(ctx.extra().items())))
+                                    for k, v in ctx.extra().items()))
 
             files = ctx.p1().status(ctx)
             self.ui.write((',\n  "modified": [%s]') %
@@ -1788,7 +1789,7 @@ class changeset_templater(changeset_printer):
                     if mode and cur in self.t:
                         self._parts[t] = cur
         else:
-            partnames = [p for p in list(self._parts.keys()) if p != tmplspec.ref]
+            partnames = [p for p in self._parts.keys() if p != tmplspec.ref]
             m = formatter.templatepartsmap(tmplspec, self.t, partnames)
             self._parts.update(m)
 
@@ -1915,12 +1916,12 @@ def showmarker(fm, marker, index=None):
     fm.write('precnode', '%s ', hex(marker.precnode()))
     succs = marker.succnodes()
     fm.condwrite(succs, 'succnodes', '%s ',
-                 fm.formatlist(list(map(hex, succs)), name='node'))
+                 fm.formatlist(map(hex, succs), name='node'))
     fm.write('flag', '%X ', marker.flags())
     parents = marker.parentnodes()
     if parents is not None:
         fm.write('parentnodes', '{%s} ',
-                 fm.formatlist(list(map(hex, parents)), name='node', sep=', '))
+                 fm.formatlist(map(hex, parents), name='node', sep=', '))
     fm.write('date', '(%s) ', fm.formatdate(marker.date()))
     meta = marker.metadata().copy()
     meta.pop('date', None)
@@ -1978,7 +1979,7 @@ def walkfilerevs(repo, match, follow, revs, fncache):
         """
         cl_count = len(repo)
         revs = []
-        for j in range(0, last + 1):
+        for j in xrange(0, last + 1):
             linkrev = filelog.linkrev(j)
             if linkrev < minrev:
                 continue
@@ -2066,7 +2067,8 @@ class _followfilter(object):
             if self.onlyfirst:
                 return self.repo.changelog.parentrevs(rev)[0:1]
             else:
-                return [x for x in self.repo.changelog.parentrevs(rev) if x != nullrev]
+                return filter(lambda x: x != nullrev,
+                              self.repo.changelog.parentrevs(rev))
 
         if self.startrev == nullrev:
             self.startrev = rev
@@ -2166,7 +2168,7 @@ def walkchangerevs(repo, match, opts, prepare):
                 else:
                     self.revs.discard(value)
                     ctx = change(value)
-                    matches = list(filter(match, ctx.files()))
+                    matches = filter(match, ctx.files())
                     if matches:
                         fncache[value] = matches
                         self.set.add(value)
@@ -2185,7 +2187,7 @@ def walkchangerevs(repo, match, opts, prepare):
         rev = repo[rev].rev()
         ff = _followfilter(repo)
         stop = min(revs[0], revs[-1])
-        for x in range(rev, stop - 1, -1):
+        for x in xrange(rev, stop - 1, -1):
             if ff.match(x):
                 wanted = wanted - [x]
 
@@ -2204,7 +2206,7 @@ def walkchangerevs(repo, match, opts, prepare):
         stopiteration = False
         for windowsize in increasingwindows():
             nrevs = []
-            for i in range(windowsize):
+            for i in xrange(windowsize):
                 rev = next(it, None)
                 if rev is None:
                     stopiteration = True
@@ -2392,7 +2394,7 @@ def _makelogrevset(repo, pats, opts, revs):
                 filematcher = lambda rev: match
 
     expr = []
-    for op, val in sorted(opts.items()):
+    for op, val in sorted(opts.iteritems()):
         if not val:
             continue
         if op not in opt2revset:
@@ -2522,7 +2524,7 @@ def displaygraph(ui, repo, dag, displayer, edgefn, getrenamed=None,
             'grandparent': graphmod.GRANDPARENT,
             'missing': graphmod.MISSINGPARENT
         }
-        for name, key in list(edgetypes.items()):
+        for name, key in edgetypes.items():
             # experimental config: experimental.graphstyle.*
             styles[key] = ui.config('experimental', 'graphstyle.%s' % name,
                                     styles[key])
@@ -2887,14 +2889,23 @@ def commit(ui, repo, commitfunc, pats, opts):
     message = logmessage(ui, opts)
     matcher = scmutil.match(repo[None], pats, opts)
 
+    dsguard = None
     # extract addremove carefully -- this function can be called from a command
     # that doesn't support addremove
-    if opts.get('addremove'):
-        if scmutil.addremove(repo, matcher, "", opts) != 0:
-            raise error.Abort(
-                _("failed to mark all new/missing files as added/removed"))
+    try:
+        if opts.get('addremove'):
+            dsguard = dirstateguard.dirstateguard(repo, 'commit')
+            if scmutil.addremove(repo, matcher, "", opts) != 0:
+                raise error.Abort(
+                    _("failed to mark all new/missing files as added/removed"))
 
-    return commitfunc(ui, repo, message, matcher, opts)
+        r = commitfunc(ui, repo, message, matcher, opts)
+        if dsguard:
+            dsguard.close()
+        return r
+    finally:
+        if dsguard:
+            dsguard.release()
 
 def samefile(f, ctx1, ctx2):
     if f in ctx1.manifest():
@@ -3477,7 +3488,7 @@ def revert(ui, repo, ctx, parents, *pats, **opts):
                                 else:
                                     util.rename(target, bakname)
                     if ui.verbose or not exact:
-                        if not isinstance(msg, str):
+                        if not isinstance(msg, basestring):
                             msg = msg(abs)
                         ui.status(msg % rel)
                 elif exact:
@@ -3527,7 +3538,7 @@ def _performrevert(repo, parents, ctx, actions, interactive=False,
             pass
         repo.dirstate.remove(f)
 
-    audit_path = pathutil.pathauditor(repo.root)
+    audit_path = pathutil.pathauditor(repo.root, cached=True)
     for f in actions['forget'][0]:
         if interactive:
             choice = repo.ui.promptchoice(

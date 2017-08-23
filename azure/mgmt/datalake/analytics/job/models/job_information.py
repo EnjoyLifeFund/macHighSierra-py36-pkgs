@@ -9,11 +9,12 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.serialization import Model
+from .job_information_basic import JobInformationBasic
 
 
-class JobInformation(Model):
-    """The common Data Lake Analytics job information properties.
+class JobInformation(JobInformationBasic):
+    """The extended Data Lake Analytics job information properties returned when
+    retrieving a specific job.
 
     Variables are only populated by the server, and will be ignored when
     sending a request.
@@ -28,10 +29,6 @@ class JobInformation(Model):
      <azure.mgmt.datalake.analytics.job.models.JobType>`
     :ivar submitter: the user or account that submitted the job.
     :vartype submitter: str
-    :ivar error_message: the error message details for the job, if the job
-     failed.
-    :vartype error_message: list of :class:`JobErrorDetails
-     <azure.mgmt.datalake.analytics.job.models.JobErrorDetails>`
     :param degree_of_parallelism: the degree of parallelism used for this job.
      This must be greater than 0, if set to less than 0 it will default to 1.
      Default value: 1 .
@@ -64,6 +61,13 @@ class JobInformation(Model):
      the logFolder. '*' is the only matching character allowed. Example format:
      jobExecution*.log or *mylog*.txt
     :type log_file_patterns: list of str
+    :param related: the recurring job relationship information properties.
+    :type related: :class:`JobRelationshipProperties
+     <azure.mgmt.datalake.analytics.job.models.JobRelationshipProperties>`
+    :ivar error_message: the error message details for the job, if the job
+     failed.
+    :vartype error_message: list of :class:`JobErrorDetails
+     <azure.mgmt.datalake.analytics.job.models.JobErrorDetails>`
     :ivar state_audit_records: the job state audit records, indicating when
      various operations have been performed on this job.
     :vartype state_audit_records: list of :class:`JobStateAuditRecord
@@ -71,9 +75,6 @@ class JobInformation(Model):
     :param properties: the job specific properties.
     :type properties: :class:`JobProperties
      <azure.mgmt.datalake.analytics.job.models.JobProperties>`
-    :param related: the recurring job relationship information properties.
-    :type related: :class:`JobRelationshipProperties
-     <azure.mgmt.datalake.analytics.job.models.JobRelationshipProperties>`
     """
 
     _validation = {
@@ -81,13 +82,13 @@ class JobInformation(Model):
         'name': {'required': True},
         'type': {'required': True},
         'submitter': {'readonly': True},
-        'error_message': {'readonly': True},
         'submit_time': {'readonly': True},
         'start_time': {'readonly': True},
         'end_time': {'readonly': True},
         'state': {'readonly': True},
         'result': {'readonly': True},
         'log_folder': {'readonly': True},
+        'error_message': {'readonly': True},
         'state_audit_records': {'readonly': True},
         'properties': {'required': True},
     }
@@ -97,7 +98,6 @@ class JobInformation(Model):
         'name': {'key': 'name', 'type': 'str'},
         'type': {'key': 'type', 'type': 'JobType'},
         'submitter': {'key': 'submitter', 'type': 'str'},
-        'error_message': {'key': 'errorMessage', 'type': '[JobErrorDetails]'},
         'degree_of_parallelism': {'key': 'degreeOfParallelism', 'type': 'int'},
         'priority': {'key': 'priority', 'type': 'int'},
         'submit_time': {'key': 'submitTime', 'type': 'iso-8601'},
@@ -107,26 +107,14 @@ class JobInformation(Model):
         'result': {'key': 'result', 'type': 'JobResult'},
         'log_folder': {'key': 'logFolder', 'type': 'str'},
         'log_file_patterns': {'key': 'logFilePatterns', 'type': '[str]'},
+        'related': {'key': 'related', 'type': 'JobRelationshipProperties'},
+        'error_message': {'key': 'errorMessage', 'type': '[JobErrorDetails]'},
         'state_audit_records': {'key': 'stateAuditRecords', 'type': '[JobStateAuditRecord]'},
         'properties': {'key': 'properties', 'type': 'JobProperties'},
-        'related': {'key': 'related', 'type': 'JobRelationshipProperties'},
     }
 
     def __init__(self, name, type, properties, degree_of_parallelism=1, priority=None, log_file_patterns=None, related=None):
-        self.job_id = None
-        self.name = name
-        self.type = type
-        self.submitter = None
+        super(JobInformation, self).__init__(name=name, type=type, degree_of_parallelism=degree_of_parallelism, priority=priority, log_file_patterns=log_file_patterns, related=related)
         self.error_message = None
-        self.degree_of_parallelism = degree_of_parallelism
-        self.priority = priority
-        self.submit_time = None
-        self.start_time = None
-        self.end_time = None
-        self.state = None
-        self.result = None
-        self.log_folder = None
-        self.log_file_patterns = log_file_patterns
         self.state_audit_records = None
         self.properties = properties
-        self.related = related

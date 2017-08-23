@@ -11,7 +11,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 
@@ -312,7 +312,7 @@ class transaction(object):
     def _generatefiles(self, suffix='', group=gengroupall):
         # write files registered for generation
         any = False
-        for id, entry in sorted(self._filegenerators.items()):
+        for id, entry in sorted(self._filegenerators.iteritems()):
             any = True
             order, filenames, genfunc, location = entry
 

@@ -31,7 +31,6 @@ def backward_pass(g, end_node, start_node):
     outgrads = {end_node : (g, False)}
     assert_vspace_match(outgrads[end_node][0], end_node.vspace, None)
     for node in toposort(end_node, start_node):
-        if node not in outgrads: continue
         cur_outgrad = outgrads.pop(node)
         function, args, kwargs, parents = node.recipe
         for argnum, parent in parents:
@@ -250,7 +249,10 @@ def vspace(value):
     try:
         return vspace_mappings[type(value)](value)
     except KeyError:
-        raise TypeError("Can't find vspace for type {}".format(type(value)))
+        if isnode(value):
+            return value.vspace
+        else:
+            raise TypeError("Can't find vspace for type {}".format(type(value)))
 
 class SparseObject(object):
     __slots__ = ['vs', 'mut_add']
@@ -262,10 +264,10 @@ register_vspace(lambda x : x.vs, SparseObject)
 register_node(Node, SparseObject)
 
 def assert_vspace_match(x, expected_vspace, fun):
-    assert expected_vspace == vspace(getval(x)), \
+    assert expected_vspace == vspace(x), \
         "\nGrad of {} returned unexpected vector space" \
         "\nVector space is {}" \
-        "\nExpected        {}".format(fun, vspace(getval(x)), expected_vspace)
+        "\nExpected        {}".format(fun, vspace(x), expected_vspace)
 
 isnode = lambda x: type(x) in node_types
 getval = lambda x: x.value if isnode(x) else x

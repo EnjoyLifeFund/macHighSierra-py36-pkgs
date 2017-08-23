@@ -549,8 +549,6 @@ def test_lists():
     line, = list_item.children
     marker, content = line.children
     assert marker.text == '◦'
-    assert marker.margin_left == 0
-    assert marker.margin_right == 8
     assert content.text == 'abc'
 
     page, = parse('''
@@ -565,8 +563,6 @@ def test_lists():
     unordered_list, = body_children(page)
     list_item, = unordered_list.children
     marker = list_item.outside_list_marker
-    font_size = marker.style.font_size
-    assert marker.margin_right == 0.5 * font_size  # 0.5em
     assert marker.position_x == (
         list_item.padding_box_x() - marker.width - marker.margin_right)
     assert marker.position_y == list_item.position_y
@@ -1076,6 +1072,179 @@ def test_page_breaks():
 
 
 @assert_no_logs
+def test_page_names():
+    """Test the page names."""
+    pages = parse('''
+        <style>
+            @page { size: 100px 100px }
+            section { page: small }
+        </style>
+        <div>
+            <section>large</section>
+        </div>
+    ''')
+    page1, = pages
+    assert (page1.width, page1.height) == (100, 100)
+
+    pages = parse('''
+        <style>
+            @page { size: 100px 100px }
+            @page narrow { margin: 1px }
+            section { page: small }
+        </style>
+        <div>
+            <section>large</section>
+        </div>
+    ''')
+    page1, = pages
+    assert (page1.width, page1.height) == (100, 100)
+
+    pages = parse('''
+        <style>
+            @page { margin: 0 }
+            @page narrow { size: 100px 200px }
+            @page large { size: 200px 100px }
+            div { page: narrow }
+            section { page: large }
+        </style>
+        <div>
+            <section>large</section>
+            <section>large</section>
+            <p>narrow</p>
+        </div>
+    ''')
+    page1, page2 = pages
+
+    assert (page1.width, page1.height) == (200, 100)
+    html, = page1.children
+    body, = html.children
+    div, = body.children
+    section1, section2 = div.children
+    assert section1.element_tag == section2.element_tag == 'section'
+
+    assert (page2.width, page2.height) == (100, 200)
+    html, = page2.children
+    body, = html.children
+    div, = body.children
+    p, = div.children
+    assert p.element_tag == 'p'
+
+    pages = parse('''
+        <style>
+            @page { size: 200px 200px; margin: 0 }
+            @page small { size: 100px 100px }
+            p { page: small }
+        </style>
+        <section>normal</section>
+        <section>normal</section>
+        <p>small</p>
+        <section>small</section>
+    ''')
+    page1, page2 = pages
+
+    assert (page1.width, page1.height) == (200, 200)
+    html, = page1.children
+    body, = html.children
+    section1, section2 = body.children
+    assert section1.element_tag == section2.element_tag == 'section'
+
+    assert (page2.width, page2.height) == (100, 100)
+    html, = page2.children
+    body, = html.children
+    p, section = body.children
+    assert p.element_tag == 'p'
+    assert section.element_tag == 'section'
+
+    pages = parse('''
+        <style>
+            @page { size: 200px 200px; margin: 0 }
+            @page small { size: 100px 100px }
+            div { page: small }
+        </style>
+        <section><p>a</p>b</section>
+        <section>c<div>d</div></section>
+    ''')
+    page1, page2 = pages
+
+    assert (page1.width, page1.height) == (200, 200)
+    html, = page1.children
+    body, = html.children
+    section1, section2 = body.children
+    assert section1.element_tag == section2.element_tag == 'section'
+    p, line = section1.children
+    line, = section2.children
+
+    assert (page2.width, page2.height) == (100, 100)
+    html, = page2.children
+    body, = html.children
+    section2, = body.children
+    div, = section2.children
+
+    pages = parse('''
+        <style>
+            @page { margin: 0 }
+            @page large { size: 200px 200px }
+            @page small { size: 100px 100px }
+            section { page: large }
+            div { page: small }
+        </style>
+        <section>a<p>b</p>c</section>
+        <section>d<div>e</div>f</section>
+    ''')
+    page1, page2, page3 = pages
+
+    assert (page1.width, page1.height) == (200, 200)
+    html, = page1.children
+    body, = html.children
+    section1, section2 = body.children
+    assert section1.element_tag == section2.element_tag == 'section'
+    line1, p, line2 = section1.children
+    line, = section2.children
+
+    assert (page2.width, page2.height) == (100, 100)
+    html, = page2.children
+    body, = html.children
+    section2, = body.children
+    div, = section2.children
+
+    assert (page3.width, page3.height) == (200, 200)
+    html, = page3.children
+    body, = html.children
+    section2, = body.children
+    line, = section2.children
+
+    pages = parse('''
+        <style>
+            @page { size: 200px 200px; margin: 0 }
+            @page small { size: 100px 100px }
+            p { page: small; break-before: right }
+        </style>
+        <section>normal</section>
+        <section>normal</section>
+        <p>small</p>
+        <section>small</section>
+    ''')
+    page1, page2, page3 = pages
+
+    assert (page1.width, page1.height) == (200, 200)
+    html, = page1.children
+    body, = html.children
+    section1, section2 = body.children
+    assert section1.element_tag == section2.element_tag == 'section'
+
+    assert (page2.width, page2.height) == (200, 200)
+    html, = page2.children
+    assert not html.children
+
+    assert (page3.width, page3.height) == (100, 100)
+    html, = page3.children
+    body, = html.children
+    p, section = body.children
+    assert p.element_tag == 'p'
+    assert section.element_tag == 'section'
+
+
+@assert_no_logs
 def test_orphans_widows_avoid():
     """Test orphans and widows control."""
     def line_distribution(css):
@@ -1270,7 +1439,7 @@ def test_images():
         with capture_logs() as logs:
             body, img = get_img("<img src='%s' alt='invalid image'>" % url)
         assert len(logs) == 1
-        assert 'WARNING: Failed to load image' in logs[0]
+        assert 'ERROR: Failed to load image' in logs[0]
         assert isinstance(img, boxes.InlineBox)  # not a replaced box
         text, = img.children
         assert text.text == 'invalid image', url
@@ -1297,9 +1466,9 @@ def test_images():
 
     with capture_logs() as logs:
         parse('<img src=nonexistent.png><img src=nonexistent.png>')
-    # Failures are cached too: only one warning
+    # Failures are cached too: only one error
     assert len(logs) == 1
-    assert 'WARNING: Failed to load image' in logs[0]
+    assert 'ERROR: Failed to load image' in logs[0]
 
     # Layout rules try to preserve the ratio, so the height should be 40px too:
     body, img = get_img('''<body style="font-size: 0">
@@ -3289,16 +3458,16 @@ def test_hyphenation():
         '<body lang=fr>hyphénation') == 1
     # `hyphens: auto` only: no hyphenation
     assert line_count(
-        '<body style="-weasy-hyphens: auto">hyphénation') == 1
+        '<body style="hyphens: auto">hyphénation') == 1
     # lang + `hyphens: auto`: hyphenation
     assert line_count(
-        '<body style="-weasy-hyphens: auto" lang=fr>hyphénation') > 1
+        '<body style="hyphens: auto" lang=fr>hyphénation') > 1
 
     # Hyphenation with soft hyphens
     assert line_count('<body>hyp&shy;hénation') == 2
     # … unless disabled
     assert line_count(
-        '<body style="-weasy-hyphens: none">hyp&shy;hénation') == 1
+        '<body style="hyphens: none">hyp&shy;hénation') == 1
 
 
 @assert_no_logs

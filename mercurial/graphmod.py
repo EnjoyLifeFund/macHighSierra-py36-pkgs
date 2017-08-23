@@ -17,7 +17,7 @@ context of the graph returned. Type is a constant specifying the node type.
 Data depends on type.
 """
 
-
+from __future__ import absolute_import
 
 from .node import nullrev
 from . import (
@@ -288,7 +288,7 @@ def _drawendinglines(lines, extra, edgemap, seen):
     the right.
 
     """
-    if None not in list(edgemap.values()):
+    if None not in edgemap.values():
         return
 
     # Check for more edges to the right of our ending edges.
@@ -325,7 +325,7 @@ def _drawendinglines(lines, extra, edgemap, seen):
         line[:] = [c or map.get(i, ' ') for c in line]
 
     # remove edges that ended
-    remove = [p for p, c in list(edgemap.items()) if c is None]
+    remove = [p for p, c in edgemap.items() if c is None]
     for parent in remove:
         del edgemap[parent]
         seen.remove(parent)
@@ -410,16 +410,16 @@ def ascii(ui, state, type, char, text, coldata):
     # shift_interline is the line containing the non-vertical
     # edges between this entry and the next
     shift_interline = echars[:idx * 2]
-    for i in range(2 + coldiff):
+    for i in xrange(2 + coldiff):
         shift_interline.append(' ')
     count = ncols - idx - 1
     if coldiff == -1:
-        for i in range(count):
+        for i in xrange(count):
             shift_interline.extend(['/', ' '])
     elif coldiff == 0:
         shift_interline.extend(echars[(idx + 1) * 2:ncols * 2])
     else:
-        for i in range(count):
+        for i in xrange(count):
             shift_interline.extend(['\\', ' '])
 
     # draw edges from the current node to its parents
@@ -451,7 +451,7 @@ def ascii(ui, state, type, char, text, coldata):
     while len(text) < len(lines):
         text.append("")
 
-    if any(len(char) > 1 for char in list(edgemap.values())):
+    if any(len(char) > 1 for char in edgemap.values()):
         # limit drawing an edge to the first or last N lines of the current
         # section the rest of the edge is drawn like a parent line.
         parent = state['styles'][PARENT][-1]
@@ -465,7 +465,7 @@ def ascii(ui, state, type, char, text, coldata):
         for i, line in enumerate(lines):
             line[:] = [c[-1] if _drawgp(c, i) else parent for c in line]
         edgemap.update(
-            (e, (c if len(c) < 2 else parent)) for e, c in list(edgemap.items()))
+            (e, (c if len(c) < 2 else parent)) for e, c in edgemap.items())
 
     # print lines
     indentation_level = max(ncols, ncols + coldiff)

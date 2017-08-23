@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import errno
 import fcntl
@@ -23,6 +23,7 @@ import unicodedata
 from .i18n import _
 from . import (
     encoding,
+    error,
     pycompat,
 )
 
@@ -91,7 +92,13 @@ def parsepatchoutput(output_line):
 def sshargs(sshcmd, host, user, port):
     '''Build argument list for ssh'''
     args = user and ("%s@%s" % (user, host)) or host
-    return port and ("%s -p %s" % (args, port)) or args
+    if '-' in args[:1]:
+        raise error.Abort(
+            _('illegal ssh hostname or username starting with -: %s') % args)
+    args = shellquote(args)
+    if port:
+        args = '-p %s %s' % (shellquote(port), args)
+    return args
 
 def isexec(f):
     """check whether a file is executable"""

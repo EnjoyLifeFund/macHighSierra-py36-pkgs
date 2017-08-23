@@ -9,8 +9,8 @@ from __future__ import unicode_literals
 
 from webencodings import ascii_lower
 
-from .serializer import (serialize_identifier, serialize_name,
-                         serialize_string_value, _serialize_to)
+from .serializer import (_serialize_to, serialize_identifier, serialize_name,
+                         serialize_string_value)
 
 
 class Node(object):
@@ -66,12 +66,12 @@ class Node(object):
 
     def serialize(self):
         """Serialize this node to CSS syntax and return an Unicode string."""
-        chuncks = []
-        self._serialize_to(chuncks.append)
-        return ''.join(chuncks)
+        chunks = []
+        self._serialize_to(chunks.append)
+        return ''.join(chunks)
 
     def _serialize_to(self, write):
-        """Serialize this node to CSS syntax, writing chuncks as Unicode string
+        """Serialize this node to CSS syntax, writing chunks as Unicode string
         by calling the provided :obj:`write` callback.
 
         """

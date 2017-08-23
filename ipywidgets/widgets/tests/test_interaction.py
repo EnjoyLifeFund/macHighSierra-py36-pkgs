@@ -12,6 +12,7 @@ except ImportError:
 
 import os
 import nose.tools as nt
+from collections import OrderedDict
 
 import ipywidgets as widgets
 
@@ -24,13 +25,7 @@ from ipython_genutils.py3compat import annotate
 # Utility stuff
 #-----------------------------------------------------------------------------
 
-from . import setup_test_comm, teardown_test_comm
-
-def setup():
-    setup_test_comm()
-
-def teardown():
-    teardown_test_comm()
+from .utils import setup, teardown
 
 def f(**kwargs):
     pass
@@ -153,7 +148,7 @@ def test_list_str():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=values,
+        options=tuple(values),
         _options_labels=tuple(values),
         _options_values=tuple(values),
     )
@@ -167,8 +162,8 @@ def test_list_int():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=values,
-        _options_labels=("3", "1", "2"),
+        options=tuple(values),
+        _options_labels=tuple(str(v) for v in values),
         _options_values=tuple(values),
     )
     check_widgets(c, lis=d)
@@ -181,7 +176,7 @@ def test_list_tuple():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=values,
+        options=tuple(values),
         _options_labels=("3", "1", "2"),
         _options_values=(300, 100, 200),
     )
@@ -202,7 +197,7 @@ def test_dict():
     ]:
         c = interactive(f, d=d)
         w = c.children[0]
-        check_widget(w,
+        check = dict(
             cls=widgets.Dropdown,
             description='d',
             value=next(iter(d.values())),
@@ -210,6 +205,8 @@ def test_dict():
             _options_labels=tuple(d.keys()),
             _options_values=tuple(d.values()),
         )
+        check_widget(w, **check)
+
 
 def test_ordereddict():
     from collections import OrderedDict
@@ -238,7 +235,7 @@ def test_iterable():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=list(yield_values()),
+        options=(3, 1, 2),
         _options_labels=("3", "1", "2"),
         _options_values=(3, 1, 2),
     )
@@ -252,7 +249,7 @@ def test_iterable_tuple():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=values,
+        options=tuple(values),
         _options_labels=("3", "1", "2"),
         _options_values=(300, 100, 200),
     )
@@ -280,7 +277,7 @@ def test_mapping():
     d = dict(
         cls=widgets.Dropdown,
         value=first,
-        options=items,
+        options=tuple(items),
         _options_labels=("3", "1", "2"),
         _options_values=(300, 100, 200),
     )
@@ -309,7 +306,7 @@ def test_defaults():
     )
 
 def test_default_values():
-    @annotate(n=10, f=(0, 10.), g=5, h={'a': 1, 'b': 2}, j=['hi', 'there'])
+    @annotate(n=10, f=(0, 10.), g=5, h=OrderedDict([('a',1), ('b',2)]), j=['hi', 'there'])
     def f(n, f=4.5, g=1, h=2, j='there'):
         pass
 
@@ -329,12 +326,12 @@ def test_default_values():
         ),
         h=dict(
             cls=widgets.Dropdown,
-            options={'a': 1, 'b': 2},
+            options=OrderedDict([('a',1), ('b',2)]),
             value=2
         ),
         j=dict(
             cls=widgets.Dropdown,
-            options=['hi', 'there'],
+            options=('hi', 'there'),
             value='there'
         ),
     )
@@ -357,7 +354,7 @@ def test_default_out_of_bounds():
         ),
         j=dict(
             cls=widgets.Dropdown,
-            options=['hi', 'there'],
+            options=('hi', 'there'),
             value='hi',
         ),
     )
@@ -684,29 +681,29 @@ def test_multiple_selection():
 
     # basic multiple select
     w = smw(options=[(1, 1)], value=[1])
-    check_widget(w, cls=smw, value=(1,), options=[(1, 1)])
+    check_widget(w, cls=smw, value=(1,), options=((1, 1),))
 
     # don't accept random other value
     with nt.assert_raises(TraitError):
         w.value = w.value + (2,)
     check_widget(w, value=(1,))
 
-    # change options
-    w.options = w.options + [(2, 2)]
-    check_widget(w, options=[(1, 1), (2,2)])
+    # change options, which resets value
+    w.options = w.options + ((2, 2),)
+    check_widget(w, options=((1, 1), (2,2)), value=())
 
     # change value
-    w.value = w.value + (2,)
+    w.value = (1,2)
     check_widget(w, value=(1, 2))
 
     # dict style
     w.options = {1: 1}
-    check_widget(w, options={1: 1})
+    check_widget(w, options={1:1})
 
     # updating
     with nt.assert_raises(TraitError):
         w.value = (2,)
-    check_widget(w, options={1: 1})
+    check_widget(w, options={1:1})
 
 
 def test_interact_noinspect():
@@ -724,6 +721,7 @@ def test_get_interact_value():
     from ipywidgets.widgets import ValueWidget
     from traitlets import Unicode
     class TheAnswer(ValueWidget):
+        _model_name = Unicode('TheAnswer')
         description = Unicode()
         def get_interact_value(self):
             return 42

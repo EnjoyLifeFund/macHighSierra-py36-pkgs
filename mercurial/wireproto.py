@@ -5,7 +5,7 @@
 # This software may be used and distributed according to the terms of the
 # GNU General Public License version 2 or any later version.
 
-
+from __future__ import absolute_import
 
 import hashlib
 import itertools
@@ -93,7 +93,7 @@ class remotebatch(peer.batcher):
             mtd = getattr(self.remote, name)
             batchablefn = getattr(mtd, 'batchable', None)
             if batchablefn is not None:
-                batchable = batchablefn(mtd.__self__, *args, **opts)
+                batchable = batchablefn(mtd.im_self, *args, **opts)
                 encargsorres, encresref = next(batchable)
                 if encresref:
                     req.append((name, encargsorres,))
@@ -134,7 +134,7 @@ class remoteiterbatcher(peer.iterbatcher):
         req, rsp = [], []
         for name, args, opts, resref in self.calls:
             mtd = getattr(self._remote, name)
-            batchable = mtd.batchable(mtd.__self__, *args, **opts)
+            batchable = mtd.batchable(mtd.im_self, *args, **opts)
             encargsorres, encresref = next(batchable)
             assert encresref
             req.append((name, encargsorres))
@@ -144,7 +144,7 @@ class remoteiterbatcher(peer.iterbatcher):
         self._rsp = rsp
 
     def results(self):
-        for (batchable, encresref), encres in zip(
+        for (batchable, encresref), encres in itertools.izip(
                 self._rsp, self._resultiter):
             encresref.set(encres)
             yield next(batchable)
@@ -158,7 +158,7 @@ future = peer.future
 
 def decodelist(l, sep=' '):
     if l:
-        return list(map(bin, l.split(sep)))
+        return map(bin, l.split(sep))
     return []
 
 def encodelist(l, sep=' '):
@@ -193,7 +193,7 @@ def encodebatchcmds(req):
         assert all(escapearg(k) == k for k in argsdict)
 
         args = ','.join('%s=%s' % (escapearg(k), escapearg(v))
-                        for k, v in argsdict.items())
+                        for k, v in argsdict.iteritems())
         cmds.append('%s %s' % (op, args))
 
     return ';'.join(cmds)
@@ -317,7 +317,7 @@ class wirepeer(peer.peerrepository):
     def between(self, pairs):
         batch = 8 # avoid giant requests
         r = []
-        for i in range(0, len(pairs), batch):
+        for i in xrange(0, len(pairs), batch):
             n = " ".join([encodelist(p, '-') for p in pairs[i:i + batch]])
             d = self._call("between", pairs=n)
             try:
@@ -383,7 +383,7 @@ class wirepeer(peer.peerrepository):
             kwargs['bundlecaps'] = sorted(bundlecaps)
         else:
             bundlecaps = () # kwargs could have it to None
-        for key, value in kwargs.items():
+        for key, value in kwargs.iteritems():
             if value is None:
                 continue
             keytype = gboptsmap.get(key)
@@ -687,7 +687,7 @@ def batch(repo, proto, cmds, others):
             for k in keys:
                 if k == '*':
                     star = {}
-                    for key in list(vals.keys()):
+                    for key in vals.keys():
                         if key not in keys:
                             star[key] = vals[key]
                     data['*'] = star
@@ -713,7 +713,7 @@ def between(repo, proto, pairs):
 def branchmap(repo, proto):
     branchmap = repo.branchmap()
     heads = []
-    for branch, nodes in branchmap.items():
+    for branch, nodes in branchmap.iteritems():
         branchname = urlreq.quote(encoding.fromlocal(branch))
         branchnodes = encodelist(nodes)
         heads.append('%s %s' % (branchname, branchnodes))
@@ -814,8 +814,8 @@ def debugwireargs(repo, proto, one, two, others):
 
 @wireprotocommand('getbundle', '*')
 def getbundle(repo, proto, others):
-    opts = options('getbundle', list(gboptsmap.keys()), others)
-    for k, v in opts.items():
+    opts = options('getbundle', gboptsmap.keys(), others)
+    for k, v in opts.iteritems():
         keytype = gboptsmap[k]
         if keytype == 'nodes':
             opts[k] = decodelist(v)
@@ -889,7 +889,7 @@ def hello(repo, proto):
 
 @wireprotocommand('listkeys', 'namespace')
 def listkeys(repo, proto, namespace):
-    d = list(repo.listkeys(encoding.tolocal(namespace)).items())
+    d = repo.listkeys(encoding.tolocal(namespace)).items()
     return pushkeymod.encodekeys(d)
 
 @wireprotocommand('lookup', 'key')

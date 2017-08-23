@@ -71,7 +71,7 @@ certain files::
   tools/tests/**
 """
 
-
+from __future__ import absolute_import
 
 from mercurial.i18n import _
 from mercurial import (
@@ -86,7 +86,6 @@ from mercurial import (
     sparse,
     util,
 )
-import collections
 
 # Note for extension authors: ONLY specify testedwith = 'ships-with-hg-core' for
 # extensions which SHIP WITH MERCURIAL. Non-mainline extensions should
@@ -109,7 +108,7 @@ def replacefilecache(cls, propname, replacement):
     """Replace a filecache property with a new class. This allows changing the
     cache invalidation condition."""
     origcls = cls
-    assert isinstance(replacement, collections.Callable)
+    assert callable(replacement)
     while cls is not object:
         if propname in cls.__dict__:
             orig = cls.__dict__[propname]
@@ -327,10 +326,10 @@ def debugsparse(ui, repo, *pats, **opts):
     if refresh:
         try:
             wlock = repo.wlock()
-            fcounts = list(map(
+            fcounts = map(
                 len,
                 sparse.refreshwdir(repo, repo.status(), sparse.matcher(repo),
-                                   force=force)))
+                                   force=force))
             sparse.printchanges(ui, opts, added=fcounts[0], dropped=fcounts[1],
                                 conflicting=fcounts[2])
         finally:

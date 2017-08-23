@@ -171,7 +171,7 @@ class SQLiteSignatureStore(SignatureStore, LoggingConfigurable):
                     os.rename(db_file, old_db_location)
                     db = sqlite3.connect(db_file, **kwargs)
                     self.init_db(db)
-                except (sqlite3.DatabaseError, sqlite3.OperationalError):
+                except (sqlite3.DatabaseError, sqlite3.OperationalError, OSError):
                     if db is not None:
                         db.close()
                     self.log.warning(
@@ -204,16 +204,18 @@ class SQLiteSignatureStore(SignatureStore, LoggingConfigurable):
     def store_signature(self, digest, algorithm):
         if self.db is None:
             return
-        self.db.execute("""INSERT OR IGNORE INTO nbsignatures
-            (algorithm, signature, last_seen) VALUES (?, ?, ?)""",
-                        (algorithm, digest, datetime.utcnow())
-                        )
-        self.db.execute("""UPDATE nbsignatures SET last_seen = ? WHERE
-            algorithm = ? AND
-            signature = ?;
-            """,
-                        (datetime.utcnow(), algorithm, digest),
-                        )
+        if not self.check_signature(digest, algorithm):
+            self.db.execute("""
+                INSERT INTO nbsignatures (algorithm, signature, last_seen) 
+                VALUES (?, ?, ?)
+                """, (algorithm, digest, datetime.utcnow())
+            )
+        else:
+            self.db.execute("""UPDATE nbsignatures SET last_seen = ? WHERE
+                algorithm = ? AND
+                signature = ?;
+                """, (datetime.utcnow(), algorithm, digest)
+            )
         self.db.commit()
 
         # Check size and cull old entries if necessary

@@ -7,14 +7,16 @@ Represents a widget that can be used to display output within the widget area.
 """
 
 from .domwidget import DOMWidget
+from .widget import register
 from .widget_core import CoreWidget
 
 import sys
-from traitlets import Unicode
+from traitlets import Unicode, Tuple
 from IPython.display import clear_output
 from IPython import get_ipython
 
 
+@register
 class Output(DOMWidget, CoreWidget):
     """Widget used as a context manager to display output.
 
@@ -36,9 +38,10 @@ class Output(DOMWidget, CoreWidget):
     """
     _view_name = Unicode('OutputView').tag(sync=True)
     _model_name = Unicode('OutputModel').tag(sync=True)
-    _model_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    _view_module = Unicode('jupyter-js-widgets').tag(sync=True)
-    msg_id = Unicode('').tag(sync=True)
+    _view_module = Unicode('@jupyter-widgets/output').tag(sync=True)
+    _model_module = Unicode('@jupyter-widgets/output').tag(sync=True)
+    msg_id = Unicode('', help="Parent message id of messages to capture").tag(sync=True)
+    outputs = Tuple(help="The output messages synced from the frontend.").tag(sync=True)
 
     def clear_output(self, *pargs, **kwargs):
         with self:

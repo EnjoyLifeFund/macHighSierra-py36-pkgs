@@ -90,23 +90,16 @@ def rectangle_aabb(matrix, pos_x, pos_y, width, height):
     return box_x1, box_y1, box_x2 - box_x1, box_y2 - box_y1
 
 
-class _TaggedTuple(tuple):
-    """A tuple with a :attr:`sourceline` attribute,
-    The line number in the HTML source for whatever the tuple represents.
-
-    """
-
-
 def _gather_links_and_bookmarks(box, bookmarks, links, anchors, matrix):
     transform = _get_matrix(box)
     if transform:
         matrix = transform * matrix if matrix else transform
 
-    bookmark_label = box.style.bookmark_label
-    if box.style.bookmark_level == 'none':
+    bookmark_label = box.bookmark_label
+    if box.style['bookmark_level'] == 'none':
         bookmark_level = None
     else:
-        bookmark_level = box.style.bookmark_level
+        bookmark_level = box.style['bookmark_level']
     link = box.style.link
     anchor_name = box.style.anchor
     has_bookmark = bookmark_label and bookmark_level
@@ -130,13 +123,11 @@ def _gather_links_and_bookmarks(box, bookmarks, links, anchors, matrix):
             if link_type == 'external' and is_attachment:
                 link_type = 'attachment'
             if matrix:
-                link = _TaggedTuple(
-                    (link_type, target, rectangle_aabb(
-                        matrix, pos_x, pos_y, width, height)))
+                link = (
+                    link_type, target, rectangle_aabb(
+                        matrix, pos_x, pos_y, width, height))
             else:
-                link = _TaggedTuple(
-                    (link_type, target, (pos_x, pos_y, width, height)))
-            link.sourceline = box.sourceline
+                link = (link_type, target, (pos_x, pos_y, width, height))
             links.append(link)
         if matrix and (has_bookmark or has_anchor):
             pos_x, pos_y = matrix.transform_point(pos_x, pos_y)
@@ -309,19 +300,22 @@ class Document(object):
     def _render(cls, html, stylesheets, enable_hinting,
                 presentational_hints=False):
         font_config = FontConfiguration()
-        style_for = get_all_computed_styles(
+        page_rules = []
+        style_for, cascaded_styles, computed_styles = get_all_computed_styles(
             html, presentational_hints=presentational_hints, user_stylesheets=[
-                css if hasattr(css, 'rules')
+                css if hasattr(css, 'matcher')
                 else CSS(guess=css, media_type=html.media_type)
                 for css in stylesheets or []],
-            font_config=font_config)
+            font_config=font_config, page_rules=page_rules)
         get_image_from_uri = functools.partial(
             images.get_image_from_uri, {}, html.url_fetcher)
+        LOGGER.info('Step 4 - Creating formatting structure')
         page_boxes = layout_document(
             enable_hinting, style_for, get_image_from_uri,
             build_formatting_structure(
-                html.root_element, style_for, get_image_from_uri),
-            font_config)
+                html.etree_element, style_for, get_image_from_uri,
+                html.base_url),
+            font_config, html, cascaded_styles, computed_styles)
         rendering = cls(
             [Page(p, enable_hinting) for p in page_boxes],
             DocumentMetadata(**html._get_metadata()), html.url_fetcher)
@@ -399,9 +393,9 @@ class Document(object):
                 if link_type == 'internal':
                     target = anchors.get(anchor_name)
                     if target is None:
-                        LOGGER.warning(
-                            'No anchor #%s for internal URI reference '
-                            'at line %s', anchor_name, link.sourceline)
+                        LOGGER.error(
+                            'No anchor #%s for internal URI reference',
+                            anchor_name)
                     else:
                         page_links.append((link_type, target, rectangle))
                 else:
@@ -484,6 +478,7 @@ class Document(object):
         # (1, 1) is overridden by .set_size() below.
         surface = cairo.PDFSurface(file_obj, 1, 1)
         context = cairo.Context(surface)
+        LOGGER.info('Step 6 - Drawing')
         for page in self.pages:
             surface.set_size(
                 math.floor(page.width * scale),
@@ -492,6 +487,7 @@ class Document(object):
             surface.show_page()
         surface.finish()
 
+        LOGGER.info('Step 7 - Adding PDF metadata')
         write_pdf_metadata(self, file_obj, scale, self.metadata, attachments,
                            self.url_fetcher)
 
@@ -522,6 +518,7 @@ class Document(object):
             cairo.FORMAT_ARGB32, max_width, sum_heights)
         context = cairo.Context(surface)
         pos_y = 0
+        LOGGER.info('Step 6 - Drawing')
         for page, width, height in izip(self.pages, widths, heights):
             pos_x = (max_width - width) / 2
             page.paint(context, pos_x, pos_y, scale=dppx, clip=True)

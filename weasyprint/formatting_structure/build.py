@@ -24,7 +24,6 @@ from . import boxes, counters
 from .. import html
 from ..compat import basestring, xrange
 from ..css import properties
-from ..css.computed_values import ZERO_PIXELS
 
 # Maps values of the ``display`` CSS property to box types.
 BOX_TYPE_FROM_DISPLAY = {
@@ -45,9 +44,11 @@ BOX_TYPE_FROM_DISPLAY = {
 }
 
 
-def build_formatting_structure(element_tree, style_for, get_image_from_uri):
+def build_formatting_structure(element_tree, style_for, get_image_from_uri,
+                               base_url):
     """Build a formatting structure (box tree) from an element tree."""
-    box_list = element_to_box(element_tree, style_for, get_image_from_uri)
+    box_list = element_to_box(
+        element_tree, style_for, get_image_from_uri, base_url)
     if box_list:
         box, = box_list
     else:
@@ -55,12 +56,14 @@ def build_formatting_structure(element_tree, style_for, get_image_from_uri):
         def root_style_for(element, pseudo_type=None):
             style = style_for(element, pseudo_type)
             if style:
-                if element.getparent() is None:
+                # TODO: we should check that the element has a parent instead.
+                if element.tag == 'html':
                     style.display = 'block'
                 else:
                     style.display = 'none'
             return style
-        box, = element_to_box(element_tree, root_style_for, get_image_from_uri)
+        box, = element_to_box(
+            element_tree, root_style_for, get_image_from_uri, base_url)
     box.is_for_root_element = True
     # If this is changed, maybe update weasy.layout.pages.make_margin_boxes()
     process_whitespace(box)
@@ -71,22 +74,13 @@ def build_formatting_structure(element_tree, style_for, get_image_from_uri):
     return box
 
 
-def make_box(element_tag, sourceline, style, content, get_image_from_uri):
-    if (style.display in ('table', 'inline-table') and
-            style.border_collapse == 'collapse'):
-        # Padding do not apply
-        for side in ['top', 'bottom', 'left', 'right']:
-            style['padding_' + side] = ZERO_PIXELS
-    if style.display.startswith('table-') and style.display != 'table-caption':
-        # Margins do not apply
-        for side in ['top', 'bottom', 'left', 'right']:
-            style['margin_' + side] = ZERO_PIXELS
-
-    return BOX_TYPE_FROM_DISPLAY[style.display](element_tag, sourceline,
-                                                style, content)
+def make_box(element_tag, style, content, get_image_from_uri):
+    return BOX_TYPE_FROM_DISPLAY[style.display](
+        element_tag, style, content)
 
 
-def element_to_box(element, style_for, get_image_from_uri, state=None):
+def element_to_box(element, style_for, get_image_from_uri, base_url,
+                   state=None):
     """Convert an element and its children into a box with children.
 
     Return a list of boxes. Most of the time the list will have one item but
@@ -123,8 +117,7 @@ def element_to_box(element, style_for, get_image_from_uri, state=None):
     if display == 'none':
         return []
 
-    box = make_box(element.tag, element.sourceline, style, [],
-                   get_image_from_uri)
+    box = make_box(element.tag, style, [], get_image_from_uri)
 
     if state is None:
         # use a list to have a shared mutable object
@@ -158,7 +151,7 @@ def element_to_box(element, style_for, get_image_from_uri, state=None):
 
     for child_element in element:
         children.extend(element_to_box(
-            child_element, style_for, get_image_from_uri, state))
+            child_element, style_for, get_image_from_uri, base_url, state))
         text = child_element.tail
         if text:
             text_box = boxes.TextBox.anonymous_from(box, text)
@@ -176,11 +169,10 @@ def element_to_box(element, style_for, get_image_from_uri, state=None):
             counter_values.pop(name)
 
     box.children = children
-    box.first_letter_style = style_for(element, 'first-letter')
-    replace_content_lists(element, box, style, counter_values)
+    set_content_lists(element, box, style, counter_values)
 
     # Specific handling for the element. (eg. replaced element)
-    return html.handle_element(element, box, get_image_from_uri)
+    return html.handle_element(element, box, get_image_from_uri, base_url)
 
 
 def before_after_to_box(element, pseudo_type, state, style_for,
@@ -200,8 +192,7 @@ def before_after_to_box(element, pseudo_type, state, style_for,
         return
 
     box = make_box(
-        '%s::%s' % (element.tag, pseudo_type), element.sourceline, style, [],
-        get_image_from_uri)
+        '%s::%s' % (element.tag, pseudo_type), style, [], get_image_from_uri)
 
     quote_depth, counter_values, _counter_scopes = state
     update_counters(state, style)
@@ -287,25 +278,25 @@ def compute_content_list_string(element, box, counter_values, content_list):
     return string
 
 
-def replace_content_lists(element, box, style, counter_values):
-    """Replace the content-lists by strings.
+def set_content_lists(element, box, style, counter_values):
+    """Set the content-lists by strings.
 
     These content-lists are used in GCPM properties like ``string-set`` and
     ``bookmark-label``.
 
     """
     string_set = []
-    if style.string_set != 'none':
-        for i, (string_name, string_values) in enumerate(style.string_set):
+    if style['string_set'] != 'none':
+        for i, (string_name, string_values) in enumerate(style['string_set']):
             string_set.append((string_name, compute_content_list_string(
                 element, box, counter_values, string_values)))
-    box.style['string_set'] = string_set
+    box.string_set = string_set
 
-    if style.bookmark_label == 'none':
-        box.style['bookmark_label'] = ''
+    if style['bookmark_label'] == 'none':
+        box.bookmark_label = ''
     else:
-        box.style['bookmark_label'] = compute_content_list_string(
-            element, box, counter_values, style.bookmark_label)
+        box.bookmark_label = compute_content_list_string(
+            element, box, counter_values, style['bookmark_label'])
 
 
 def update_counters(state, style):
@@ -375,9 +366,6 @@ def add_box_marker(box, counter_values, get_image_from_uri):
 
     position = style.list_style_position
     if position == 'inside':
-        side = 'right' if style.direction == 'ltr' else 'left'
-        margin = style.font_size * 0.5
-        marker_box.style['margin_' + side] = properties.Dimension(margin, 'px')
         yield marker_box
     elif position == 'outside':
         box.outside_list_marker = marker_box
@@ -644,10 +632,12 @@ def wrap_table(box, children):
 
     wrapper = wrapper_type.anonymous_from(
         box, captions['top'] + [table] + captions['bottom'])
+    wrapper.style = wrapper.style.copy()
     wrapper.is_table_wrapper = True
     if not table.style.anonymous:
         # Non-inherited properties of the table element apply to one
         # of the wrapper and the table. The other get the initial value.
+        # TODO: put this in a method of the table object
         for name in properties.TABLE_WRAPPER_BOX_PROPERTIES:
             wrapper.style[name] = table.style[name]
             table.style[name] = properties.INITIAL_VALUES[name]
@@ -754,10 +744,9 @@ def collapse_table_borders(table, grid_width, grid_height):
     # the correct widths on each box. The actual border grid will be
     # painted separately.
     def set_transparent_border(box, side, twice_width):
-        style = box.style
-        style['border_%s_style' % side] = 'solid'
-        style['border_%s_width' % side] = twice_width / 2
-        style['border_%s_color' % side] = transparent
+        box.style['border_%s_style' % side] = 'solid',
+        box.style['border_%s_width' % side] = twice_width / 2
+        box.style['border_%s_color' % side] = transparent
 
     def remove_borders(box):
         set_transparent_border(box, 'top', 0)
@@ -1132,8 +1121,7 @@ def set_viewport_overflow(root_box):
                 break
 
     root_box.viewport_overflow = chosen_box.style.overflow
-    chosen_box.style = chosen_box.style.copy()
-    chosen_box.style.update({'overflow': 'visible'})
+    chosen_box.style['overflow'] = 'visible'
     return root_box
 
 
