@@ -1,2 +1,8 @@
 ./xgboost-0.6-py3.6.egg
 ./src/facebook-sdk
+./remotecv-2.2.1-py3.6.egg
+./Pillow-3.4.2-py3.6-macosx-10.13-x86_64.egg
+./argparse-1.1-py3.6.egg
+./pyres-1.5-py3.6.egg
+./setproctitle-1.1.10-py3.6-macosx-10.13-x86_64.egg
+./simplejson-3.11.1-py3.6-macosx-10.13-x86_64.egg
