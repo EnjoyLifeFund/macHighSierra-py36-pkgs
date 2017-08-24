@@ -1,0 +1,15 @@
+Tachyon-1.0.3.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
+Tachyon-1.0.3.dist-info/METADATA,sha256=9sH7Ybkta2uRCh19kr827tCHZgvJW8XfVissDlyDux8,241
+Tachyon-1.0.3.dist-info/RECORD,,
+Tachyon-1.0.3.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
+Tachyon-1.0.3.dist-info/metadata.json,sha256=4Nx0cAX_GXThhjg28KqcWdrPhQDvhs-XjZ1OJ5_g6mg,395
+Tachyon-1.0.3.dist-info/top_level.txt,sha256=YgqWUniOX5uXTW9L1GoBNOTDott7ew5uBe3B6U096FA,25
+tachyon/SPN2.py,sha256=p6_g4LT8Nvb2Ms2yQBo6_UI6kyYUS9k96jDgQCtIbMc,7132
+tachyon/__init__.py,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
+tachyon/data.py,sha256=m5hT4XSCGAv0r4BeUHfiLfJ3i0XHnQUxxBjkXe58zO4,1416
+tachyon/e_load.py,sha256=li3PYQZJ1kB1OIQrMD8Y8NyLWnvYA2hAzKcVXddsmvI,5293
+tachyon/load_file.py,sha256=WsXWRtpviZQIi7XepAgNx6kd8DlmpTT0GnP2gHt6Plg,8210
+tachyon/model.py,sha256=MGpTKppJBi6JZK8mhGgDb24yOK-K20DqPBa3AbL-Av8,24543
+tachyon/nodes.py,sha256=zAhn0JENvbVDF7U1ZJ9Y3uZu4A7HZFjMMU-akXsJtSY,1943
+Tachyon-1.0.3.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+tachyon/__pycache__/__init__.cpython-36.pyc,,
