@@ -1,0 +1,16 @@
+Metadata-Version: 2.0
+Name: luvina
+Version: 0.0.7
+Summary: High-level API for Natural Language Processing in NLTK
+Home-page: https://github.com/oarriaga/luvina
+Author: Octavio Arriaga
+Author-email: arriaga.camargo@gmail.com
+License: MIT
+Platform: UNKNOWN
+Requires-Dist: nltk
+Requires-Dist: pyenchant
+Requires-Dist: spacy
+
+UNKNOWN
+
+
