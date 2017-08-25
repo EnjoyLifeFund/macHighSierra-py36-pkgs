@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: python-libtrace
+Version: 1.0
+Summary: Python-libtrace (incl ipp, natkit, pldns), a library for IP addresses and widths
+Home-page: https://www.cs.auckland.ac.nz/~nevil/python-libtrace/
+Author: Nevil Brownlee
+Author-email: n.brownlee@auckland.ac.nz
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
