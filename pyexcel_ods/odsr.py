@@ -23,7 +23,9 @@
 
 # Thanks to grt for the fixes
 import math
+from io import UnsupportedOperation
 
+from odf.teletype import extractText
 from odf.table import TableRow, TableCell, Table
 from odf.text import P
 from odf.namespaces import OFFICENS
@@ -31,7 +33,7 @@ from odf.opendocument import load
 
 from pyexcel_io.book import BookReader
 from pyexcel_io.sheet import SheetReader
-from pyexcel_io._compact import OrderedDict, PY2
+from pyexcel_io._compact import OrderedDict, BytesIO
 
 import pyexcel_ods.converter as converter
 
@@ -61,34 +63,6 @@ class ODSSheet(SheetReader):
             else:
                 yield cell_value
 
-    def __read_row(self, cells):
-        tmp_row = []
-        for cell in cells:
-            # repeated value?
-            repeat = cell.getAttribute("numbercolumnsrepeated")
-            cell_value = self.__read_cell(cell)
-            if repeat:
-                number_of_repeat = int(repeat)
-                tmp_row += [cell_value] * number_of_repeat
-            else:
-                tmp_row.append(cell_value)
-        return tmp_row
-
-    def __read_text_cell(self, cell):
-        text_content = []
-        paragraphs = cell.getElementsByType(P)
-        # for each text node
-        for paragraph in paragraphs:
-            data = ''
-            for node in paragraph.childNodes:
-                if (node.nodeType == 3):
-                    if PY2:
-                        data += unicode(node.data)
-                    else:
-                        data += node.data
-            text_content.append(data)
-        return '\n'.join(text_content)
-
     def __read_cell(self, cell):
         cell_type = cell.getAttrNS(OFFICENS, "value-type")
         value_token = converter.VALUE_TOKEN.get(cell_type, "value")
@@ -105,13 +79,22 @@ class ODSSheet(SheetReader):
                 value = cell.getAttrNS(OFFICENS, value_token)
                 n_value = converter.VALUE_CONVERTERS[cell_type](value)
                 if cell_type == 'float' and self.__auto_detect_int:
-                    if is_integer_ok_for_xl_float(n_value):
+                    if _is_integer_ok_for_xl_float(n_value):
                         n_value = int(n_value)
                 ret = n_value
             else:
                 text_content = self.__read_text_cell(cell)
                 ret = text_content
         return ret
+
+    def __read_text_cell(self, cell):
+        text_content = []
+        paragraphs = cell.getElementsByType(P)
+        # for each text node
+        for paragraph in paragraphs:
+            data = extractText(paragraph)
+            text_content.append(data)
+        return '\n'.join(text_content)
 
 
 class ODSBook(BookReader):
@@ -123,6 +106,16 @@ class ODSBook(BookReader):
 
     def open_stream(self, file_stream, **keywords):
         """open ods file stream"""
+        if not hasattr(file_stream, 'seek'):
+            # python 2
+            # Hei zipfile in odfpy would do a seek
+            # but stream from urlib cannot do seek
+            file_stream = BytesIO(file_stream.read())
+        try:
+            file_stream.seek(0)
+        except UnsupportedOperation:
+            # python 3
+            file_stream = BytesIO(file_stream.read())
         BookReader.open_stream(self, file_stream, **keywords)
         self._load_from_memory()
 
@@ -170,6 +163,6 @@ class ODSBook(BookReader):
         self._native_book = load(self._file_name)
 
 
-def is_integer_ok_for_xl_float(value):
+def _is_integer_ok_for_xl_float(value):
     """check if a float had zero value in digits"""
     return value == math.floor(value)

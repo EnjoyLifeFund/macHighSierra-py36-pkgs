@@ -1,7 +1,7 @@
 from __future__ import print_function, unicode_literals
 import numpy
 from preshed.maps import PreshMap
-from .ops import NumpyOps, CupyOps
+from pathlib import Path
 
 try:
     import cupy
@@ -12,10 +12,11 @@ except ImportError:
 
 
 def get_ops(ops):
+    from .ops import NumpyOps, CupyOps
     if ops in ('numpy', 'cpu'):
-        return NumpyOps()
+        return NumpyOps
     elif ops in ('cupy', 'gpu'):
-        return CupyOps()
+        return CupyOps
     else:
         raise ValueError("TODO error %s" % ops)
 
@@ -42,16 +43,21 @@ def remap_ids(ops):
         return ids, None
     return begin_update
 
-#    def _unique_ids(self, ids):
-#        id_map = {}
-#        for i, id_ in enumerate(ids.flatten()):
-#            if id_ not in id_map:
-#                id_map[id_] = [i]
-#            else:
-#                id_map[id_].append(i)
-#        # Currently this is handled on CPU anyway, so allocate on CPU.
-#        uniques = numpy.asarray(sorted(id_map.keys()), dtype='uint64')
-#        return uniques, id_map
+def copy_array(dst, src, casting='same_kind', where=None):
+    if isinstance(dst, numpy.ndarray) and isinstance(src, numpy.ndarray):
+        dst[:] = src
+    elif isinstance(dst, cupy.ndarray):
+        src = cupy.array(src, copy=False)
+        cupy.copyto(dst, src)
+    else:
+        numpy.copyto(dst, src)
+
+
+def ensure_path(path):
+    if isinstance(path, basestring) or isinstance(path, str):
+        return Path(path)
+    else:
+        return path
 
 
 def to_categorical(y, nb_classes=None):

@@ -1,4 +1,5 @@
 import copy
+import numpy
 
 from .neural._classes.feed_forward import FeedForward
 from .neural._classes.model import Model
@@ -41,13 +42,33 @@ def metalayerize(user_func):
 
 
 @layerize
-def flatten_add_lengths(seqs, drop=0.):
+def flatten_add_lengths(seqs, pad=0, drop=0.):
     ops = Model.ops
     lengths = ops.asarray([len(seq) for seq in seqs], dtype='i')
     def finish_update(d_X, sgd=None):
-        return ops.unflatten(d_X, lengths)
-    X = ops.xp.concatenate([ops.asarray(seq) for seq in seqs])
+        return ops.unflatten(d_X, lengths, pad=pad)
+    X = ops.flatten(seqs, pad=pad)
     return (X, lengths), finish_update
+
+
+def remap_ids(ops=None, column=0):
+    id_map = {0: 0}
+    def remap_ids_fwd(ids, drop=0.):
+        ids = ids[:, column]
+        if not isinstance(ids, numpy.ndarray):
+            ids = ids.get()
+        n_vector = len(id_map)
+        for i, id_ in enumerate(ids):
+            id_ = int(id_)
+            if id_ not in id_map:
+                id_map[id_] = n_vector
+                n_vector += 1
+            ids[i] = id_map[id_]
+        return ops.asarray(ids), None
+    model = layerize(remap_ids_fwd)
+    if ops is None:
+        ops = model.ops
+    return model
 
 
 def with_getitem(idx, layer):
@@ -118,9 +139,13 @@ def concatenate(*layers): # pragma: no cover
             for bwd, shape in zip(backward, shapes):
                 end = start + shape[1]
                 if bwd is not None:
-                    d = bwd(gradient[:, start : end], *args, **kwargs)
-                    if d is not None:
-                        layer_grads[-1] += d
+                    d = bwd(ops.xp.ascontiguousarray(gradient[:, start : end]),
+                            *args, **kwargs)
+                    if d is not None and hasattr(X, 'shape'):
+                        if not layer_grads:
+                            layer_grads.append(d)
+                        else:
+                            layer_grads[-1] += d
                 start = end
             if layer_grads:
                 return ops.asarray(layer_grads[-1])
@@ -136,33 +161,36 @@ def concatenate(*layers): # pragma: no cover
     layer.on_data_hooks.append(on_data)
     return layer
 
- 
-def add(layer1, layer2):
+
+def add(*layers):
+    if not layers:
+        return noop()
+    ops = layers[0].ops
     def forward(X, drop=0.):
-        out1, bp_out1 = layer1.begin_update(X, drop=drop)
-        out2, bp_out2 = layer2.begin_update(X, drop=drop)
-        output = out1 + out2
-        def backward(d_output, sgd=None):
-            if bp_out1 is not None:
-                d_out1 = bp_out1(d_output, sgd)
+        outs, callbacks = zip(*[lyr.begin_update(X, drop=drop) for lyr in layers])
+        out = outs[0]
+        for o in outs:
+            out += o
+
+        def backward(d_out, sgd=None):
+            grads = [bp(d_out, sgd=sgd) for bp in callbacks if bp is not None]
+            grads = [g for g in grads if g is not None]
+            if grads:
+                total = grads[0]
+                for g in grads:
+                    total += g
+                return total
             else:
-                d_out1 = 0.
-            if bp_out2 is not None:
-                d_out2 = bp_out2(d_output, sgd)
-            else:
-                d_out2 = 0.
-            return (d_out1 + d_out2) if d_out1 and d_out2 else None
-        return output, backward
+                return None
+        return out, backward
     model = layerize(forward)
-    model._layers = [layer1, layer2]
+    model._layers = list(layers)
     def on_data(self, X, y):
-        for hook in layer1.on_data_hooks:
-            hook(layer1, X, y)
-        for hook in layer2.on_data_hooks:
-            hook(layer2, X, y)
+        for layer in layers:
+            for hook in layer.on_data_hooks:
+                hook(layer, X, y)
     model.on_data_hooks.append(on_data)
     return model
-
 
 
 def split_backward(layers): # pragma: no cover
@@ -200,17 +228,20 @@ def Arg(i):
     return begin_update
 
 
-def with_flatten(layer):
+def with_flatten(layer, pad=0, ndim=4):
     def begin_update(seqs_in, drop=0.):
         lengths = layer.ops.asarray([len(seq) for seq in seqs_in])
-        X, bp_layer = layer.begin_update(layer.ops.flatten(seqs_in), drop=drop)
+        X, bp_layer = layer.begin_update(layer.ops.flatten(seqs_in, pad=pad),
+                                         drop=drop)
         if bp_layer is None:
-            return layer.ops.unflatten(X, lengths), None
-
+            return layer.ops.unflatten(X, lengths, pad=pad), None
         def finish_update(d_seqs_out, sgd=None):
-            d_X = bp_layer(layer.ops.flatten(d_seqs_out), sgd=sgd)
-            return layer.ops.unflatten(d_X, lengths) if d_X is not None else None
-        return layer.ops.unflatten(X, lengths), finish_update
+            d_X = bp_layer(layer.ops.flatten(d_seqs_out, pad=pad), sgd=sgd)
+            if d_X is None:
+                return None
+            else:
+                return layer.ops.unflatten(d_X, lengths, pad=pad)
+        return layer.ops.unflatten(X, lengths, pad=pad), finish_update
     model = layerize(begin_update)
     model._layers.append(layer)
     model.on_data_hooks.append(_with_flatten_on_data)
@@ -223,5 +254,112 @@ def _with_flatten_on_data(model, X, y):
         for hook in layer.on_data_hooks:
             hook(layer, X, y)
         X = layer(X)
+
+
+def get_word_ids(ops, pad=1, token_drop=0., ignore=None):
+    # TODO: Is this made obsolete by the FeatureExtractor?
+    def forward(docs, drop=0.):
+        '''Get word forms.'''
+        seqs = []
+        ops = Model.ops
+        for doc in docs:
+            if ignore is not None:
+                doc = [token for token in doc if not ignore(token)]
+            #seq = [0] * pad
+            seq = [(token.lex_id or token.orth) for token in doc]
+            #seq += [0] * pad
+            seqs.append(ops.asarray(seq, dtype='uint64'))
+        return seqs, None
+    return layerize(forward)
+
+
+def FeatureExtracter(attrs, ops=None):
+    if ops is None:
+        ops = Model.ops
+    def feature_extracter_fwd(docs, drop=0.):
+        # Handle spans
+        def get_feats(doc):
+            if hasattr(doc, 'to_array'):
+                return doc.to_array(attrs)
+            else:
+                return doc.doc.to_array(attrs)[doc.start:doc.end]
+        features = [ops.asarray(get_feats(doc), dtype='uint64') for doc in docs]
+        def feature_extracter_bwd(d_features, sgd=None):
+            return d_features
+        return features, feature_extracter_bwd
+    return layerize(feature_extracter_fwd)
+
+
+def wrap(func, *child_layers):
+    model = layerize(func)
+    model._layers.extend(child_layers)
+    def on_data(self, X, y):
+        for child in self._layers:
+            for hook in child.on_data_hooks:
+                hook(child, X, y)
+    model.on_data_hooks.append(on_data)
+    return model
+
+
+def uniqued(layer, column=0):
+    '''Group inputs to a layer, so that the layer only has to compute
+    for the unique values. The data is transformed back before output, and the same
+    transformation is applied for the gradient. Effectively, this is a cache
+    local to each minibatch.
+
+    The uniqued wrapper is useful for word inputs, because common words are
+    seen often, but we may want to compute complicated features for the words,
+    using e.g. character LSTM.
+    '''
+    def uniqued_fwd(X, drop=0.):
+        keys = X[:, column]
+        if not isinstance(keys, numpy.ndarray):
+            keys = keys.get()
+        uniq_keys, ind, inv, counts = numpy.unique(keys, return_index=True,
+                                                    return_inverse=True,
+                                                    return_counts=True)
+        Y_uniq, bp_Y_uniq = layer.begin_update(X[ind], drop=drop)
+        Y = Y_uniq[inv].reshape((X.shape[0],) + Y_uniq.shape[1:])
+        def uniqued_bwd(dY, sgd=None):
+            dY_uniq = layer.ops.allocate(Y_uniq.shape, dtype='f')
+            layer.ops.scatter_add(dY_uniq, inv, dY)
+            d_uniques = bp_Y_uniq(dY_uniq, sgd=sgd)
+            if d_uniques is not None:
+                dX = (d_uniques / counts)[inv]
+                return dX
+            else:
+                return None
+        return Y, uniqued_bwd
+    model = wrap(uniqued_fwd, layer)
+    return model
+
+
+def foreach_sentence(layer, drop_factor=1.0):
+    '''Map a layer across sentences (assumes spaCy-esque .sents interface)'''
+    def sentence_fwd(docs, drop=0.):
+        sents = []
+        lengths = []
+        for doc in docs:
+            doc_sents = [sent for sent in doc.sents if len(sent)]
+            subset = [s for s in doc_sents if numpy.random.random() >= drop * drop_factor]
+            if subset:
+                sents.extend(subset)
+                lengths.append(len(subset))
+            else:
+                numpy.random.shuffle(doc_sents)
+                sents.append(doc_sents[0])
+                lengths.append(1)
+        flat, bp_flat = layer.begin_update(sents, drop=0.)
+        output = layer.ops.unflatten(flat, lengths)
+        def sentence_bwd(d_output, sgd=None):
+            d_flat = layer.ops.flatten(d_output)
+            d_sents = bp_flat(d_flat, sgd=sgd)
+            if d_sents is None:
+                return d_sents
+            else:
+                return layer.ops.unflatten(d_sents, lengths)
+        return output, sentence_bwd
+    model = wrap(sentence_fwd, layer)
+    return model
 
 

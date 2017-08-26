@@ -79,12 +79,27 @@ def ud_pos_tags(train_loc, dev_loc, encode_tags=True, encode_words=True): # prag
     return _encode(train_sents), _encode(dev_sents), len(tagmap)
 
 
-def imdb(loc=None):
+def imdb(loc=None, limit=0):
     if loc is None:
         loc = get_file('aclImdb', IMDB_URL, untar=True, unzip=True)
     train_loc = Path(loc) / 'train'
     test_loc = Path(loc) / 'test'
-    return read_imdb(train_loc), read_imdb(test_loc)
+    return read_imdb(train_loc, limit=limit), read_imdb(test_loc, limit=limit)
+
+
+def read_wikiner(file_, tagmap=None):
+    Xs = []
+    ys = []
+    for line in file_:
+        if not line.strip():
+            continue
+        tokens = [t.rsplit('|', 2) for t in line.split()]
+        words, _, tags = zip(*tokens)
+        if tagmap is not None:
+            tags = [tagmap.setdefault(tag, len(tagmap)) for tag in tags]
+        Xs.append(words)
+        ys.append(tags)
+    return zip(Xs, ys)
 
 
 def read_imdb(data_dir, limit=0):
@@ -99,7 +114,6 @@ def read_imdb(data_dir, limit=0):
     if limit >= 1:
         examples = examples[:limit]
     return examples
-
 
 
 def read_conll(loc): # pragma: no cover
@@ -121,6 +135,14 @@ def read_conll(loc): # pragma: no cover
             words.append(word)
             tags.append(pos)
         yield words, tags
+
+
+def read_csv(csv_loc, label_col=0, text_col=-1):
+    with csv_loc.open() as file_:
+        for row in csv.reader(file_):
+            label_str = row[label_col]
+            text = row[text_col]
+            yield text, label_str
 
 
 def mnist(): # pragma: no cover
@@ -164,8 +186,8 @@ def quora_questions(loc=None):
                 is_header = False
                 continue
             id_, qid1, qid2, sent1, sent2, is_duplicate = row
-            sent1 = sent1.strip()
-            sent2 = sent2.strip()
+            sent1 = sent1.decode('utf8').strip()
+            sent2 = sent2.decode('utf8').strip()
             if sent1 and sent2:
                 lines.append(((sent1, sent2), int(is_duplicate)))
     train, dev = partition(lines, 0.9)

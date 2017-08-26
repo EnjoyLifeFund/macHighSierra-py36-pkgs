@@ -25,6 +25,7 @@
 # --------------------------------------------------------------------------
 
 import ast
+import logging
 import re
 import time
 import warnings
@@ -33,7 +34,6 @@ try:
 except ImportError:
     from urllib.parse import urlparse, parse_qs
 
-import keyring
 import adal
 from oauthlib.oauth2 import BackendApplicationClient, LegacyApplicationClient
 from oauthlib.oauth2.rfc6749.errors import (
@@ -44,12 +44,22 @@ from oauthlib.oauth2.rfc6749.errors import (
 from requests import RequestException, ConnectionError
 import requests_oauthlib as oauth
 
+try:
+    import keyring
+except Exception as err:
+    keyring = False
+    KEYRING_EXCEPTION = err
+
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 from msrest.exceptions import TokenExpiredError as Expired
 from msrest.exceptions import AuthenticationError, raise_with_traceback
 
 from msrestazure.azure_cloud import AZURE_CHINA_CLOUD, AZURE_PUBLIC_CLOUD
 
+_LOGGER = logging.getLogger(__name__)
+
+if not keyring:
+    _LOGGER.warning("Cannot load keyring on your system: %s", KEYRING_EXCEPTION)
 
 def _build_url(uri, paths, scheme):
     """Combine URL parts.
@@ -122,6 +132,7 @@ class AADMixin(OAuthTokenAuthentication):
               is 'https://management.core.windows.net/'.
             - verify (bool): Verify secure connection, default is 'True'.
             - keyring (str): Name of local token cache, default is 'AzureAAD'.
+            - timeout (int): Timeout of the request in seconds.
             - proxies (dict): Dictionary mapping protocol or protocol and 
               hostname to the URL of the proxy.
         """
@@ -147,6 +158,7 @@ class AADMixin(OAuthTokenAuthentication):
         self.cred_store = kwargs.get('keyring', self._keyring)
         self.resource = kwargs.get('resource', resource)
         self.proxies = kwargs.get('proxies')
+        self.timeout = kwargs.get('timeout')
         self.state = oauth.oauth2_session.generate_token()
         self.store_key = "{}_{}".format(
             auth_endpoint.strip('/'), self.store_key)
@@ -192,7 +204,11 @@ class AADMixin(OAuthTokenAuthentication):
         :rtype: None
         """
         self.token = token
-        keyring.set_password(self.cred_store, self.store_key, str(token))
+        if keyring:
+            try:
+                keyring.set_password(self.cred_store, self.store_key, str(token))
+            except Exception as err:
+                _LOGGER.warning("Keyring cache token has failed: %s", str(err))
 
     def _retrieve_stored_token(self):
         """Retrieve stored token for new session.
@@ -319,6 +335,7 @@ class UserPassCredentials(AADRefreshMixin, AADMixin):
       is 'https://management.core.windows.net/'.
     - verify (bool): Verify secure connection, default is 'True'.
     - keyring (str): Name of local token cache, default is 'AzureAAD'.
+    - timeout (int): Timeout of the request in seconds.
     - cached (bool): If true, will not attempt to collect a token,
       which can then be populated later from a cached token.
     - proxies (dict): Dictionary mapping protocol or protocol and
@@ -379,6 +396,7 @@ class UserPassCredentials(AADRefreshMixin, AADMixin):
                                             resource=self.resource,
                                             verify=self.verify,
                                             proxies=self.proxies,
+                                            timeout=self.timeout,
                                             **optional)
             except (RequestException, OAuth2Error, InvalidGrantError) as err:
                 raise_with_traceback(AuthenticationError, "", err)
@@ -401,6 +419,7 @@ class ServicePrincipalCredentials(AADRefreshMixin, AADMixin):
       is 'https://management.core.windows.net/'.
     - verify (bool): Verify secure connection, default is 'True'.
     - keyring (str): Name of local token cache, default is 'AzureAAD'.
+    - timeout (int): Timeout of the request in seconds.
     - cached (bool): If true, will not attempt to collect a token,
       which can then be populated later from a cached token.
     - proxies (dict): Dictionary mapping protocol or protocol and
@@ -445,108 +464,18 @@ class ServicePrincipalCredentials(AADRefreshMixin, AADMixin):
                                             resource=self.resource,
                                             client_secret=self.secret,
                                             response_type="client_credentials",
-                                           verify=self.verify,
-                                           proxies=self.proxies)
+                                            verify=self.verify,
+                                            timeout=self.timeout,
+                                            proxies=self.proxies)
             except (RequestException, OAuth2Error, InvalidGrantError) as err:
                 raise_with_traceback(AuthenticationError, "", err)
             else:
                 self.token = token
 
-
-class InteractiveCredentials(AADMixin):
-    """Credentials object for Interactive/Web App Authentication.
-    Requires that an AAD Client be configured with a redirect URL.
-
-    Optional kwargs may include:
-    - cloud_environment (msrestazure.azure_cloud.Cloud): A targeted cloud environment
-    - china (bool): Configure auth for China-based service,
-      default is 'False'.
-    - tenant (str): Alternative tenant, default is 'common'.
-    - auth_uri (str): Alternative authentication endpoint.
-    - token_uri (str): Alternative token retrieval endpoint.
-    - resource (str): Alternative authentication resource, default
-      is 'https://management.core.windows.net/'.
-    - verify (bool): Verify secure connection, default is 'True'.
-    - keyring (str): Name of local token cache, default is 'AzureAAD'.
-    - cached (bool): If true, will not attempt to collect a token,
-      which can then be populated later from a cached token.
-    - proxies (dict): Dictionary mapping protocol or protocol and
-      hostname to the URL of the proxy.
-
-    :param str client_id: Client ID.
-    :param str redirect: Redirect URL.
-    """
-
-    def __init__(self, client_id, redirect, **kwargs):
-        super(InteractiveCredentials, self).__init__(client_id, None)
-        self._configure(**kwargs)
-
-        self.redirect = redirect
-        if not kwargs.get('cached'):
-            self.set_token()
-
-    @classmethod
-    def retrieve_session(cls, client_id, redirect):
-        """Create InteractiveCredentials from a cached token if it has not
-        yet expired.
-        """
-        session = cls(client_id, redirect, cached=True)
-        session._retrieve_stored_token()
-        return session
-
-    def _setup_session(self):
-        """Create token-friendly Requests session.
-
-        :rtype: requests_oauthlib.OAuth2Session
-        """
-        return oauth.OAuth2Session(self.id,
-                                   redirect_uri=self.redirect,
-                                   state=self.state)
-
-    def get_auth_url(self, msa=False, **additional_args):
-        """Get URL to web portal for authentication.
-
-        :param bool msa: Set to 'True' if authenticating with Live ID. Default
-         is 'False'.
-        :param additional_args: Set and additional kwargs for requrired AAD
-         configuration: msdn.microsoft.com/en-us/library/azure/dn645542.aspx
-        :rtype: Tuple
-        :return: The URL for authentication (str), and state code that will
-         be verified in the response (str).
-        """
-        if msa:
-            additional_args['domain_hint'] = 'live.com'
-        with self._setup_session() as session:
-            auth_url, state = session.authorization_url(self.auth_uri,
-                                                        resource=self.resource,
-                                                        **additional_args)
-            return auth_url, state
-
-    def set_token(self, response_url):
-        """Get token using Authorization Code from redirected URL.
-
-        :param str response_url: The full redirected URL from successful
-         authentication.
-        :raises: AuthenticationError if credentials invalid, or call fails.
-        """
-        self._check_state(response_url)
-        with self._setup_session() as session:
-
-            if response_url.startswith(_http(self.redirect)):
-                response_url = _https(response_url)
-            elif not response_url.startswith(_https(self.redirect)):
-                response_url = _https(self.redirect, response_url)
-            try:
-                token = session.fetch_token(self.token_uri,
-                                            authorization_response=response_url,
-                                            verify=self.verify,
-                                            proxies=self.proxies)
-            except (InvalidGrantError, OAuth2Error,
-                    MismatchingStateError, RequestException) as err:
-                raise_with_traceback(AuthenticationError, "", err)
-            else:
-                self.token = token
-
+# For backward compatibility of import, but I doubt someone uses that...
+class InteractiveCredentials(object):
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("InteractiveCredentials was not functionning and was removed. Please use ADAL and device code instead.")
 
 class AdalAuthentication(Authentication):  # pylint: disable=too-few-public-methods
     """A wrapper to use ADAL for Python easily to authenticate on Azure.
