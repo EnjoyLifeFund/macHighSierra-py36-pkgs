@@ -11,6 +11,7 @@ import functools
 import py
 
 import _pytest
+from _pytest.outcomes import TEST_OUTCOME
 
 
 try:
@@ -82,7 +83,15 @@ def num_mock_patch_args(function):
     return len(patchings)
 
 
-def getfuncargnames(function, startindex=None):
+def getfuncargnames(function, startindex=None, cls=None):
+    """
+    @RonnyPfannschmidt: This function should be refactored when we revisit fixtures. The
+    fixture mechanism should ask the node for the fixture names, and not try to obtain
+    directly from the function object well after collection has occurred.
+    """
+    if startindex is None and cls is not None:
+        is_staticmethod = isinstance(cls.__dict__.get(function.__name__, None), staticmethod)
+        startindex = 0 if is_staticmethod else 1
     # XXX merge with main.py's varnames
     # assert not isclass(function)
     realfunction = function
@@ -221,14 +230,16 @@ def getimfunc(func):
 
 
 def safe_getattr(object, name, default):
-    """ Like getattr but return default upon any Exception.
+    """ Like getattr but return default upon any Exception or any OutcomeException.
 
     Attribute access can potentially fail for 'evil' Python objects.
     See issue #214.
+    It catches OutcomeException because of #2490 (issue #580), new outcomes are derived from BaseException
+    instead of Exception (for more details check #2707)
     """
     try:
         return getattr(object, name, default)
-    except Exception:
+    except TEST_OUTCOME:
         return default
 
 

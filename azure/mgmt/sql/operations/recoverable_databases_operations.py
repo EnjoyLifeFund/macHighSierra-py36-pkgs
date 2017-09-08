@@ -9,9 +9,9 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
-import uuid
 
 from .. import models
 
@@ -37,8 +37,8 @@ class RecoverableDatabasesOperations(object):
 
     def get(
             self, resource_group_name, server_name, database_name, custom_headers=None, raw=False, **operation_config):
-        """Gets a Recoverable Database, which is a resource representing a
-        database's Geo backup.
+        """Gets a recoverable database, which is a resource representing a
+        database's geo backup.
 
         :param resource_group_name: The name of the resource group that
          contains the resource. You can obtain this value from the Azure
@@ -53,10 +53,13 @@ class RecoverableDatabasesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: :class:`RecoverableDatabase
+         <azure.mgmt.sql.models.RecoverableDatabase>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
         :rtype: :class:`RecoverableDatabase
-         <azure.mgmt.sql.models.RecoverableDatabase>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+         <azure.mgmt.sql.models.RecoverableDatabase>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -105,7 +108,7 @@ class RecoverableDatabasesOperations(object):
 
     def list_by_server(
             self, resource_group_name, server_name, custom_headers=None, raw=False, **operation_config):
-        """Returns a list of Recoverable Databases.
+        """Gets a list of recoverable databases.
 
         :param resource_group_name: The name of the resource group that
          contains the resource. You can obtain this value from the Azure
@@ -118,6 +121,8 @@ class RecoverableDatabasesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: An iterator like instance of :class:`RecoverableDatabase
+         <azure.mgmt.sql.models.RecoverableDatabase>`
         :rtype: :class:`RecoverableDatabasePaged
          <azure.mgmt.sql.models.RecoverableDatabasePaged>`
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`

@@ -1,5 +1,6 @@
 # cython: infer_types=True
 # cython: cdivision=True
+# cython: profile=True
 cimport cython
 from os import path
 from cpython.mem cimport PyMem_Free, PyMem_Malloc

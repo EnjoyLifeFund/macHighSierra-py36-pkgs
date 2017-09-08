@@ -6,6 +6,7 @@ Home-page: https://github.com/oarriaga/luvina
 Author: Octavio Arriaga
 Author-email: arriaga.camargo@gmail.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Requires-Dist: nltk
 Requires-Dist: pyenchant

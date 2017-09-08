@@ -76,10 +76,6 @@ class Biases(Weights):
     pass
 
 
-class Moment(Weights):
-    pass
-
-
 def attributes(**specs):
     if not specs: # pragma: no cover
         raise ValueError("Must describe at least one attribute")

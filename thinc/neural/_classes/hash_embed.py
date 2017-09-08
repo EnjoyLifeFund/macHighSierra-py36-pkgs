@@ -1,24 +1,11 @@
 from .model import Model
-from .._lsuv import do_lsuv
+from .embed import _uniform_init
 from ... import describe
 from ...describe import Weights, Dimension, Gradient
-from ..util import copy_array
 import random
 import numpy
 
-def LSUVinit(model, X, y=None):
-    if model.vectors is not None:
-        do_lsuv(model.ops, model.vectors, model, X)
-    return X
 
-def _uniform_init(lo, hi):
-    def wrapped(W, ops):
-        if (W**2).sum() == 0.:
-            copy_array(W, ops.xp.random.uniform(lo, hi, W.shape))
-    return wrapped
-
-
-#@describe.on_data(LSUVinit)
 @describe.attributes(
     nO=Dimension("Vector dimensions"),
     nV=Dimension("Number of vectors"),
@@ -29,7 +16,6 @@ def _uniform_init(lo, hi):
     d_vectors=Gradient("vectors"),
 )
 class HashEmbed(Model):
-    name = 'hash-embed'
     def __init__(self, nO, nV, seed=None, **kwargs):
         Model.__init__(self, **kwargs)
         self.column = kwargs.get('column', 0)
@@ -38,31 +24,20 @@ class HashEmbed(Model):
         self.seed = self.id
 
     def predict(self, ids):
-        if ids.ndim >= 2:
-            ids = self.ops.xp.ascontiguousarray(ids[:, self.column], dtype='uint64')
-
-        keys = self.ops.hash(ids, self.seed) % self.nV
-        keys = keys.T
-        vectors = self.vectors[keys[0]]
-        for i in range(1, keys.shape[0]):
-            vectors += self.vectors[keys[i]]
+        if ids.ndim == 2:
+            ids = ids[:, self.column]
+        vectors = self.vectors[self.ops.hash(ids, self.seed) % self.nV]
         return vectors
 
     def begin_update(self, ids, drop=0.):
-        if ids.ndim >= 2:
-            ids = self.ops.xp.ascontiguousarray(ids[:, self.column], dtype='uint64')
-        vectors = self.predict(ids)
-        mask = self.ops.get_dropout_mask((vectors.shape[1],), drop)
-        if mask is not None:
-            vectors *= mask
+        if ids.ndim == 2:
+            ids = ids[:, self.column]
         def finish_update(delta, sgd=None):
-            if mask is not None:
-                delta *= mask
             keys = self.ops.hash(ids, self.seed) % self.nV
-            keys = keys.T
-            d_vectors = self.d_vectors
-            self.ops.scatter_add(d_vectors, keys, delta)
+            self.ops.xp.add.at(self.d_vectors, keys, delta)
             if sgd is not None:
                 sgd(self._mem.weights, self._mem.gradient, key=self.id)
             return None
-        return vectors, finish_update
+        return self.predict(ids), finish_update
+
+

@@ -6,6 +6,7 @@ Home-page: http://github.com/LuminosoInsight/python-ftfy
 Author: Luminoso Technologies, Inc.
 Author-email: info@luminoso.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Platform: any
 Classifier: Programming Language :: Python :: 2
 Classifier: Programming Language :: Python :: 2.6

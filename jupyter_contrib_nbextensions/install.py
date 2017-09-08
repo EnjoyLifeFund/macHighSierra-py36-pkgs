@@ -11,8 +11,9 @@ import os
 import jupyter_highlight_selected_word
 import latex_envs
 from jupyter_contrib_core.notebook_compat import nbextensions
-from jupyter_nbextensions_configurator.application import \
-    EnableJupyterNbextensionsConfiguratorApp
+from jupyter_nbextensions_configurator.application import (
+    EnableJupyterNbextensionsConfiguratorApp,
+)
 from notebook.notebookapp import list_running_servers
 from traitlets.config import Config
 from traitlets.config.manager import BaseJSONConfigManager
@@ -175,7 +176,7 @@ def _check_conflicting_kwargs(**kwargs):
     if sum(map(bool, kwargs.values())) > 1:
         raise nbextensions.ArgumentConflict(
             "Cannot specify more than one of {}.\nBut recieved {}".format(
-                ', '.join(kwargs.keys),
+                ', '.join(kwargs.keys()),
                 ', '.join(['{}={}'.format(k, v)
                            for k, v in kwargs.items() if v])))
 

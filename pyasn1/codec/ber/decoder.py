@@ -371,7 +371,7 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
     def _getComponentPositionByType(self, asn1Object, tagSet, idx):
         raise NotImplementedError()
 
-    def _decodeComponents(self, substrate, decodeFun, allowEoo=True):
+    def _decodeComponents(self, substrate, decodeFun, tagSet, allowEoo=True):
         components = []
         componentTypes = set()
         while substrate:
@@ -381,15 +381,21 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
             components.append(component)
             componentTypes.add(component.tagSet)
 
-        # Now we have to guess is it SEQUENC/SETE or SEQUENCE OF/SET OF
+        # Now we have to guess is it SEQUENCE/SET or SEQUENCE OF/SET OF
         # The heuristics is:
         # * 0-1 component -> likely SEQUENCE OF/SET OF
         # * 1+ components of the same type -> likely SEQUENCE OF/SET OF
         # * otherwise -> likely SEQUENCE/SET
         if len(components) > 1 or len(componentTypes) > 1:
-            asn1Object = self.protoRecordComponent.clone()
+            protoComponent = self.protoRecordComponent
         else:
-            asn1Object = self.protoSequenceComponent.clone()
+            protoComponent = self.protoSequenceComponent
+
+        asn1Object = protoComponent.clone(
+            # construct tagSet from base tag from prototype ASN.1 object
+            # and additional tags recovered from the substrate
+            tagSet=tag.TagSet(protoComponent.tagSet.baseTag, *tagSet.superTags)
+        )
 
         for idx, component in enumerate(components):
             asn1Object.setComponentByPosition(
@@ -418,7 +424,7 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
             return substrateFun(asn1Object, substrate, length)
 
         if asn1Spec is None:
-            asn1Object, trailing = self._decodeComponents(head, decodeFun)
+            asn1Object, trailing = self._decodeComponents(head, decodeFun, tagSet)
             if trailing:
                 raise error.PyAsn1Error('Unused trailing %d octets encountered' % len(trailing))
             return asn1Object, tail
@@ -429,22 +435,21 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
 
             namedTypes = asn1Object.componentType
 
-            isUnordered = (not namedTypes or
-                           namedTypes.hasOptionalOrDefault or
-                           asn1Object.typeId == univ.Set.typeId)
+            isSetType = asn1Object.typeId == univ.Set.typeId
+            isDeterministic = not isSetType and not namedTypes.hasOptionalOrDefault
 
             seenIndices = set()
             idx = 0
             while head:
-                if not isUnordered:
-                    asn1Spec = namedTypes[idx].asn1Object
-                elif not namedTypes:
+                if not namedTypes:
                     asn1Spec = None
-                elif asn1Object.typeId == univ.Set.typeId:
+                elif isSetType:
                     asn1Spec = namedTypes.tagMapUnique
                 else:
                     try:
-                        if namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
+                        if isDeterministic:
+                            asn1Spec = namedTypes[idx].asn1Object
+                        elif namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
                             asn1Spec = namedTypes.getTagMapNearPosition(idx)
                         else:
                             asn1Spec = namedTypes[idx].asn1Object
@@ -455,8 +460,8 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
 
                 component, head = decodeFun(head, asn1Spec)
 
-                if isUnordered and namedTypes:
-                    if asn1Object.typeId == univ.Set.typeId:
+                if not isDeterministic and namedTypes:
+                    if isSetType:
                         idx = namedTypes.getPositionByType(component.effectiveTagSet)
                     elif namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
                         idx = namedTypes.getPositionNearType(component.effectiveTagSet, idx)
@@ -508,7 +513,7 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
             return substrateFun(asn1Object, substrate, length)
 
         if asn1Spec is None:
-            return self._decodeComponents(substrate, decodeFun, allowEoo=True)
+            return self._decodeComponents(substrate, decodeFun, tagSet, allowEoo=True)
 
         asn1Object = asn1Spec.clone()
 
@@ -516,35 +521,35 @@ class UniversalConstructedTypeDecoder(AbstractConstructedDecoder):
 
             namedTypes = asn1Object.componentType
 
-            isUnordered = (not namedTypes or
-                           namedTypes.hasOptionalOrDefault or
-                           asn1Object.typeId == univ.Set.typeId)
+            isSetType = asn1Object.typeId == univ.Set.typeId
+            isDeterministic = not isSetType and not namedTypes.hasOptionalOrDefault
 
             seenIndices = set()
             idx = 0
             while substrate:
-                if not isUnordered:
-                    asn1Spec = namedTypes[idx].asn1Object
-                elif len(namedTypes) <= idx:
+                if len(namedTypes) <= idx:
                     asn1Spec = None
-                elif asn1Object.typeId == univ.Set.typeId:
+                elif isSetType:
                     asn1Spec = namedTypes.tagMapUnique
                 else:
                     try:
-                        if namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
+                        if isDeterministic:
+                            asn1Spec = namedTypes[idx].asn1Object
+                        elif namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
                             asn1Spec = namedTypes.getTagMapNearPosition(idx)
                         else:
                             asn1Spec = namedTypes[idx].asn1Object
                     except IndexError:
                         raise error.PyAsn1Error(
-                            'Excessive components decoded at %r' (asn1Object,)
+                            'Excessive components decoded at %r' % (asn1Object,)
                         )
+
                 component, substrate = decodeFun(substrate, asn1Spec, allowEoo=True)
                 if component is eoo.endOfOctets:
                     break
 
-                if isUnordered and namedTypes:
-                    if asn1Object.typeId == univ.Set.typeId:
+                if not isDeterministic and namedTypes:
+                    if isSetType:
                         idx = namedTypes.getPositionByType(component.effectiveTagSet)
                     elif namedTypes[idx].isOptional or namedTypes[idx].isDefaulted:
                         idx = namedTypes.getPositionNearType(component.effectiveTagSet, idx)

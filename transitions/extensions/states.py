@@ -1,6 +1,8 @@
 from threading import Timer
 from ..core import MachineError, listify
 import logging
+import itertools
+import inspect
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -36,6 +38,8 @@ class Error(Tags):
 
 class Timeout(object):
 
+    dynamic_methods = ['on_timeout']
+
     def __init__(self, *args, **kwargs):
         self.timeout = kwargs.pop('timeout', 0)
         self._on_timeout = None
@@ -61,10 +65,10 @@ class Timeout(object):
         super(Timeout, self).exit(event_data)
 
     def _process_timeout(self, event_data):
-        logger.debug("%sTimeout state %s. Processing callbacks...", event_data.machine.id, self.name)
+        logger.debug("%sTimeout state %s. Processing callbacks...", event_data.machine.name, self.name)
         for oe in self.on_timeout:
             event_data.machine._callback(oe, event_data)
-        logger.info("%sTimeout state %s processed.", event_data.machine.id, self.name)
+        logger.info("%sTimeout state %s processed.", event_data.machine.name, self.name)
 
     @property
     def on_timeout(self):
@@ -97,9 +101,11 @@ class Volatile(object):
 
 def add_state_features(*args):
     def class_decorator(cls):
-        class CustomState(type('CustomMixins', args, {}), cls.state_cls):
+        class CustomState(type('CustomState', args, {}), cls.state_cls):
             pass
 
+        method_list = sum([c.dynamic_methods for c in inspect.getmro(CustomState) if hasattr(c, 'dynamic_methods')], [])
+        CustomState.dynamic_methods = set(method_list)
         cls.state_cls = CustomState
         return cls
     return class_decorator

@@ -1,5 +1,18 @@
 import numpy as np
-from .util import copy_array
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
+def copyto(dst, src, casting='same_kind', where=None):
+    if isinstance(dst, np.ndarray) and isinstance(src, np.ndarray):
+        dst[:] = src
+    elif isinstance(dst, cupy.ndarray):
+        src = cupy.array(src, copy=False)
+        cupy.copyto(dst, src)
+    else:
+        np.copyto(dst, src)
+        
 
 # Layer-sequential Unit Variance initialization, by
 # https://github.com/ducha-aiki/LSUV-keras/blob/master/lsuv_init.py
@@ -18,12 +31,8 @@ def svd_orthonormal(shape):
     return q
 
 
-_initialized = set()
 def do_lsuv(ops, weights, predict, X):
-    if id(predict) in _initialized:
-        return
-    _initialized.add(id(predict))
-    copy_array(weights, svd_orthonormal(weights.shape))
+    copyto(weights, svd_orthonormal(weights.shape))
     X_copy = ops.xp.ascontiguousarray(X)
     acts = predict(X_copy)
     tol_var = 0.1
@@ -44,9 +53,4 @@ def LSUVinit(model, X, y=None):
         model = model._layers[0]
     if model.name in 'softmax': # pragma: no cover
         return
-    if hasattr(model, 'lsuv') and not model.lsuv:
-        return
-    if model.id in _initialized:
-        return
-    _initialized.add(model.id)
     return do_lsuv(model.ops, model.W, model, X)

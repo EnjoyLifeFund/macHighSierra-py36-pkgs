@@ -4,6 +4,7 @@ from ...describe import Dimension, Synapses, Biases, Gradient
 from ..mem import Memory
 from ... import check
 from ...check import has_shape
+from .._lsuv import LSUVinit
 
 
 def _set_dimensions_if_needed(model, X, y=None):
@@ -16,7 +17,8 @@ def _set_dimensions_if_needed(model, X, y=None):
             model.nO = int(y.max()) + 1
 
 
-@describe.on_data(_set_dimensions_if_needed)
+# TODO: Add toggle for the LSUV init. It seems not always better!
+@describe.on_data(_set_dimensions_if_needed, LSUVinit)
 @describe.attributes(
     nB=Dimension("Batch size"),
     nI=Dimension("Input size"),
@@ -45,7 +47,6 @@ class Affine(Model):
         Model.__init__(self, **kwargs)
         self.nO = nO
         self.nI = nI
-        self.drop_factor = kwargs.get('drop_factor', 1.0)
 
     @check.arg(1, has_shape(('nB', 'nI')))
     def predict(self, input__BI):
@@ -62,6 +63,5 @@ class Affine(Model):
                 sgd(self._mem.weights, self._mem.gradient,
                     key=self.id)
             return grad__BI
-        drop *= self.drop_factor
         output__BO, bp_dropout = self.ops.dropout(output__BO, drop, inplace=True)
         return output__BO, bp_dropout(finish_update)

@@ -9,9 +9,9 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
-import uuid
 
 from .. import models
 
@@ -53,10 +53,13 @@ class RestorableDroppedDatabasesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: :class:`RestorableDroppedDatabase
+         <azure.mgmt.sql.models.RestorableDroppedDatabase>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
         :rtype: :class:`RestorableDroppedDatabase
-         <azure.mgmt.sql.models.RestorableDroppedDatabase>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+         <azure.mgmt.sql.models.RestorableDroppedDatabase>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -105,7 +108,7 @@ class RestorableDroppedDatabasesOperations(object):
 
     def list_by_server(
             self, resource_group_name, server_name, custom_headers=None, raw=False, **operation_config):
-        """Get a list of deleted database that can be restored.
+        """Gets a list of deleted databases that can be restored.
 
         :param resource_group_name: The name of the resource group that
          contains the resource. You can obtain this value from the Azure
@@ -118,6 +121,9 @@ class RestorableDroppedDatabasesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: An iterator like instance of
+         :class:`RestorableDroppedDatabase
+         <azure.mgmt.sql.models.RestorableDroppedDatabase>`
         :rtype: :class:`RestorableDroppedDatabasePaged
          <azure.mgmt.sql.models.RestorableDroppedDatabasePaged>`
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`

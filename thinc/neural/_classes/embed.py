@@ -9,7 +9,6 @@ from ... import check
 from ...check import is_int_array, is_int
 from ... describe import Dimension, Weights, Synapses, Gradient
 from .._lsuv import svd_orthonormal, do_lsuv
-from ..util import copy_array
 
 
 def _set_dimensions_if_needed(model, X, y=None):
@@ -22,7 +21,7 @@ def _set_dimensions_if_needed(model, X, y=None):
 
 def _uniform_init(lo, hi):
     def wrapped(W, ops):
-        copy_array(W, ops.xp.random.uniform(lo, hi, W.shape))
+        W[:] = ops.xp.random.uniform(lo, hi, W.shape)
     return wrapped
 
 
@@ -79,7 +78,7 @@ class Embed(Model):
         vectors = self._embed(uniques)
         dotted_uniq = self.ops.batch_dot(vectors, self.W)
         output = dotted_uniq[positions]
-        return self.ops.xp.ascontiguousarray(output)
+        return output
 
     def begin_update(self, ids, drop=0.):
         if ids.ndim == 2:

@@ -6,6 +6,7 @@ Home-page: http://chainer.org/
 Author: Seiya Tokui
 Author-email: tokui@preferred.jp
 License: MIT License
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Requires-Dist: filelock
 Requires-Dist: nose
