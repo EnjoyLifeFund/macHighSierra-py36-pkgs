@@ -1,4 +1,5 @@
 h5py/__init__.py,sha256=FE-UzqbIGJXBZ_w-rUrY9tUfilr6tQm7l2fxexxettU,3201
+<<<<<<< HEAD
 h5py/_conv.cpython-36m-darwin.so,sha256=Ol8beE2CQO_CcbHmOTdioVv6mtmCR-A7Ii-RqMa5EcM,157820
 h5py/_errors.cpython-36m-darwin.so,sha256=RPLn5M0tNTzHKjbWBSZINk6vUvJa2vQZcCT9C6_D9NE,102796
 h5py/_objects.cpython-36m-darwin.so,sha256=pB3cHf7Y-zaV7BGSMVtIlw1hG2tDZS1fPGeQ_TNCjJk,309676
@@ -28,6 +29,33 @@ h5py/.dylibs/libaec.0.dylib,sha256=e2LFabhDz1znRfKn2wmpIyjehpABxy_slF2QkYo91Xc,7
 h5py/.dylibs/libhdf5.10.dylib,sha256=WMQPUft1ClAjMTS2sUpSPVwJEpKxgjWeI243mpuyyj0,9394744
 h5py/.dylibs/libhdf5_hl.10.dylib,sha256=IKJI8TeaeFmn2HM3omsyBKR0Ane5mZYpgmu7La7sfpg,320536
 h5py/.dylibs/libsz.2.dylib,sha256=13HEiQPm3a4VzeGTMMWv-mAFEn8h7Y3MI9mzvoZExKo,29780
+=======
+h5py/_conv.cpython-36dm-darwin.so,sha256=YwPukdT3wPIIcU0eJ8tCq24shD7UbakQJixpJIrtjqk,80880
+h5py/_errors.cpython-36dm-darwin.so,sha256=3WgPBa06LCQuNGARSmHYAByqpK9zL-YkGecsggmtgEo,54400
+h5py/_objects.cpython-36dm-darwin.so,sha256=N5xQEapXrPUzCXmhESvLs91NQugu-0W0OsWxAFHyWKs,171248
+h5py/_proxy.cpython-36dm-darwin.so,sha256=aLmoElkVaho_-dSE_agGO5n-h0uI_08T9T83NeJsVgg,50632
+h5py/defs.cpython-36dm-darwin.so,sha256=o1TcaG6VvjSOMCaOnRImc4QzVyTGI50TuOzkBeumVBg,233860
+h5py/h5.cpython-36dm-darwin.so,sha256=IvrKNyzm4-DTO8KyS43phGqEcPzj6w0e8fqhWPfk5V8,128680
+h5py/h5a.cpython-36dm-darwin.so,sha256=vUMlG9k7eJBUE9fk-N0KEd6vUco6tIylkCyVtT9Ggbo,179328
+h5py/h5ac.cpython-36dm-darwin.so,sha256=gG69s-VvuA2pWKsudEYAgn2OI9p75UUBpVKH2ntFLLI,54848
+h5py/h5d.cpython-36dm-darwin.so,sha256=maeCDYp-l0FraNOlXAsNL77dkD1HGuPWhawuEBrntt8,162592
+h5py/h5ds.cpython-36dm-darwin.so,sha256=FtfJ8SJA2yRQwwYl3pI_IKSAfot_6es3X2YkgaHS9R0,101444
+h5py/h5f.cpython-36dm-darwin.so,sha256=W8Iu7J0poAE_iovoKpVAyIzDBiZZaymXQvtjApd_WN8,176636
+h5py/h5fd.cpython-36dm-darwin.so,sha256=LgNo584Huyr93pRFL9h6Q9PtC0i1be96i9OjKFlQBgk,27156
+h5py/h5g.cpython-36dm-darwin.so,sha256=2ybRmE48H15SDgvVzDBB2rRHV9QhyI1iXS0fJ12sfBM,214716
+h5py/h5i.cpython-36dm-darwin.so,sha256=4z9POJ4Zlr1u86IqoMlTCV-ac2S398U1WGfWHp-5N6s,71624
+h5py/h5l.cpython-36dm-darwin.so,sha256=MfE8ooWDl0W3tQ7JZUxd1eRjiGQkXVhvkpeFshIaBX8,132528
+h5py/h5o.cpython-36dm-darwin.so,sha256=H51GB5VWDcyEiqWnqNRJYehESdTv9Bh98uLKkPlzVEc,145492
+h5py/h5p.cpython-36dm-darwin.so,sha256=4sUkYzHj6WrU4K1HA3P1bDkSbRN1qUdAMAilH5Czamw,520656
+h5py/h5r.cpython-36dm-darwin.so,sha256=i9d2xcIuxGrjoPHVxICYmvi8PT1QxfDgn_vWH_Y6Y2s,75896
+h5py/h5s.cpython-36dm-darwin.so,sha256=sXWyns9S0DcU2scGsfHPAa3STBVMnr7F6bmc6lIkc1g,160264
+h5py/h5t.cpython-36dm-darwin.so,sha256=2HpEEMciu3L0W1fn8XAAU0vNQcGWT9RPgph7nqZTfOU,551008
+h5py/h5z.cpython-36dm-darwin.so,sha256=3qhxn2Br-MViXPS5vz4--WuLMzvKlTnyB-JH1bDSkxQ,50944
+h5py/highlevel.py,sha256=ihl6LccHo72g9HRj7e_tz2sM64dXB17MGnkThsFZqN0,826
+h5py/ipy_completer.py,sha256=NxFe7FRS4YbK5oAQFHA5ZKwor4_dybGb1thpQ3uuTnw,4921
+h5py/utils.cpython-36dm-darwin.so,sha256=YSlnIdOgyMxwi11FhBX3wFa_1pm6F-efCkrwOMnQ3Qc,49456
+h5py/version.py,sha256=NUGMB19i3BEOa_2m-II5i9Wzp_9DPHRYwnO_65hC3fE,1621
+>>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 h5py/_hl/__init__.py,sha256=V2mVYMRlZugjqwnmDn1pmB_qAZU1DeS11WMyOlF0Gu0,502
 h5py/_hl/attrs.py,sha256=kD9Pvk6nXm20Q9yFO6tCFIyM3_p-CS-hREoUkvoB4WM,9402
 h5py/_hl/base.py,sha256=Gl6EXdjso_LbSN44vMyhMoSC-6Za3f9lveCPguo5WqQ,11984
@@ -69,11 +97,19 @@ h5py/tests/old/test_objects.py,sha256=RIdL9Oi09cmjMro6vjrxz4mGyuU5oXoKtYGY3gLAdY
 h5py/tests/old/test_selections.py,sha256=4CvmHuvoXakTxuJXpA9EklPXcD_qAsO5z6IZYd_dtfQ,2721
 h5py/tests/old/test_slicing.py,sha256=sztLi-CxGPaz1vGSg9-pqizX7uR5Hilabwegkk_aa-0,10377
 h5py-2.7.1.dist-info/DESCRIPTION.rst,sha256=eU5XRGeyH0vEYyOtCMDegT9_vHlnf2cseM0j2Kq7DuY,592
+<<<<<<< HEAD
 h5py-2.7.1.dist-info/METADATA,sha256=LmJYqneWy3VVTZYaxoyHyGLCfmThlKW9R-RcL2HrI3U,2058
 h5py-2.7.1.dist-info/metadata.json,sha256=myUP8tIgrbV9z2ygOLObWXv8wbVvOwsEz21U0bzy-2I,1469
 h5py-2.7.1.dist-info/RECORD,,
 h5py-2.7.1.dist-info/top_level.txt,sha256=fO7Bsaa0F3Nx6djErCCbSw4-E7rBFMWrBVTGLEMxUMg,5
 h5py-2.7.1.dist-info/WHEEL,sha256=sied1txsddvxRnc-lqBF9qM_XFyTHFsxF2jr6Vv0XfA,249
+=======
+h5py-2.7.1.dist-info/METADATA,sha256=NBFrUGAQu03V7Y3cT70YFioIQUINZSfoaOQ_xn0IyZ8,2092
+h5py-2.7.1.dist-info/RECORD,,
+h5py-2.7.1.dist-info/WHEEL,sha256=zvKhK5q2NEXK7L5NUdH5GPvuKRF3YhbrGSumhT7SLhM,114
+h5py-2.7.1.dist-info/metadata.json,sha256=E8cKOHBK0b7CvErh1SvNXvz3NGxCWRL0PtxzBbh-5Og,1508
+h5py-2.7.1.dist-info/top_level.txt,sha256=fO7Bsaa0F3Nx6djErCCbSw4-E7rBFMWrBVTGLEMxUMg,5
+>>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 h5py-2.7.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 h5py/__pycache__/__init__.cpython-36.pyc,,
 h5py/__pycache__/highlevel.cpython-36.pyc,,

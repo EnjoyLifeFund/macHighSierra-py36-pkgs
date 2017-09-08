@@ -922,7 +922,11 @@
         },
         "Matcher":{
           "shape":"Matcher",
+<<<<<<< HEAD
           "documentation":"<p>[HTTP/HTTPS health checks] The HTTP codes to use when checking for a successful response from a target.</p>"
+=======
+          "documentation":"<p>The HTTP codes to use when checking for a successful response from a target. The default is 200.</p>"
+>>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
         },
         "TargetType":{
           "shape":"TargetTypeEnum",

@@ -1,5 +1,9 @@
 Wheel-Version: 1.0
 Generator: bdist_wheel (0.29.0)
 Root-Is-Purelib: false
+<<<<<<< HEAD
 Tag: cp36-cp36m-macosx_10_13_x86_64
+=======
+Tag: cp36-cp36dm-macosx_10_12_6_x86_64
+>>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 
