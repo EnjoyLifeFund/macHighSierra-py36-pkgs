@@ -6,6 +6,7 @@ Home-page: https://ansible.com/
 Author: Ansible, Inc.
 Author-email: info@ansible.com
 License: GPLv3
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Environment :: Console

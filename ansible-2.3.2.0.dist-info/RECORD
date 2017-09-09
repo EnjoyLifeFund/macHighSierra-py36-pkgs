@@ -1617,10 +1617,10 @@ ansible/vars/unsafe_proxy.py,sha256=w0bVAu_eXte4JISRPxV6Dm-CWXrwe5DeuG51XHE5ucA,
 ../../../bin/ansible-pull,sha256=bLNnCJDR1r1dIzTPtv2sRcb-52ZuMCx8SCxDk9CDASM,4870
 ../../../bin/ansible-vault,sha256=bLNnCJDR1r1dIzTPtv2sRcb-52ZuMCx8SCxDk9CDASM,4870
 ansible-2.3.2.0.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-ansible-2.3.2.0.dist-info/METADATA,sha256=vO_K_pNLnYj7Jtk57klGWG2LfLdIaeG7XELplQEGMpc,994
+ansible-2.3.2.0.dist-info/METADATA,sha256=jKca4EtD5mZ19sO57Q9jGAyfUx9Ez2UbOIViT2HczaE,1028
 ansible-2.3.2.0.dist-info/RECORD,,
 ansible-2.3.2.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-ansible-2.3.2.0.dist-info/metadata.json,sha256=oVXRLxJLdqsxg9xXhOX-o3rNm8iauyak77H-dVBawKU,1058
+ansible-2.3.2.0.dist-info/metadata.json,sha256=_6Qer81fWM0HQMj4lB_EHMKKbnbSO2uSz3n-Up5rBAs,1097
 ansible-2.3.2.0.dist-info/top_level.txt,sha256=bP1o-RYLYg8m00qC3A9r7ijpfW549hd0u6Y9uxQxRK4,8
 ansible-2.3.2.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 ansible/__pycache__/__init__.cpython-36.pyc,,

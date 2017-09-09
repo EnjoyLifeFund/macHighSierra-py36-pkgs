@@ -1,1 +1,0 @@
-../../../Cellar/sip/4.19.3_1/lib/python3.6/site-packages/sipdistutils.py

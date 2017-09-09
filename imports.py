@@ -291,8 +291,8 @@ import setproctitle
 import setuptools
 import shapely
 import simplejson
-import sip.so
-import site.pyc
+import sip
+import site
 import sklearn
 import sortedcontainers
 import spacy

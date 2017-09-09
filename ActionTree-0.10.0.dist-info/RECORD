@@ -16,10 +16,10 @@ ActionTree/tests/single_threaded_execution.py,sha256=Fowr9_E_rM7OokkGjGFxRhLoz5y
 ActionTree/tests/stock_actions.py,sha256=THp6YMxwjE8jmfJwm9qEluPS5kgCcFausNXg7ehUFKA,7756
 ActionTree/tests/timing.py,sha256=ULUobXV5RnK6jF89EM1fCkhwL4--JDUPrFYg0Onr7jQ,6215
 ActionTree-0.10.0.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-ActionTree-0.10.0.dist-info/METADATA,sha256=1z9rO1YKDVeEbJTpacITk7YJQ2Lln8eiTUn1rkPht8E,906
+ActionTree-0.10.0.dist-info/METADATA,sha256=rE-sILfnfDVgZ9ASxQy53rasz59AJqivFUE3nNLG1Xk,940
 ActionTree-0.10.0.dist-info/RECORD,,
 ActionTree-0.10.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-ActionTree-0.10.0.dist-info/metadata.json,sha256=cglReqACcsujZqh6NrCg5A7WOMj0tfb1KP7Rkq0PqqM,1052
+ActionTree-0.10.0.dist-info/metadata.json,sha256=gptTq-3SCpgsIzOTmeMjnybmb444qDtVT1QiksyTa3k,1091
 ActionTree-0.10.0.dist-info/top_level.txt,sha256=gFOhKo5OgGe9mVeJBzKd5WEU5YqEpdFv4p9DYXpJVQk,11
 ActionTree-0.10.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 ActionTree/__pycache__/__init__.cpython-36.pyc,,

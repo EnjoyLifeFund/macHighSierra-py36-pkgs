@@ -338,7 +338,7 @@ class IOPort(BaseIOPort):
         self.name = '{} + {}'.format(str(input.name), str(output.name))
         self._messages = self.input._messages
         self.closed = False
-        self._lock = DummyLock()
+        self._lock = threading.RLock()
 
     def _close(self):
         self.input.close()
@@ -348,7 +348,7 @@ class IOPort(BaseIOPort):
         self.output.send(message)
 
     def _receive(self, block=True):
-        return self.input.receive(block=block)
+        return self.input.receive()
 
 
 class EchoPort(BaseIOPort):
