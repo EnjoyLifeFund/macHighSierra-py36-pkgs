@@ -8,13 +8,13 @@ toree/toreeapp.py,sha256=zge-BK_Oe9ELNqK67MOnpxrxSK4JmF-inB360VaL3nI,6835
 toree/bin/run.sh,sha256=af8usRcaT1SD19HHjccHvT6eRljLTP0EwaTV_-jJUOU,1714
 toree/lib/toree-assembly-0.1.0-incubating.jar,sha256=8P8bEmBhLGRU9iZsm5m0VvOzM-N3hmbajgvoC7RkH3k,27255409
 toree-0.1.0.dist-info/DESCRIPTION.rst,sha256=jEiczKTic61_aPPZgI5a3W9iq-HQP4d2C6Y8AWc9GuI,602
-toree-0.1.0.dist-info/METADATA,sha256=EhfILdYCl3R5QxSxxPDbdtdMsy59K284XdZ_kyIBtlY,1363
+toree-0.1.0.dist-info/METADATA,sha256=idYhUl2stNss4mG8CE_C-xs88yMRb2nkHwAXlTlF2y8,1397
 toree-0.1.0.dist-info/RECORD,,
 toree-0.1.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
 toree-0.1.0.dist-info/entry_points.txt,sha256=l8PXgGBg6H8uFbpse2T6Dye2VHTqFa9YAbkPEIN9U9A,55
-toree-0.1.0.dist-info/metadata.json,sha256=zpHAXQ7eyQad8mnks2dXHcix8Ahd3o6rxoj4e79Y3jU,1082
+toree-0.1.0.dist-info/metadata.json,sha256=cE4ExlA_yBwB00cMyQ5a2O4nMez74uq2NsjIAYt9SD0,1121
 toree-0.1.0.dist-info/top_level.txt,sha256=sS-uMNCVKDjIIGi4EBizgs1EImN6eNIFHtRFs0BN6vM,6
-../../../bin/jupyter-toree,sha256=l9FhYX3vEPGWtwwPcwVAghDhU0CWmep6FOBbWlJIKFo,237
+../../../bin/jupyter-toree,sha256=OKhZ5QRDc_CIxByTndQPgOUdJ5nnHG4rYTVVq4W9jZ0,246
 toree-0.1.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 toree/__pycache__/__init__.cpython-36.pyc,,
 toree/__pycache__/__main__.cpython-36.pyc,,

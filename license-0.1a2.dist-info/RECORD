@@ -26,10 +26,10 @@ license/templates/LGPL-3.0+__header,sha256=x7KN8yPzpER-LMW7lqOXHUibf1xtWHZtmfQAW
 license/templates/LGPL-3.0__header,sha256=DE4QNBJMIyFdggN5vwiLRxJSPuyU8jFnhsQ_2W9O2AM,659
 license/templates/MIT,sha256=afHUFUDL7JeO2eNl2IYQUoo7SnUl3MVI9kzKCJkR0Dk,1093
 license-0.1a2.dist-info/DESCRIPTION.rst,sha256=NelKAMOAtswCyeUEoNDD5L1AOq205RNmMfYavpdRRvU,7238
-license-0.1a2.dist-info/METADATA,sha256=zXcP-n-SHCp7UhsR8NnuaFE00-AXHFdpZac9cLZOh9g,8287
+license-0.1a2.dist-info/METADATA,sha256=OZngMo4Zvn_a94ohsHBy62AeEFDUH0OJHEJYLCR0Q30,8321
 license-0.1a2.dist-info/RECORD,,
 license-0.1a2.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-license-0.1a2.dist-info/metadata.json,sha256=BqxXRus301x0vj-qrInK37lsvUHDFdEXJQJEiWvTfkc,1164
+license-0.1a2.dist-info/metadata.json,sha256=U8boFmxSVeW0fYoER9nWD8LIrhJFGVTDtJ7TlrGc6Yk,1203
 license-0.1a2.dist-info/top_level.txt,sha256=wMVpWO-L5cGXk2aJa34McgaUmlqisj9RQpx_VrEJkNM,8
 license-0.1a2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 license/__pycache__/__init__.cpython-36.pyc,,

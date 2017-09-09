@@ -8,10 +8,10 @@ PyPDF2/pdf.py,sha256=1_-pvVGoG1C_ehVMb81swRMejkJ81jh1tRQrxOvGyyM,126327
 PyPDF2/utils.py,sha256=-ZQky5qa4gsO0zprA8V_E5sTNRBSa_ungvxvxjdHr64,7833
 PyPDF2/xmp.py,sha256=vdjDUAMCqb7-AhkuNaqCanviPHMpuJ-5adY8Kxe5jUc,13639
 PyPDF2-1.26.0.dist-info/DESCRIPTION.rst,sha256=mCiWyCHYtsbQ22O_f2FbbD8CjW1GMfwvbn67J_THZ5M,600
-PyPDF2-1.26.0.dist-info/METADATA,sha256=fkyddLNi35xO7k6ismm7OKmq3e5TJfvLvnD6ebqCkiE,1174
+PyPDF2-1.26.0.dist-info/METADATA,sha256=kJAC8WKrdry5Uq2mPb1us8VvSJnONxQHyBQn1nKkJFM,1208
 PyPDF2-1.26.0.dist-info/RECORD,,
 PyPDF2-1.26.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-PyPDF2-1.26.0.dist-info/metadata.json,sha256=l73FLhdz6v245n2ZEz61JtUHT2TtMYcsPGT6lUU3ou4,692
+PyPDF2-1.26.0.dist-info/metadata.json,sha256=aX0PXI1CUkcuaZDQFJpfMblmp4ge0rdkkvmbYMGot4U,731
 PyPDF2-1.26.0.dist-info/top_level.txt,sha256=BERWrwqdvKXaVKhpnMbtO6b11qPA-mBt2r9a0VPF-Ow,7
 PyPDF2-1.26.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 PyPDF2/__pycache__/__init__.cpython-36.pyc,,

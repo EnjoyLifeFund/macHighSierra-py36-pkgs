@@ -6,6 +6,7 @@ Home-page: http://toree.incubator.apache.org/
 Author: Apache Toree Development Team
 Author-email: dev@toree.incubator.apache.org
 License: Apache License 2.0
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Intended Audience :: Developers
 Classifier: Intended Audience :: System Administrators
@@ -13,9 +14,9 @@ Classifier: Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: Apache Software License
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: SQL
-Requires-Dist: jupyter-client (>=4.0,<5.0)
-Requires-Dist: jupyter-core (>=4.0,<5.0)
-Requires-Dist: traitlets (>=4.0,<5.0)
+Requires-Dist: jupyter-client (<5.0,>=4.0)
+Requires-Dist: jupyter-core (<5.0,>=4.0)
+Requires-Dist: traitlets (<5.0,>=4.0)
 
 
 This package will install Apache Toree as a Jupyter kernel.

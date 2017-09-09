@@ -6,6 +6,7 @@ Home-page: http://cheeseshop.python.org/pypi/simplegeneric
 Author: Phillip J. Eby
 Author-email: peak@eby-sarna.com
 License: ZPL 2.1
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 6 - Mature
 Classifier: Development Status :: 7 - Inactive

@@ -6,6 +6,7 @@ Home-page: https://github.com/paypal/PayPal-Python-SDK
 Author: PayPal
 Author-email: DL-PP-PYTHON-SDK@paypal.com
 License: PayPal SDK License
+Description-Content-Type: UNKNOWN
 Keywords: paypal,rest,sdk,payments,invoice,subscription,webhook
 Platform: UNKNOWN
 Classifier: Intended Audience :: Developers

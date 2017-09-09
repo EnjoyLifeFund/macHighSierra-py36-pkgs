@@ -6,6 +6,7 @@ Home-page: https://github.com/globocom/remotecv/wiki
 Author: globo.com
 Author-email: timehome@corp.globo.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Description: 
         remotecv is an OpenCV worker for facial and feature recognition
         

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 version_info = (5, 3, 1)
-=======
-version_info = (5, 3, 0)
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 pre_info = ''
 dev_info = ''
 

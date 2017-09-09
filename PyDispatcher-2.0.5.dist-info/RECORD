@@ -1,8 +1,8 @@
 PyDispatcher-2.0.5.dist-info/DESCRIPTION.rst,sha256=M5yBgrtlqDmznFyHU-nd8SoaryD-EJR5UWHZvEss0wI,455
-PyDispatcher-2.0.5.dist-info/METADATA,sha256=PCylRkjpq2Gyx62ZXx7zTixH6YvIGVcAf0rKKFCpqbE,1129
+PyDispatcher-2.0.5.dist-info/METADATA,sha256=6idipt81QrWlvB6TlZsgFhPTtL4pbc4a4A8g-aHFxzU,1163
 PyDispatcher-2.0.5.dist-info/RECORD,,
 PyDispatcher-2.0.5.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-PyDispatcher-2.0.5.dist-info/metadata.json,sha256=Wy86s3_N_rnLr0i0FfBHbE_Dg8JFPsK02JT4nRx_Ua8,898
+PyDispatcher-2.0.5.dist-info/metadata.json,sha256=3pG2tgzCjTaSTLiqAgFaR2ZhjH35UXUjRoRs7SrNXlQ,937
 PyDispatcher-2.0.5.dist-info/top_level.txt,sha256=BW69gM2IyIPfFk8J13eRwxzVlic046roE3WH5bya5BI,11
 pydispatch/__init__.py,sha256=eriHmHQhem9kR9KVl6TDUavYRSm5ORl_idvuqcatnJw,170
 pydispatch/dispatcher.py,sha256=vI6Esjn6mqf3BLItlG22dtVFhGLnzW7VuTJU3_A59YQ,16746

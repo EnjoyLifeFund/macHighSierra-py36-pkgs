@@ -34,7 +34,6 @@ pyobjc_framework_Quartz-3.2.1.dist-info/WHEEL,sha256=n5Qi9LsnJ0zl3SHl7-DnZPyZfWO
 pyobjc_framework_Quartz-3.2.1.dist-info/metadata.json,sha256=BDYDH-3WBbQGaKR1FYyzY4UhFVMUua5dLu-rXP8iANo,1542
 pyobjc_framework_Quartz-3.2.1.dist-info/top_level.txt,sha256=Srn1VNxu_Yy83DSGkX2Fppq7ox39xmrFcCVqND3nHgc,7
 pyobjc_framework_Quartz-3.2.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
-Quartz/__pycache__/__init__.cpython-36.pyc,,
 Quartz/CoreGraphics/__pycache__/__init__.cpython-36.pyc,,
 Quartz/CoreGraphics/__pycache__/_contextmanager.cpython-36.pyc,,
 Quartz/CoreGraphics/__pycache__/_metadata.cpython-36.pyc,,
@@ -54,3 +53,4 @@ Quartz/QuartzFilters/__pycache__/__init__.cpython-36.pyc,,
 Quartz/QuartzFilters/__pycache__/_metadata.cpython-36.pyc,,
 Quartz/QuickLookUI/__pycache__/__init__.cpython-36.pyc,,
 Quartz/QuickLookUI/__pycache__/_metadata.cpython-36.pyc,,
+Quartz/__pycache__/__init__.cpython-36.pyc,,

@@ -14,10 +14,10 @@ PyDynamic/uncertainty/propagate_DFT.py,sha256=E9KobO_wShAkEemj2LtmnwjW026RX_sase
 PyDynamic/uncertainty/propagate_MonteCarlo.py,sha256=NuNz00Vfx77w6CrRboxkZ1TgKNFCGf6DfqcmJ1sG1tg,8828
 PyDynamic/uncertainty/propagate_filter.py,sha256=8Eco3uRnhjgZhkvcXnNgvIw3gQQSY6DGf6kbDCKYEVQ,5514
 PyDynamic-1.2.66.dist-info/DESCRIPTION.rst,sha256=k_A7oZCmqSZCtQWY9b2vK6knhKWXyS44LAWC0NeuWw4,465
-PyDynamic-1.2.66.dist-info/METADATA,sha256=QVmkhWifYJpFW0eGvfYZ1ltIOSUXjfxgJcyy517By6w,966
+PyDynamic-1.2.66.dist-info/METADATA,sha256=LpVSYcuVd4ISk3Ro09Lr_xWABp6AI5ef9-8HpaS-mZk,1000
 PyDynamic-1.2.66.dist-info/RECORD,,
 PyDynamic-1.2.66.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-PyDynamic-1.2.66.dist-info/metadata.json,sha256=1UARsnyaDZqwKEuHEpiEN4WpCgH3h7CvC7ZwI2c9_GI,697
+PyDynamic-1.2.66.dist-info/metadata.json,sha256=-5dYT0wzK5rf-C13oEcbrWwGJOMN3pnO_rvPAwZIYbo,736
 PyDynamic-1.2.66.dist-info/top_level.txt,sha256=3DjIFYPunk6__mTHjr9rrlzjfsfaW8KQ37Bc1u0kbuQ,10
 PyDynamic-1.2.66.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 PyDynamic/__pycache__/__init__.cpython-36.pyc,,

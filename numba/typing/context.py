@@ -173,7 +173,7 @@ class BaseContext(object):
 
         return '\n'.join(desc)
 
-    def resolve_function_type(self, func, args, kws):
+    def resolve_function_type(self, func, args, kws, literals=None):
         """
         Resolve function type *func* for argument types *args* and *kws*.
         A signature is returned.
@@ -199,7 +199,7 @@ class BaseContext(object):
 
         if isinstance(func, types.Callable):
             # XXX fold this into the __call__ attribute logic?
-            return func.get_call_type(self, args, kws)
+            return func.get_call_type_with_literals(self, args, kws, literals)
 
     def _get_attribute_templates(self, typ):
         """

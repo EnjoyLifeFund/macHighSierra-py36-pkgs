@@ -11,9 +11,12 @@ get consistent results from running ftfy on different versions of Python.
 
 The file will be written to the current directory.
 """
+from __future__ import unicode_literals
 import unicodedata
 import sys
 import zlib
+if sys.hexversion >= 0x03000000:
+    unichr = chr
 
 # L = Latin capital letter
 # l = Latin lowercase letter
@@ -53,7 +56,7 @@ def make_char_data_file(do_it_anyway=False):
 
     cclasses = [None] * 0x110000
     for codepoint in range(0x0, 0x110000):
-        char = chr(codepoint)
+        char = unichr(codepoint)
         category = unicodedata.category(char)
 
         if (0x250 <= codepoint < 0x300) and char != 'ə':

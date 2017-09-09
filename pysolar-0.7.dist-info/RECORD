@@ -7,10 +7,10 @@ pysolar/solar.py,sha256=kiLjlVyz1R2PSNqCpyAUWW2JU4kk7opePPZPLf_8zwM,18676
 pysolar/time.py,sha256=RgvyT3Y8a3IvYCBfacAeSPyhLuauPM518RdU2x8sojA,20015
 pysolar/util.py,sha256=XRDZTlf3iopZ3a56VTll9VkOnv1JdPkLMbfcQlG8NyQ,23740
 pysolar-0.7.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-pysolar-0.7.dist-info/METADATA,sha256=g6uMBwWmFUueIGd9xfN_bb-FiBbtPfJfJL7w_-gy_eE,346
+pysolar-0.7.dist-info/METADATA,sha256=B3Lm53j7ns8CIzWrePk19H-8O5hRQvlIWbJBtQdWRJs,380
 pysolar-0.7.dist-info/RECORD,,
 pysolar-0.7.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-pysolar-0.7.dist-info/metadata.json,sha256=SBuAPvHAR-p3xGVPnzdCJYzpWseNvvzy684_S_XYtsk,512
+pysolar-0.7.dist-info/metadata.json,sha256=m2KQVyORD6g4e7ZA3GUDdBZprBeWNyJ9ZoQhzgItDW8,551
 pysolar-0.7.dist-info/top_level.txt,sha256=kboq3pPuCS3HLum5BAcV1-VGRkf_WOT3WuumoHKm108,8
 pysolar-0.7.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 pysolar/__pycache__/__init__.cpython-36.pyc,,

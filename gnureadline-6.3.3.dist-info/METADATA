@@ -6,6 +6,7 @@ Home-page: http://github.com/ludwigschwardt/python-gnureadline
 Author: Ludwig Schwardt; Sridhar Ratnakumar
 Author-email: ludwig.schwardt@gmail.com; github@srid.name
 License: GNU GPL
+Description-Content-Type: UNKNOWN
 Platform: MacOS X
 Platform: Posix
 Classifier: Environment :: Console

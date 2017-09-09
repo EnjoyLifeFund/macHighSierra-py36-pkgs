@@ -81,7 +81,7 @@ weasyprint/tests/resources/weasyprint.otf,sha256=738C-aYCYUnpgJBuAADVPVnp3bKAoSe
 weasyprint/tests/resources/sub_directory/sheet1.css,sha256=Qnom_UjJecbX5IICSHDKWjj1VI9007-FzNH2RjX1VaY,239
 weasyprint/tests/test_web/__init__.py,sha256=KQonTTKd4L0i-D5kaESjt4bqU4_9SQLcUa1u0O5YDzk,339
 weasyprint/tests/test_web/run.py,sha256=4GdOSonPqaIulqpma0-56Nlv0r78qVszHk_YTGqGUrA,1663
-../../../bin/weasyprint,sha256=Y8eekCVr_DQ7q2MjigPvYJemyzk9kQtSfp8qwaOwOv8,242
+../../../bin/weasyprint,sha256=gLvdsitBhTYtT9B8TR3YsvMjP4ZEYVJz2_2OOSAYxRQ,251
 WeasyPrint-0.40.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 weasyprint/__pycache__/__init__.cpython-36.pyc,,
 weasyprint/__pycache__/__main__.cpython-36.pyc,,

@@ -18,10 +18,10 @@ mimo/workflow/__init__.py,sha256=PejpFinqQNXee9YkBRKvP1XJlEJPAJZbG_BFbvHoXUA,31
 mimo/workflow/node.py,sha256=N57X5JId_h-4t2mRd844i9OPOTR-nzhyhucHRcR-gXg,2190
 mimo/workflow/workflow.py,sha256=QDBBOz3jTPNhIMxWVxZcZtUkkMtRvGzfi62YFZlijfY,6473
 mimo-1.2.4.dist-info/DESCRIPTION.rst,sha256=JxYf70fQpjWXB5HgOmbGm5kJDpE6Y_3cpGGx1YN717Y,3768
-mimo-1.2.4.dist-info/METADATA,sha256=e4HsUu-7QWSY1NNc5smg7nlh26VXEOGVRUXZKDy5eng,4219
+mimo-1.2.4.dist-info/METADATA,sha256=OlbCvdOr-69MrKQT-acXc8w7LEuDxfE0TS89Nq9b3D0,4253
 mimo-1.2.4.dist-info/RECORD,,
 mimo-1.2.4.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-mimo-1.2.4.dist-info/metadata.json,sha256=5S23Rs8jfGgwocnivOdoZ16eN79tC_SsFdraVW83Ifo,663
+mimo-1.2.4.dist-info/metadata.json,sha256=8yf5Wi4wIwatRW_hAKeecDmodCD88DYP4B2KGfFJTyk,702
 mimo-1.2.4.dist-info/top_level.txt,sha256=KDllsl4taVntePkRq_xk3i5hCTDbdtreF124n1TO90U,5
 mimo-1.2.4.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 mimo/__pycache__/__init__.cpython-36.pyc,,

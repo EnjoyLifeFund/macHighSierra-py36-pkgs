@@ -240,7 +240,8 @@ class TestParfors(TestParforsBase):
                 'after-inference', tp, tp.func_ir)
 
             parfor_pass = numba.parfor.ParforPass(
-                tp.func_ir, tp.typemap, tp.calltypes, tp.return_type)
+                tp.func_ir, tp.typemap, tp.calltypes, tp.return_type,
+                tp.typingctx)
             parfor_pass.run()
             self.assertTrue(countParfors(test_ir) == 1)
 
@@ -279,7 +280,8 @@ class TestParfors(TestParforsBase):
                 'after-inference', tp, tp.func_ir)
 
             parfor_pass = numba.parfor.ParforPass(
-                tp.func_ir, tp.typemap, tp.calltypes, tp.return_type)
+                tp.func_ir, tp.typemap, tp.calltypes, tp.return_type,
+                tp.typingctx)
             parfor_pass.run()
             self.assertTrue(countParfors(test_ir) == 1)
 
@@ -444,6 +446,56 @@ class TestParfors(TestParforsBase):
             y = 2 * v1
             return 4 * np.sum(x**2 + y**2 < 1) / 10
         self.check(test_impl, *self.simple_args)
+
+    @skip_unsupported
+    def test_size_assertion(self):
+        def test_impl(m, n):
+            A = np.ones(m)
+            B = np.ones(n)
+            return np.sum(A + B)
+
+        self.check(test_impl, 10, 10)
+        with self.assertRaises(AssertionError) as raises:
+            cfunc = njit(parallel=True)(test_impl)
+            cfunc(10, 9)
+        msg = "Sizes of A, B do not match"
+        self.assertIn(msg, str(raises.exception))
+
+    @skip_unsupported
+    def test_randoms(self):
+        def test_impl(n):
+            A = np.random.standard_normal(size=(n, n))
+            B = np.random.randn(n, n)
+            C = np.random.normal(0.0, 1.0, (n, n))
+            D = np.random.chisquare(1.0, (n, n))
+            E = np.random.randint(1, high=3, size=(n, n))
+            F = np.random.triangular(1, 2, 3, (n, n))
+            return np.sum(A+B+C+D+E+F)
+
+        n = 128
+        cpfunc = self.compile_parallel(test_impl, (numba.typeof(n),))
+        parfor_output = cpfunc.entry_point(n)
+        py_output = test_impl(n)
+        # check results within 5% since random numbers generated in parallel
+        np.testing.assert_allclose(parfor_output, py_output, rtol=0.05)
+        self.assertIn('@do_scheduling', cpfunc.library.get_llvm_str())
+
+    @skip_unsupported
+    def test_cfg(self):
+        # from issue #2477
+        def test_impl(x, is_positive, N):
+            for i in numba.prange(2):
+                for j in range( i*N//2, (i+1)*N//2 ):
+                    is_positive[j] = 0
+                    if x[j] > 0:
+                        is_positive[j] = 1
+
+            return is_positive
+
+        N = 100
+        x = np.random.rand(N)
+        is_positive = np.zeros(N)
+        self.check(test_impl, x, is_positive, N)
 
 
 class TestPrange(TestParforsBase):
@@ -751,6 +803,39 @@ class TestPrange(TestParforsBase):
         X = np.random.ranf(n)
         self.prange_tester(test_impl, X)
 
+    @skip_unsupported
+    def test_parfor_alias1(self):
+        def test_impl(n):
+            b = np.zeros((n, n))
+            a = b[0]
+            for j in range(n):
+                a[j] = j + 1
+            return b.sum()
+        self.prange_tester(test_impl, 4)
+
+    @skip_unsupported
+    def test_parfor_alias2(self):
+        def test_impl(n):
+            b = np.zeros((n, n))
+            for i in range(n):
+              a = b[i]
+              for j in range(n):
+                a[j] = i + j
+            return b.sum()
+        self.prange_tester(test_impl, 4)
+
+    @skip_unsupported
+    def test_parfor_alias3(self):
+        def test_impl(n):
+            b = np.zeros((n, n, n))
+            for i in range(n):
+              a = b[i]
+              for j in range(n):
+                c = a[j]
+                for k in range(n):
+                  c[k] = i + j + k
+            return b.sum()
+        self.prange_tester(test_impl, 4)
 
 class TestParforsMisc(unittest.TestCase):
     """
@@ -781,7 +866,6 @@ class TestParforsMisc(unittest.TestCase):
 
         # make sure the cache is set to false, cf. NullCache
         self.assertTrue(isinstance(cfunc._cache, numba.caching.NullCache))
-
 
 if __name__ == "__main__":
     unittest.main()

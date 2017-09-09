@@ -6,6 +6,7 @@ Home-page: http://avro.apache.org/
 Author: Apache Avro
 Author-email: dev@avro.apache.org
 License: Apache License 2.0
+Description-Content-Type: UNKNOWN
 Keywords: avro serialization rpc
 Platform: UNKNOWN
 Provides-Extra: snappy

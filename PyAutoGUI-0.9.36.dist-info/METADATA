@@ -6,6 +6,7 @@ Home-page: https://github.com/asweigart/pyautogui
 Author: Al Sweigart
 Author-email: al@inventwithpython.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: gui automation test testing keyboard mouse cursor click press keystroke control
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta

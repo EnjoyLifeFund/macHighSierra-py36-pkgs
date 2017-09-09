@@ -67,10 +67,7 @@ ARGUMENT_RENAMES = {
     'lex-models.delete-bot-version.version': 'bot-version',
     'lex-models.delete-intent-version.version': 'intent-version',
     'lex-models.delete-slot-type-version.version': 'slot-type-version',
-<<<<<<< HEAD
     'lex-models.get-export.version': 'resource-version',
-=======
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
     'mobile.create-project.region': 'project-region',
 }
 

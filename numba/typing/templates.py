@@ -31,6 +31,17 @@ class Signature(object):
         self.recvr = recvr
         self.pysig = pysig
 
+    def replace(self, **kwargs):
+        """Copy and replace the given attributes provided as keyword arguments.
+        Returns an updated copy.
+        """
+        curstate = dict(return_type=self.return_type,
+                        args=self.args,
+                        recvr=self.recvr,
+                        pysig=self.pysig)
+        curstate.update(kwargs)
+        return Signature(**curstate)
+
     def __getstate__(self):
         """
         Needed because of __slots__.
@@ -155,6 +166,9 @@ class FunctionTemplate(object):
     # Set to true to disable unsafe cast.
     # subclass overide-able
     unsafe_casting = True
+
+    # Whether the typing support literals
+    support_literals = False
 
     def __init__(self, context):
         self.context = context

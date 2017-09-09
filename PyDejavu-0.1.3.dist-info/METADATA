@@ -6,6 +6,7 @@ Home-page: http://github.com/tuxdna/dejavu
 Author: Will Drevo
 Author-email: will.drevo@gmail.com
 License: MIT License
+Description-Content-Type: UNKNOWN
 Keywords: python,audio,fingerprinting,music,numpy,landmark
 Platform: Unix
 Classifier: Development Status :: 4 - Beta

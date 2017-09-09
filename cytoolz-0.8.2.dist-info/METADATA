@@ -6,6 +6,7 @@ Home-page: https://github.com/pytoolz/cytoolz
 Author: Erik Welch
 Author-email: erik.n.welch@gmail.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: functional utility itertools functools iterator generator curry memoize lazy streaming bigdata cython toolz cytoolz
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta

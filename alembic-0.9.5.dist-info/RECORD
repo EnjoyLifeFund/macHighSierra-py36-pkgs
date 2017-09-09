@@ -73,7 +73,7 @@ alembic-0.9.5.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7lm34
 alembic-0.9.5.dist-info/entry_points.txt,sha256=jOSnN_2fhU8xzDQ50rdNr425J8kf_exuY8GrAo1daz8,49
 alembic-0.9.5.dist-info/metadata.json,sha256=5LmwOs1dDYvm2-eTv3GB06PNOwXC7kOUnjyOU3ovaOk,1140
 alembic-0.9.5.dist-info/top_level.txt,sha256=FwKWd5VsPFC8iQjpu1u9Cn-JnK3-V1RhUCmWqz1cl-s,8
-../../../bin/alembic,sha256=4rCD2BsgBjsGBU7OcrLFOrZgtKV-zrTnxfVABSefgsQ,237
+../../../bin/alembic,sha256=VwdjpWALE9LYMWUOBcDj1JtupDeeMXquBCRd2dHQP6c,246
 alembic-0.9.5.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 alembic/__pycache__/__init__.cpython-36.pyc,,
 alembic/__pycache__/command.cpython-36.pyc,,

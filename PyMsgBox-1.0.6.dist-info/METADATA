@@ -6,6 +6,7 @@ Home-page: https://github.com/asweigart/PyMsgBox
 Author: Al Sweigart
 Author-email: al@inventwithpython.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: gui msgbox message box dialog confirmation confirm password alert
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable

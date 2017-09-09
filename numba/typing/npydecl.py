@@ -349,14 +349,23 @@ class Numpy_method_redirection(AbstractTemplate):
     """
 
     def generic(self, args, kws):
-        assert not kws
-        [arr] = args
+        pysig = None
+        if kws:
+            if self.method_name == 'sum':
+                def sum_stub(arr, axis):
+                    pass
+                pysig = utils.pysignature(sum_stub)
+            else:
+                fmt = "numba doesn't support kwarg for {}"
+                raise TypingError(fmt.format(self.method_name))
+
+        arr = args[0]
         # This will return a BoundFunction
         meth_ty = self.context.resolve_getattr(arr, self.method_name)
         # Resolve arguments on the bound function
         meth_sig = self.context.resolve_function_type(meth_ty, args[1:], kws)
         if meth_sig is not None:
-            return meth_sig.as_function()
+            return meth_sig.as_function().replace(pysig=pysig)
 
 
 # Function to glue attributes onto the numpy-esque object
@@ -365,6 +374,9 @@ def _numpy_redirect(fname):
     cls = type("Numpy_redirect_{0}".format(fname), (Numpy_method_redirection,),
                dict(key=numpy_function, method_name=fname))
     infer_global(numpy_function, types.Function(cls))
+    # special case literal support for 'sum'
+    if fname == 'sum':
+        cls.support_literals = True
 
 for func in ['min', 'max', 'sum', 'prod', 'mean', 'var', 'std',
              'cumsum', 'cumprod', 'argmin', 'argmax', 'argsort',
@@ -1172,6 +1184,22 @@ class DiagCtor(CallableTemplate):
                 return types.Array(ndim=rdim, dtype=ref.dtype, layout='C')
         return typer
 
+
+@infer_global(np.take)
+class Take(AbstractTemplate):
+
+    def generic(self, args, kws):
+        assert not kws
+        assert len(args) == 2
+        arr, ind = args
+        if isinstance(ind, types.Number):
+            retty = arr.dtype
+        elif isinstance(ind, types.Array):
+            retty = types.Array(ndim=ind.ndim, dtype=arr.dtype, layout='C')
+        elif isinstance(ind, types.List):
+            retty = types.Array(ndim=1, dtype=arr.dtype, layout='C')
+
+        return signature(retty, *args)
 
 # -----------------------------------------------------------------------------
 # Numba helpers

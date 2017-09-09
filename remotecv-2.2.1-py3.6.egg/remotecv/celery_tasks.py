@@ -1,5 +1,5 @@
 from celery import Celery
-from .pyres_tasks import DetectTask
+from pyres_tasks import DetectTask
 
 
 class CeleryTasks:

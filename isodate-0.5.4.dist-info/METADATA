@@ -6,6 +6,7 @@ Home-page: http://cheeseshop.python.org/pypi/isodate
 Author: Gerhard Weis
 Author-email: gerhard.weis@proclos.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers

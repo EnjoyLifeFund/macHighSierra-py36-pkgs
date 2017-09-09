@@ -6,6 +6,7 @@ Home-page: https://github.com/eichstaedtPTB/PyDynamic
 Author: Sascha Eichstädt, Ian Smith
 Author-email: sascha.eichstaedt@ptb.de
 License: LGPLv3
+Description-Content-Type: UNKNOWN
 Keywords: uncertainty dynamic deconvolution metrology
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta

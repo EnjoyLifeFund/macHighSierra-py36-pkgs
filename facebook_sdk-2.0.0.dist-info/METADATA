@@ -6,6 +6,7 @@ Home-page: https://github.com/mobolic/facebook-sdk
 Author: Martey Dodoo
 Author-email: martey+facebook-sdk@mobolic.com
 License: Apache
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: License :: OSI Approved :: Apache Software License
 Classifier: Programming Language :: Python

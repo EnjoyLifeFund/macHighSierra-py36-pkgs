@@ -40,10 +40,10 @@ bkcharts/tests/test_comp_glyphs.py,sha256=shl2qLnvz5blcxIwyFxkfM8cN8MzZx8PQZe-68
 bkcharts/tests/test_data_source.py,sha256=IHVnqFnsvv9tmJG6FNd3S8Vj_IpZ82Qrcmug0PEu-FM,4533
 bkcharts/tests/test_stats.py,sha256=O9wO6JlJFX0_Bc9s-COwTfUFWYhZpuvy3RvkL3BHzZY,1735
 bkcharts-0.2.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-bkcharts-0.2.dist-info/METADATA,sha256=tSHyuDBPIPsS2egVsc9qrXu8OVdfCy6equZRZrKnBgU,1342
+bkcharts-0.2.dist-info/METADATA,sha256=O9F6NF0rNjYZUDatWvKPunobi7fbz4XLYdsqRszymS0,1376
 bkcharts-0.2.dist-info/RECORD,,
 bkcharts-0.2.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-bkcharts-0.2.dist-info/metadata.json,sha256=kHFGk6VWhcv_971skmE5jGC4OWZZFvEfzdGPyzM8rQU,1370
+bkcharts-0.2.dist-info/metadata.json,sha256=pt1VGyaAg-QPHlDFvGMUUDVwzkNKLoy6I0CDCtVsdJc,1409
 bkcharts-0.2.dist-info/top_level.txt,sha256=B9NBhBu5zsh0ZO9-v_A7mrHlFiK488-8ezeKVXGQQD0,9
 bkcharts-0.2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 bkcharts/__pycache__/__init__.cpython-36.pyc,,

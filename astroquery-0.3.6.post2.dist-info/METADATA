@@ -6,6 +6,7 @@ Home-page: http://astropy.org/astroquery
 Author: Adam Ginsburg
 Author-email: UNKNOWN
 License: BSD
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Requires: astropy
 Requires: requests

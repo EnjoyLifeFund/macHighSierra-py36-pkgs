@@ -1,3 +1,4 @@
+# coding: utf-8
 """
 This module provides functions for justifying Unicode text in a monospaced
 display such as a terminal.
@@ -5,6 +6,7 @@ display such as a terminal.
 We used to have our own implementation here, but now we mostly rely on
 the 'wcwidth' library.
 """
+from __future__ import unicode_literals, division
 from unicodedata import normalize
 from wcwidth import wcwidth, wcswidth
 

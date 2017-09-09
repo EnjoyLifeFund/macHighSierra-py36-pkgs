@@ -6,6 +6,7 @@ Home-page: http://bitbucket.org/brandon/backports.ssl_match_hostname
 Author: Toshio Kuratomi
 Author-email: toshio@fedoraproject.org
 License: Python Software Foundation License
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: License :: OSI Approved :: Python Software Foundation License

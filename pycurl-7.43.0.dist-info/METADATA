@@ -6,6 +6,7 @@ Home-page: http://pycurl.io/
 Author: Oleg Pudeyev
 Author-email: oleg@bsdpower.com
 License: LGPL/MIT
+Description-Content-Type: UNKNOWN
 Keywords: curl,libcurl,urllib,wget,download,file transfer,http,www
 Platform: All
 Classifier: Development Status :: 5 - Production/Stable

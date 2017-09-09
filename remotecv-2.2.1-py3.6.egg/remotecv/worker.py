@@ -16,7 +16,6 @@ from redis import Redis
 
 from remotecv.utils import config
 from remotecv.error_handler import ErrorHandler
-from functools import reduce
 
 def import_module(name):
     module = __import__(name)

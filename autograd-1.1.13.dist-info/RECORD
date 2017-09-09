@@ -23,10 +23,10 @@ autograd/scipy/stats/multivariate_normal.py,sha256=nnNRUME7HRALIeK6lL_q2R7932fmi
 autograd/scipy/stats/norm.py,sha256=HE0_k56bor474zKtD_ybpKesw0ZRaASeZUGOeVVTO0I,1943
 autograd/scipy/stats/t.py,sha256=CtUxcJqswSikqnIpU4wmWbzfadiPmyctrPVfegjR_yo,2818
 autograd-1.1.13.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-autograd-1.1.13.dist-info/METADATA,sha256=YNF8hy06jkEKhGH97w6h7E5boHu4h4SKSpQsGcCIQ9c,735
+autograd-1.1.13.dist-info/METADATA,sha256=Xrst6kjlzzXFwKV7tSlC0VwmjzLSffTza3zbXPV5QgU,769
 autograd-1.1.13.dist-info/RECORD,,
 autograd-1.1.13.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-autograd-1.1.13.dist-info/metadata.json,sha256=Oi7dk1eh8Q3wmao4ePBIQt6_CEeMU4SzA_qsfHn_6Rg,956
+autograd-1.1.13.dist-info/metadata.json,sha256=PQa6_--D4zK-J-1CVhLTj6EpDvjnTsq-E7BTiP_g1tU,995
 autograd-1.1.13.dist-info/top_level.txt,sha256=6fIcwg76veU5_Oa9vNqb6MJNj8CTFQoHPowgybaveXI,9
 autograd-1.1.13.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 autograd/__pycache__/__init__.cpython-36.pyc,,

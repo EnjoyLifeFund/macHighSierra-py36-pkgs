@@ -6,6 +6,7 @@ Home-page: https://github.com/asweigart/pyscreeze
 Author: Al Sweigart
 Author-email: al@inventwithpython.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: screenshot screen screencap capture scrot screencapture image
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha

@@ -470,11 +470,11 @@ astroquery/xmatch/tests/data/posList.csv,sha256=OgkvevfPhCTFHcSPNI35zUUoLd0tyVBN
 astroquery/xmatch/tests/data/query_res.csv,sha256=DEBCN-mNuJ4wDbsAtimTSHb_MFLmRhSY5oi7aZWHkyY,1688
 astroquery/xmatch/tests/data/tables.csv,sha256=9fq7lI0YaYeL6JUL2gqr5w-VRue9zUljNL2MF8kZ0I8,275304
 astroquery-0.3.6.post2.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-astroquery-0.3.6.post2.dist-info/METADATA,sha256=DI8olZL87xAJF2zwI5dQfDHPbYkHIKnOcL-CK7rXQPE,540
+astroquery-0.3.6.post2.dist-info/METADATA,sha256=P00FqJqx05C_4cAnXuoDUoqAPmYXFjvH2l5Z079YVHY,574
 astroquery-0.3.6.post2.dist-info/RECORD,,
 astroquery-0.3.6.post2.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
 astroquery-0.3.6.post2.dist-info/entry_points.txt,sha256=jwF1fZiYuw7tQYZRx03Qg3M6_MIT906c8UwzhaMEzEw,465
-astroquery-0.3.6.post2.dist-info/metadata.json,sha256=hkP0rf6DLoCl3Zoe2yGHIQ-StrKjW49SHCl7YOez2uc,1122
+astroquery-0.3.6.post2.dist-info/metadata.json,sha256=RywWQ5oROjH67-Rco9KdS33XOEAxk81q1ztmvqA_fgA,1161
 astroquery-0.3.6.post2.dist-info/top_level.txt,sha256=hdX78NQfl2NG69JznzXpDPL7LToa9ZXabLTAdpFqs7g,11
 astroquery-0.3.6.post2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 astroquery/__pycache__/__init__.cpython-36.pyc,,

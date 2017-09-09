@@ -221,8 +221,19 @@ class InternalError(NumbaError):
         self.old_exception = exception
 
 
+class RequireConstValue(TypingError):
+    """For signaling a function typing require constant value for some of
+    its arguments.
+    """
+
+
 def _format_msg(fmt, args, kwargs):
     return fmt.format(*args, **kwargs)
+
+
+import os.path
+_numba_path = os.path.dirname(__file__)
+loc_info = {}
 
 
 @contextlib.contextmanager
@@ -239,6 +250,11 @@ def new_error_context(fmt_, *args, **kwargs):
     ``fmt_.format(*args, **kwargs)`` to produce the final message string.
     """
     errcls = kwargs.pop('errcls_', InternalError)
+
+    loc = kwargs.get('loc', None)
+    if loc is not None and not loc.filename.startswith(_numba_path):
+        loc_info.update(kwargs)
+
     try:
         yield
     except NumbaError as e:

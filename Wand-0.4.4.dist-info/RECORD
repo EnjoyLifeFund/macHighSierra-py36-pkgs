@@ -1,9 +1,9 @@
 Wand-0.4.4.data/data/README.rst,sha256=1IUFOLw3u6GbfJtY8sPM1n0b-1eImGHtfCod41TbwqE,2135
 Wand-0.4.4.dist-info/DESCRIPTION.rst,sha256=rBao1vVM4Y4j2fxBBWNO28H7sVBptBne2f7kVcl8KnU,2137
-Wand-0.4.4.dist-info/METADATA,sha256=LXBB2Kj4G7NNJhr1f_OoMgxZIBb1jmNFNRNXyfGCDdw,3250
+Wand-0.4.4.dist-info/METADATA,sha256=uyQLO51Rk6akYfXXuKZcT_2iIfrCyFvTTPa60evEGk4,3284
 Wand-0.4.4.dist-info/RECORD,,
 Wand-0.4.4.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-Wand-0.4.4.dist-info/metadata.json,sha256=4JVZgxv12T800mejYyzEsfyIbBLDSl6E1-j0u2AM-kk,1329
+Wand-0.4.4.dist-info/metadata.json,sha256=98TqBslj9m_MtCT6AZrbNr59Lgk4nvsavlL5Z28vqPo,1368
 Wand-0.4.4.dist-info/top_level.txt,sha256=uFTymN2uxamdZLu2fxZzaBcGwv7WW9v60YcsATzndig,5
 wand/__init__.py,sha256=bEmSKTbdilJXM5PTgsuaqvpliBlmy2of5f77SJMKRh8,202
 wand/api.py,sha256=yEyvaZRmI5TGIZYNlxpgcwYw5O7Fg8T3idbYViZz07A,58919

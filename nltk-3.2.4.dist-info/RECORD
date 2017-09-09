@@ -367,10 +367,10 @@ nltk/twitter/twitter_demo.py,sha256=hQ2y1U8BPYbqvHMTMLXJLAiuoce7TKERh8NgBG216xI,
 nltk/twitter/twitterclient.py,sha256=I-380trQmGO8D1bNASe2RqQTWF6dd5Xj8Dru8djDQGw,18873
 nltk/twitter/util.py,sha256=ha1IJGKvjKS8OnP8oFbf1cIWapTzPUslPKC_HVJhu18,4541
 nltk-3.2.4.dist-info/DESCRIPTION.rst,sha256=B5R6I38BNFTmERKgsjC3SVCXMNKnZxgZGjXDmGnG7ts,130
-nltk-3.2.4.dist-info/METADATA,sha256=zXVBzFRe7fb6kENngU0913kG6S4C_M1jxtlEAIR7Qw8,2476
+nltk-3.2.4.dist-info/METADATA,sha256=KpUx9a2Gv0n-fvqH7utxxI9zg1M1NKCwMHX_cFmlopU,2510
 nltk-3.2.4.dist-info/RECORD,,
 nltk-3.2.4.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-nltk-3.2.4.dist-info/metadata.json,sha256=ryjlYYI0mqUU-15oXz1eMQ_-SVOm3NH46mAyincH_ZQ,2025
+nltk-3.2.4.dist-info/metadata.json,sha256=R4lWi9K4BJ9T2hexdxV_R2Q53Y3Ahu9_MPAmeqHfScc,2064
 nltk-3.2.4.dist-info/top_level.txt,sha256=YoQ-mwqckmTv1Qktmlk5Ylb6lDG77jg5qwoEB7c-pXo,5
 nltk-3.2.4.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 nltk/__pycache__/__init__.cpython-36.pyc,,

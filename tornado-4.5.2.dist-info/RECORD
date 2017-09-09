@@ -21,7 +21,6 @@ tornado/process.py,sha256=T1qweLJJyCa4keX9kAiyG6oPRE8IejKH17zVGMbG7X4,12762
 tornado/queues.py,sha256=hKZMeovzB0mYgw6L8d6fb5MSuQikXYFGEzM2BZ06Z_I,10308
 tornado/routing.py,sha256=SyCRfR_4ZPsZcTyNUiGcT6DeDlf5vg_zHN_cogBsNcA,21735
 tornado/simple_httpclient.py,sha256=p2HTh8NqBgcg23m6RDFQGf5gJIzrPZE-msudBXmfKNU,24720
-tornado/speedups.cpython-36m-darwin.so,sha256=J9DWcxzrWANAtJ084pYQ3kt0YBqTwWQAuynY9tZZ9e0,9168
 tornado/stack_context.py,sha256=A98swJXqk-oOBewsEBgvX6CrnKysIRUfC4ZBaoQmr7E,13160
 tornado/tcpclient.py,sha256=UCrMeLw5J2kn6Vhc3te0FNF4UbaUCBn_w8zfZDzrPuE,8635
 tornado/tcpserver.py,sha256=8_mzseU1E1mNRMjTrELp-Na9HjzMzkuaJi4Ne3it-tM,12491

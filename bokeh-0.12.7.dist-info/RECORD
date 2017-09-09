@@ -434,7 +434,7 @@ bokeh-0.12.7.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,
 bokeh-0.12.7.dist-info/entry_points.txt,sha256=pheQgUN3bcKLM94DR0SughS4EN-Ya2YO_ei4QUmGEOs,47
 bokeh-0.12.7.dist-info/metadata.json,sha256=xoaYbpZm4TS7pyDLMifhR7i1SREHH1BjvZ3nin44wYs,1697
 bokeh-0.12.7.dist-info/top_level.txt,sha256=SWSVVEDUvr84F1mAtXRlpiDupZbM1w9SlC0-ztTemX0,6
-../../../bin/bokeh,sha256=BHx52LskC7Zo6W_MAQCNAopSie0es50jBhGnRT6abak,237
+../../../bin/bokeh,sha256=8pHQks68GpXhpPNr5TMV_3NxoH-_MkBu_f59J6cvHp8,246
 bokeh-0.12.7.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 bokeh/__pycache__/__init__.cpython-36.pyc,,
 bokeh/__pycache__/__main__.cpython-36.pyc,,

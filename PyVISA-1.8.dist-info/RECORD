@@ -1,9 +1,9 @@
 visa.py,sha256=9Y0KRfIpma22Wsdn0yBEEpuQcvbyC2vmpQyb4RBh1OU,1383
 PyVISA-1.8.dist-info/DESCRIPTION.rst,sha256=KnGZ3EohrRl65Goh7dLapxegzh7D0NQbulkkHqVoEJs,12001
-PyVISA-1.8.dist-info/METADATA,sha256=0vmlCA-LvpilKstxwIm5e1nb4vUMoBElooL34cT8Cck,13155
+PyVISA-1.8.dist-info/METADATA,sha256=QzMZOCMxbW0NQp0DGDME2PFoG_u_O3f4qHuML8EBePE,13189
 PyVISA-1.8.dist-info/RECORD,,
 PyVISA-1.8.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-PyVISA-1.8.dist-info/metadata.json,sha256=NBnnz2lTmX-BK_N1pKI99XxVkviKbFSNrb_eLPN3CEs,1238
+PyVISA-1.8.dist-info/metadata.json,sha256=QfGKftGFwku2ae5FPV1RY5u2OvOWI7NxuM6BU0Nd4CQ,1277
 PyVISA-1.8.dist-info/top_level.txt,sha256=_vwI1e1KypJKRNk4_VjBa65HI2zQrdVmmWzxlI50u3Q,12
 pyvisa/__init__.py,sha256=Cu9Gt-ilQKfpAyrDlGSh2ghlm7nnSjbZrLsP6E6NkEU,1481
 pyvisa/attributes.py,sha256=aDI47YO6oJw-W8IN2e-f31VYR_x7q1jYVbvsHnj8jLc,91088

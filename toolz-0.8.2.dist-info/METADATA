@@ -6,6 +6,7 @@ Home-page: http://github.com/pytoolz/toolz/
 Author: Matthew Rocklin
 Author-email: mrocklin@gmail.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: functional utility itertools functools
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable

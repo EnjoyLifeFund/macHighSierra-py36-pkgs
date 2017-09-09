@@ -479,8 +479,8 @@ theano/typed_list/tests/__init__.py,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG
 theano/typed_list/tests/test_basic.py,sha256=9wzdQFfuqGvt-CYvmpAU6H6uiF5kwAyjMnsH2y68bZg,19041
 theano/typed_list/tests/test_opt.py,sha256=XcGEQmd8zmkYVVsqBVRBft9vqAMxUBDsW9Sr1CXpAcA,5213
 theano/typed_list/tests/test_type.py,sha256=xQdGR1JEka34skn3QGdsWsCSKXylhS-MmYXUCpPw3hg,6368
-../../../bin/theano-cache,sha256=zNPKjmdZ5M9iwTBYWtZMiuWZpa-peNunaSm3xNui86E,239
-../../../bin/theano-nose,sha256=gtNP_PvhdwFlD79gKuX7wnR3kEn_8c5aSeHiDfXnX9A,238
+../../../bin/theano-cache,sha256=-_pF-lN5KgTduY_BYz0aVODmT6CO7S96FatFLdFf7g4,248
+../../../bin/theano-nose,sha256=wI3j2Jg6TiMWCcUurXKaFIKPx9ocSpWWsgXbBOEI8Z4,247
 Theano-0.9.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 bin/__pycache__/__init__.cpython-36.pyc,,
 bin/__pycache__/theano_cache.cpython-36.pyc,,

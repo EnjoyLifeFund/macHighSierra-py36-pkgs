@@ -1,1 +1,8 @@
-../../../../../../../../Cellar/scipy/0.19.1_1/lib/python3.6/site-packages/scipy/io/arff/tests/data/missing.arff
+% This arff file contains some missing data
+@relation missing
+@attribute yop real
+@attribute yap real
+@data
+1,5
+2,4
+?,?

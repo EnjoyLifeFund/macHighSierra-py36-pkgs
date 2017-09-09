@@ -14,10 +14,10 @@ paypalrestsdk/vault.py,sha256=9kSiG5eAw4_HTRCxbkrJLENON_KbfojM1zel-_fdzIQ,620
 paypalrestsdk/data/DigiCertHighAssuranceEVRootCA.crt.pem,sha256=frO4AHbwaFekPRBlvESK1cPYHTTLAhMn96uFY8reVpM,1366
 paypalrestsdk/data/DigiCertSHA2ExtendedValidationServerCA.crt.pem,sha256=pUJiXVURuOFeN17e4GttZWvqMvOp4v0IJGsLRH8d6kU,1695
 paypalrestsdk-1.13.1.dist-info/DESCRIPTION.rst,sha256=BtL3orNu84oawSMi0nPsAe1FHdLMKyoVvG0khmbh_Xg,230
-paypalrestsdk-1.13.1.dist-info/METADATA,sha256=h3wHJ2dQl_Xrgh_TgGDgP23gmO1ng3_2MB6-NmU7Mx0,1310
+paypalrestsdk-1.13.1.dist-info/METADATA,sha256=y0OMIpA1IFNL_Hj3h8fCevsptAFE9zHaZDaX92MQssc,1344
 paypalrestsdk-1.13.1.dist-info/RECORD,,
 paypalrestsdk-1.13.1.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-paypalrestsdk-1.13.1.dist-info/metadata.json,sha256=xS2Y-VzS3Yy7oRp4m1RLp69s8Lp8ckMygiSrvbsh2Vs,1212
+paypalrestsdk-1.13.1.dist-info/metadata.json,sha256=DIwoN4uWxn5zWQwMf6ahDN8mbMS7g8TyLrlKPVwpqdo,1251
 paypalrestsdk-1.13.1.dist-info/top_level.txt,sha256=3v_6EZS_AvW9OXoe3Ye1NYG-Ks0omsMbo1QHp2xrHkA,14
 paypalrestsdk-1.13.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 paypalrestsdk/__pycache__/__init__.cpython-36.pyc,,

@@ -13,10 +13,10 @@ avro/tool.py,sha256=yz1k2E6Ojk5ylHDWKCQR832b3ylaPPm0WYdi1vXYrq4,5225
 avro/txipc.py,sha256=Sp1UHIK2sq141Fu1bEdV1z8sQP4riOFtmrfx_-jt_DQ,7829
 ../../../bin/avro,sha256=373DpS_t-w_oakjRHDccQG3DpJU_sPwvr2bm-y2wXGs,7971
 yelp_avro-1.9.2.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
-yelp_avro-1.9.2.dist-info/METADATA,sha256=haRsONKOgagqrxzEPI6MbKMYQSjO7qA0M-YG-r9lrV0,355
+yelp_avro-1.9.2.dist-info/METADATA,sha256=AKlAnV4EWrUPjXwOLMLzEHs-VUTeZZ9fSfs7Y-b3geo,389
 yelp_avro-1.9.2.dist-info/RECORD,,
 yelp_avro-1.9.2.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-yelp_avro-1.9.2.dist-info/metadata.json,sha256=XhTANxnwibfIu55HBvthsYFlF27o97b8XmmavxiVcsA,565
+yelp_avro-1.9.2.dist-info/metadata.json,sha256=-8GCGWkt-a51lgv_GgQuM_lUMCPabhdOKtVyTImkDgc,604
 yelp_avro-1.9.2.dist-info/top_level.txt,sha256=CyHdRd4izFtyKbIls4xQnPhZVfnLFtNTN1mqhFFQ0mA,5
 yelp_avro-1.9.2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 avro/__pycache__/__init__.cpython-36.pyc,,

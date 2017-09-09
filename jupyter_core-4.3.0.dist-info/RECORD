@@ -37,9 +37,9 @@ jupyter_core-4.3.0.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl
 jupyter_core-4.3.0.dist-info/entry_points.txt,sha256=lgU7M41MLOD3Au9byRt5emjgU2iCC7fGnBL9cs7gqMY,153
 jupyter_core-4.3.0.dist-info/metadata.json,sha256=Oal0KuqRTJmAAMuq6bXP0S_tcib-S9jw4YWo544WbZ4,1303
 jupyter_core-4.3.0.dist-info/top_level.txt,sha256=dSw0BSXJFVQnJnK7lAPWTOvYG92XO7VONfM-BecPQwA,21
-../../../bin/jupyter,sha256=zoVM3qqs30E385W35iol1SVDWgVN-1GJLQeyC5eZsRE,243
-../../../bin/jupyter-migrate,sha256=FtjHOJOz2mgXLnOOI30-cWNMhC5fvsvwkseWGmW-2nA,243
-../../../bin/jupyter-troubleshoot,sha256=UYi1qONu7HHzhQa-cffMVWqbwi8GlbP_tpOlhGYMHLU,248
+../../../bin/jupyter,sha256=eby0h1ZCw5o-5HifW9FZ6SwuCDFPIqLXi_OyOmicWLQ,252
+../../../bin/jupyter-migrate,sha256=ybJVRbhi_3XyOpCJ0-xAIv6qtfo4XIVQpzw9iNTr290,252
+../../../bin/jupyter-troubleshoot,sha256=4A4oUq0SMUdLu3wwin9kmQNfeiRAtWHq2tvr6VkYmIc,257
 jupyter_core-4.3.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 __pycache__/jupyter.cpython-36.pyc,,
 jupyter_core/__pycache__/__init__.cpython-36.pyc,,

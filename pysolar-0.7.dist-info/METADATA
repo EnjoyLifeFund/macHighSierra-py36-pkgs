@@ -6,6 +6,7 @@ Home-page: http://pysolar.org
 Author: Brandon Stafford
 Author-email: brandon@pingswept.org
 License: GNU General Public License (GPL)
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Requires: numpy
 Requires: pytz

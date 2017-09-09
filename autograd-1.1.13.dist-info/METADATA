@@ -6,6 +6,7 @@ Home-page: https://github.com/HIPS/autograd
 Author: Dougal Maclaurin and David Duvenaud and Matthew Johnson
 Author-email: maclaurin@physics.harvard.edu, duvenaud@cs.toronto.edu, mattjj@csail.mit.edu
 License: MIT
+Description-Content-Type: UNKNOWN
 Keywords: Automatic differentiation,backpropagation,gradients,machine learning,optimization,neural networks,Python,Numpy,Scipy
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta

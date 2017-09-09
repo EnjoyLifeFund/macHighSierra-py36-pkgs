@@ -6,13 +6,8 @@ psutil/_pslinux.py,sha256=70nPaRW_cmVbIPaV-x2J6X2Z9kFdp8RFFBUIjs9LqiE,73459
 psutil/_psosx.py,sha256=j4Xqf_oVmSzScPGExVwrGqzywZ5HydOwwDM4JrI1Nw4,16235
 psutil/_psposix.py,sha256=QfE679FDNvP7zHjcwAKA_SoUzM9Xe9wnKHAjYtnA5Vw,6330
 psutil/_pssunos.py,sha256=rNrsWrjHZq9rU72KgaAvXyKr_4wqWZSQYPgGiizMOcs,25797
-<<<<<<< HEAD
 psutil/_psutil_osx.cpython-36m-darwin.so,sha256=JDkZijfv8LbrlEfbxQXhCWAT0l_EJ91nF943TDx_W3k,54352
 psutil/_psutil_posix.cpython-36m-darwin.so,sha256=exhXi26ragmiIfhqRhMiw9W_VJWbQJtYWxxHatjJjoo,15620
-=======
-psutil/_psutil_osx.cpython-36dm-darwin.so,sha256=0x-rxieKzTi5DofV__5XYC8uclQJ9amRmIW2YzxM0No,51208
-psutil/_psutil_posix.cpython-36dm-darwin.so,sha256=pQbnjR_0BS0bm4Al1zl-pClKcfpIXRNfZ5m4YiN7_2c,17220
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 psutil/_pswindows.py,sha256=PtgdWEbBNQvXLHfhxaEwUSY2I0_lMcc_N_mx0X0xUvw,33045
 psutil/tests/__init__.py,sha256=ytQBXBpguLwPezpVY8oVXNu5axtZgKE0qu2WGJg1VuI,36479
 psutil/tests/__main__.py,sha256=b2K7o_rmbKTehPdAPQ-njPhYzWWIIaFoUGN9ZibG21M,2792
@@ -32,11 +27,7 @@ psutil/tests/test_windows.py,sha256=AG2Feks59VOahEW_hJs_o4f5wt20vS1jxxaUCijcwAQ,
 psutil-5.3.0.dist-info/DESCRIPTION.rst,sha256=uea94SgfOyuN4Qfwk9qyCZHk0NQ4wcDztn7Hz3TTKUs,19589
 psutil-5.3.0.dist-info/METADATA,sha256=29Gfi43tQ8ivtmIIw0v3VBRiUgA_Sk5aLaq4HuNKPEA,22302
 psutil-5.3.0.dist-info/RECORD,,
-<<<<<<< HEAD
 psutil-5.3.0.dist-info/WHEEL,sha256=y2Z6Warz5bPErf2T4gQ3bzoUAc9U05WHg09oTBqzt6w,111
-=======
-psutil-5.3.0.dist-info/WHEEL,sha256=zvKhK5q2NEXK7L5NUdH5GPvuKRF3YhbrGSumhT7SLhM,114
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
 psutil-5.3.0.dist-info/metadata.json,sha256=NhlfQQT8N_UpiUhK0UMvfeupZWns1TM3nRcFnlLY8fw,2676
 psutil-5.3.0.dist-info/top_level.txt,sha256=gCNhn57wzksDjSAISmgMJ0aiXzQulk0GJhb2-BAyYgw,7
 psutil-5.3.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4

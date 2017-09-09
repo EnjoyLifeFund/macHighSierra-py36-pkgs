@@ -6,6 +6,7 @@ Home-page: https://github.com/stefankoegl/python-json-pointer
 Author: Stefan Kögl
 Author-email: stefan@skoegl.net
 License: Modified BSD License
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Environment :: Console

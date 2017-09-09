@@ -41,6 +41,10 @@ pyobjc_core-3.2.1.dist-info/top_level.txt,sha256=WvGRTfxcLxJwiDngEugYJMKcWmgeAcv
 pyobjc_core-3.2.1.dist-info/include/pyobjc-api.h,sha256=0Yup66atMFVAspsQmKXTcdIxWzD7pxdlUUTytjk6n0Q,7333
 pyobjc_core-3.2.1.dist-info/include/pyobjc-compat.h,sha256=qlTac_t6Rcm9PoZmhRNVpmz6qwS62KZOd1447ik3CMs,15067
 pyobjc_core-3.2.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+PyObjCTools/__pycache__/KeyValueCoding.cpython-36.pyc,,
+PyObjCTools/__pycache__/MachSignals.cpython-36.pyc,,
+PyObjCTools/__pycache__/Signals.cpython-36.pyc,,
+PyObjCTools/__pycache__/TestSupport.cpython-36.pyc,,
 objc/__pycache__/__init__.cpython-36.pyc,,
 objc/__pycache__/_bridges.cpython-36.pyc,,
 objc/__pycache__/_bridgesupport.cpython-36.pyc,,
@@ -67,7 +71,3 @@ objc/__pycache__/_properties.cpython-36.pyc,,
 objc/__pycache__/_protocols.cpython-36.pyc,,
 objc/__pycache__/_pycoder.cpython-36.pyc,,
 objc/__pycache__/_pythonify.cpython-36.pyc,,
-PyObjCTools/__pycache__/KeyValueCoding.cpython-36.pyc,,
-PyObjCTools/__pycache__/MachSignals.cpython-36.pyc,,
-PyObjCTools/__pycache__/Signals.cpython-36.pyc,,
-PyObjCTools/__pycache__/TestSupport.cpython-36.pyc,,

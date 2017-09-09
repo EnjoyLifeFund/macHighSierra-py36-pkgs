@@ -7,6 +7,7 @@ Author: Antoine Pitrou
 Author-email: solipsis@pitrou.net
 License: MIT License
 Download-URL: https://pypi.python.org/pypi/pathlib/
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers

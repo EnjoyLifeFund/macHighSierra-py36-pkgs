@@ -1,1 +1,4 @@
-../../../../../../../Cellar/scipy/0.19.1_1/lib/python3.6/site-packages/scipy/io/matlab/tests/afunc.m
+function [a, b] = afunc(c, d)
+% A function
+a = c + 1;
+b = d + 10;

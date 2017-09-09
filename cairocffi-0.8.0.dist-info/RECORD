@@ -15,10 +15,10 @@ cairocffi/test_pixbuf.py,sha256=SoTv7CU218_0FAC2bl4LJl5g98rRJ1gywX1qn9qLJJw,2041
 cairocffi/test_xcb.py,sha256=TjIlfeVI3q6YnmamyaBFW3X2hMcYhLucaqExbM87np8,6255
 cairocffi/xcb.py,sha256=TvzOVvRrqnxPzQ2zrUttKNfwtt1HEqUGXxlX3d3vycY,2032
 cairocffi-0.8.0.dist-info/DESCRIPTION.rst,sha256=hrVCz_Na_m_9d426-xptm4HthjEYUwbNKFUtJh0wbes,901
-cairocffi-0.8.0.dist-info/METADATA,sha256=VT5sgm3lSnwP-c9iuJXenOtlN-gjMQa19n140RPYDQY,1514
+cairocffi-0.8.0.dist-info/METADATA,sha256=tCOwAfEv6yoWaq9g0_2h0_yj47Scl9oXPtjM_OAYLqI,1548
 cairocffi-0.8.0.dist-info/RECORD,,
 cairocffi-0.8.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-cairocffi-0.8.0.dist-info/metadata.json,sha256=73uE9PhZXFXRf17mZc-MTUSTHt8vwwTDZkCETFcENjk,787
+cairocffi-0.8.0.dist-info/metadata.json,sha256=W1UjgVAaCfaB-9qKio98njKWQCSpkwbby70USU9Wask,826
 cairocffi-0.8.0.dist-info/top_level.txt,sha256=raEE5ENnM-K80Eu_E2kC2iJnO-6OBd9wo8A7ZMUEm18,10
 cairocffi-0.8.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 cairocffi/__pycache__/__init__.cpython-36.pyc,,

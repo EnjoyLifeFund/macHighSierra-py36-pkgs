@@ -6,6 +6,7 @@ Home-page: http://github.com/pudo/normality
 Author: Friedrich Lindenberg
 Author-email: friedrich@pudo.org
 License: MIT
+Description-Content-Type: UNKNOWN
 Keywords: text unicode normalization slugs
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha

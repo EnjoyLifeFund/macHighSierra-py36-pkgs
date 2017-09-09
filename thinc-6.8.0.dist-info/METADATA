@@ -25,7 +25,7 @@ Classifier: Programming Language :: Python :: 3.5
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Topic :: Scientific/Engineering
 Requires-Dist: chainer (==1.24.0)
-Requires-Dist: cymem (>=1.30,<1.32)
+Requires-Dist: cymem (<1.32,>=1.30)
 Requires-Dist: cytoolz (<0.9,>=0.8)
 Requires-Dist: dill
 Requires-Dist: msgpack-numpy
@@ -35,7 +35,7 @@ Requires-Dist: numpy (>=1.7)
 Requires-Dist: pathlib (<2.0.0,>=1.0.0)
 Requires-Dist: plac (>=0.9.6,<1.0.0)
 Requires-Dist: preshed (<2.0.0,>=1.0.0)
-Requires-Dist: six (<2.0.0,>=1.10.0)
+Requires-Dist: six (>=1.10.0,<2.0.0)
 Requires-Dist: termcolor
 Requires-Dist: tqdm (<5.0.0,>=4.10.0)
 Requires-Dist: wrapt

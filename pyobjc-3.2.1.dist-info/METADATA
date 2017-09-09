@@ -6,6 +6,7 @@ Home-page: http://pyobjc.sourceforge.net/
 Author: Ronald Oussoren
 Author-email: pyobjc-dev@lists.sourceforge.net
 License: MIT License
+Description-Content-Type: UNKNOWN
 Keywords: Objective-C,bridge,Cocoa
 Platform: MacOS X
 Classifier: Development Status :: 5 - Production/Stable

@@ -6,6 +6,7 @@ Home-page: http://www.cairosvg.org/
 Author: Kozea
 Author-email: guillaume.ayoub@kozea.fr
 License: GNU LGPL v3+
+Description-Content-Type: UNKNOWN
 Keywords: svg,convert,cairo,pdf,png,postscript
 Platform: Any
 Classifier: Development Status :: 5 - Production/Stable

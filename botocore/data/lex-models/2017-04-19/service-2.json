@@ -2757,11 +2757,7 @@
         },
         "valueSelectionStrategy":{
           "shape":"SlotValueSelectionStrategy",
-<<<<<<< HEAD
           "documentation":"<p>Determines the slot resolution strategy that Amazon Lex uses to return slot type values. The field can be set to one of the following values:</p> <ul> <li> <p> <code>ORIGINAL_VALUE</code> - Returns the value entered by the user, if the user value is similar to the slot value.</p> </li> <li> <p> <code>TOP_RESOLUTION</code> - If there is a resolution list for the slot, return the first value in the resolution list as the slot type value. If there is no resolution list, null is returned.</p> </li> </ul> <p>If you don't specify the <code>valueSelectionStrategy</code>, the default is <code>ORIGINAL_VALUE</code>.</p>"
-=======
-          "documentation":"<p>Determines the strategy that Amazon Lex uses to return slot type values. The field can be set to one of the following values:</p> <ul> <li> <p> <code>ORIGINAL_VALUE</code> - Returns the value entered by the user.</p> </li> <li> <p> <code>TOP_RESOLUTION</code> - If there is a resolution list for the slot, return the first value in the resolution list as the slot type value. If there is no resolution list, null is returned.</p> </li> </ul> <p>If you don't specify the <code>valueSelectionStrategy</code> is not provided, the default is <code>ORIGINAL_VALUE</code>.</p>"
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
         }
       }
     },
@@ -2798,11 +2794,7 @@
         },
         "valueSelectionStrategy":{
           "shape":"SlotValueSelectionStrategy",
-<<<<<<< HEAD
           "documentation":"<p>The slot resolution strategy that Amazon Lex uses to determine the value of the slot. For more information, see <a>PutSlotType</a>.</p>"
-=======
-          "documentation":"<p>The strategy that Amazon Lex uses to determine the value of the slot. For more information, see <a>PutSlotType</a>.</p>"
->>>>>>> 0ac677fbbfa7b6d8c527fe2c759ba05117b07fd2
         }
       }
     },

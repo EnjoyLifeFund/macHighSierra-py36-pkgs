@@ -1,9 +1,9 @@
 CairoSVG-2.0.3.dist-info/DESCRIPTION.rst,sha256=8ETdulNZk248u1GEvwFjt-h4onSzD8IwVlyhUe8jypY,293
-CairoSVG-2.0.3.dist-info/METADATA,sha256=DTvmx1Y0iOKrraAF9-MVEMcbeij7wgMrq8OCnyibMhI,1480
+CairoSVG-2.0.3.dist-info/METADATA,sha256=CDhQqQOySYDGIOgdJaems40mj6A79KZXfNCzxzCrCM0,1514
 CairoSVG-2.0.3.dist-info/RECORD,,
 CairoSVG-2.0.3.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
 CairoSVG-2.0.3.dist-info/entry_points.txt,sha256=ilIFARwDnioz1t_Y_c8OrM38Qjs1OIXxdunJGeDLefM,42
-CairoSVG-2.0.3.dist-info/metadata.json,sha256=Cuc4X9uRoOCx3qtIb3NDGybXhfGNdKo5vNvNaYE6toQ,1482
+CairoSVG-2.0.3.dist-info/metadata.json,sha256=7rhtL0PFtgoZQYBrQk9SyLS67i-t_D_giY4tVUnNTXM,1521
 CairoSVG-2.0.3.dist-info/top_level.txt,sha256=lmPBQv8BRkMSklPFDJ9wpg71GZW6h3gb6cKOesCxxcc,9
 cairosvg/__init__.py,sha256=ha_yeS82c4b4syeLdAFQ_f80aIXJuYVBIB4rbziN6NM,3472
 cairosvg/bounding_box.py,sha256=t9bteB0hpRVLC4nSKZVJs1NkW4WHS0St-rTFT7TSj8w,14699
@@ -21,7 +21,7 @@ cairosvg/svg.py,sha256=eext1ViLkOaIRqEaUyNc19ABVQYP4SbH4B0i01ZxaxE,1715
 cairosvg/test_api.py,sha256=jOfDV7G3M7OofM2FHQWbY75TVwkKlSTydtW7IadSAo4,7321
 cairosvg/text.py,sha256=6CK6ExDtKDcDNfTnBwIZdW5hNR7JmpcmALzOfRq4I-I,9814
 cairosvg/url.py,sha256=5Uw4_vEQIH_DPhJur5BQ9wlkKGibkvAOobiuqkqzheQ,3333
-../../../bin/cairosvg,sha256=U9XivUdgq9RYJUTCnjX4wG2SpgzAPbYX411EHFCVyco,231
+../../../bin/cairosvg,sha256=DV7_9rKVSvOC8ytrqr8_IwMt2ZFfCs3FZLNwV3yzy0w,240
 CairoSVG-2.0.3.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 cairosvg/__pycache__/__init__.cpython-36.pyc,,
 cairosvg/__pycache__/bounding_box.cpython-36.pyc,,

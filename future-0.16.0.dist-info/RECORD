@@ -144,11 +144,11 @@ future/types/newstr.py,sha256=bwFWxmDJ9pLP5hNCpmjYQ6aQcf0psUftxB3umby7Qng,15190
 future/utils/__init__.py,sha256=Rs-wkMkrxErB_m5xfoPxmKZBbp5ajCh48q7TktTVZ4s,20238
 future/utils/surrogateescape.py,sha256=WohIsb4hPES96EgSBalzpldBffjGlLJT8Z_OnybAdq8,6084
 future-0.16.0.dist-info/DESCRIPTION.rst,sha256=esSNCcjUSbzDzCE8vu0oiBJszeaajvqWR8LpqiJZWUY,2640
-future-0.16.0.dist-info/METADATA,sha256=F9b2WaTZbdhhfl-DFezTCDWDI8q0na9g3FSBEY4cwJI,3481
+future-0.16.0.dist-info/METADATA,sha256=CAAaw4enmAlN_P0nj88wS2OprTWBT1eKdFI7UgMbtxQ,3515
 future-0.16.0.dist-info/RECORD,,
-future-0.16.0.dist-info/WHEEL,sha256=WI40zeWA_HIK-Lq_ONjdk8oZ6fOKdK-aQBf5Yky6LPk,96
+future-0.16.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
 future-0.16.0.dist-info/entry_points.txt,sha256=-ATQtLUC2gkzrCYqc1Twac093xrI164NuMwsRALJWnM,89
-future-0.16.0.dist-info/metadata.json,sha256=DP-AZbb48qKSAJ26NDDzEZiCovzvZzbDsMicfLJrfEE,1258
+future-0.16.0.dist-info/metadata.json,sha256=N2n-GOTx361mnph3IrIAcToL-QfYb3GeAEhmfI5_Mbs,1294
 future-0.16.0.dist-info/top_level.txt,sha256=DT0C3az2gb-uJaj-fs0h4WwHYlJVDp0EvLdud1y5Zyw,38
 libfuturize/__init__.py,sha256=CZA_KgvTQOPAY1_MrlJeQ6eMh2Eei4_KIv4JuyAkpfw,31
 libfuturize/fixer_util.py,sha256=EWl-GfF1ebxyKQRvtE_RUXQvSJQxJzREtScoZpNzHZU,17405
@@ -214,8 +214,8 @@ past/types/basestring.py,sha256=xOkJDFG8tt5BLuVZqC5jde_pvb8y40Bsra0hhIgYDYY,729
 past/types/olddict.py,sha256=dDoOf3IA_5IIhNjJlQ6760BRLTjtqJvvLazgbRL0Xg4,2735
 past/types/oldstr.py,sha256=duI2OPxLdhI9gRjjoaQLFqTIZen9Q7lsA3MWmn3EjNk,4300
 past/utils/__init__.py,sha256=xRXg5E9UCG2tKdm1WBHMzyoA6_V-jtGmZ1rx80TqbKQ,2665
-../../../bin/futurize,sha256=105byh8edm35r3Zz76fpGtAv8Iv46dLbb5xDI89TEes,239
-../../../bin/pasteurize,sha256=2uvtNzFeg_TdDNcvXIfgaoO5ZgGCgfVairDQbcwu-ec,241
+../../../bin/futurize,sha256=g1gEC5SFgresW79jqg5bBvYjsbUq4USFvIIRyLfG9Jg,248
+../../../bin/pasteurize,sha256=rQrONqIRZdfZ0J9NJnhRqjwr0ZrBYGeIePKSZElzB6E,250
 future-0.16.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 future/__pycache__/__init__.cpython-36.pyc,,
 future/backports/__pycache__/__init__.cpython-36.pyc,,
@@ -352,6 +352,7 @@ libfuturize/__pycache__/__init__.cpython-36.pyc,,
 libfuturize/__pycache__/fixer_util.cpython-36.pyc,,
 libfuturize/__pycache__/main.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/__init__.cpython-36.pyc,,
+libfuturize/fixes/__pycache__/fix_UserDict.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_absolute_import.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_add__future__imports_except_unicode_literals.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_basestring.cpython-36.pyc,,
@@ -374,7 +375,6 @@ libfuturize/fixes/__pycache__/fix_raise.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_remove_old__future__imports.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_unicode_keep_u.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_unicode_literals_import.cpython-36.pyc,,
-libfuturize/fixes/__pycache__/fix_UserDict.cpython-36.pyc,,
 libfuturize/fixes/__pycache__/fix_xrange_with_import.cpython-36.pyc,,
 libpasteurize/__pycache__/__init__.cpython-36.pyc,,
 libpasteurize/__pycache__/main.cpython-36.pyc,,

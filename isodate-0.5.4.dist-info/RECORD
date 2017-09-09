@@ -16,10 +16,10 @@ isodate/tests/test_pickle.py,sha256=ENHhKDdkdbZ5gTgsyJcplz66_gvxXCbyZiKdU-5Uj0E,
 isodate/tests/test_strf.py,sha256=B1UEaw1rHdzcEXPQiYWFSYIhfgHpuZloIRLkv1qgZ-Q,5240
 isodate/tests/test_time.py,sha256=FFccT14FmQoReK-BcGMrKT3uxleNe75UY_pXdNTAP7c,6373
 isodate-0.5.4.dist-info/DESCRIPTION.rst,sha256=pMxsiaw2WrH8RfK3xZ1A83d9UTkI5QTVE78aVSkWQKo,8365
-isodate-0.5.4.dist-info/METADATA,sha256=eKo5w8LUij64TXCnnqEUoXarBE8886A7AGamjy0y7zk,9272
+isodate-0.5.4.dist-info/METADATA,sha256=itlvWZm-hpKYC2biMBN8tIdj7Um4U0glik8J0vntols,9306
 isodate-0.5.4.dist-info/RECORD,,
 isodate-0.5.4.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-isodate-0.5.4.dist-info/metadata.json,sha256=785E5l-JMlwPQZTYT64st5oMcjglZQoHcVNVxL_nA8Y,993
+isodate-0.5.4.dist-info/metadata.json,sha256=mqKf3sBIxXJgzlPHGFjm_PlQ3qwVMLctcAkYTroON_4,1032
 isodate-0.5.4.dist-info/top_level.txt,sha256=JgdqaHBw0Vx74Km0xZ1-6npOUHe_6cKHSBCEx6ppVe8,8
 isodate-0.5.4.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 isodate/__pycache__/__init__.cpython-36.pyc,,

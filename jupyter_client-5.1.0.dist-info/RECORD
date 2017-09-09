@@ -46,8 +46,8 @@ jupyter_client-5.1.0.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDI
 jupyter_client-5.1.0.dist-info/entry_points.txt,sha256=eMJQO7GA5SWWa2z8dcbpXBK0zjcvm1FOlh5sFuaPl5U,158
 jupyter_client-5.1.0.dist-info/metadata.json,sha256=vRN-A6_wrEmUhjUs0zenPmAwtYqtNMtKgTWAiHZ7Bjg,1424
 jupyter_client-5.1.0.dist-info/top_level.txt,sha256=kTaXQk6cEqTor71E1CPWtT0z-nNrj3l0CtgCeszvds4,15
-../../../bin/jupyter-kernelspec,sha256=xF3suGP12E529iP3kJV36r2fmDxSBWKRVr1m2rlfz7Y,312
-../../../bin/jupyter-run,sha256=wNQ0Nd9Ro4-gsTsY8gKmO1-foUidGwArdkpjraqX184,291
+../../../bin/jupyter-kernelspec,sha256=2ji0IO552qwNazTvuPH0ZCoOf29E_J_mhVH6m1OFFsY,294
+../../../bin/jupyter-run,sha256=xHtngfzdhXG6B5prVKQ0ufDTFNRKghixIvEbs-gtzDo,273
 jupyter_client-5.1.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 jupyter_client/__pycache__/__init__.cpython-36.pyc,,
 jupyter_client/__pycache__/_version.cpython-36.pyc,,

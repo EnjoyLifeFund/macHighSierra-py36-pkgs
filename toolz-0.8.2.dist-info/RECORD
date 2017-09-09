@@ -27,10 +27,10 @@ toolz/tests/test_signatures.py,sha256=3v5EsvKTJCOEPsSMaXvTYRvlPLliTktHhBlKicC_en
 toolz/tests/test_tlz.py,sha256=ZbfNb2Z7AYuw3Op2cLWqrohxe4e1pACL5Wl8VYfCGNk,1509
 toolz/tests/test_utils.py,sha256=2LIhS_9xXeAE1_onN868gZeAN8E3jTXtpnYF0W-L2OE,156
 toolz-0.8.2.dist-info/DESCRIPTION.rst,sha256=rHTnp1MAlwOvHrD6bUDaYGVwO4ebbIhDMKv-EOLGOnY,4208
-toolz-0.8.2.dist-info/METADATA,sha256=e8IMefSa7PshSIK2xGc_MpO2Rc3LExl3ZUGjC-HcsCY,5084
+toolz-0.8.2.dist-info/METADATA,sha256=9KlM0Czh538ayBn2dbaZaOFetABkCMAo1IakJNVPMI8,5118
 toolz-0.8.2.dist-info/RECORD,,
 toolz-0.8.2.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-toolz-0.8.2.dist-info/metadata.json,sha256=dBLOEmwGNtIZPFbh06rQTyeOE6BaLkckou7Qe_YYGqY,996
+toolz-0.8.2.dist-info/metadata.json,sha256=QyqomxtSLHwhleBdFNjI8IXfqcJLR7ie_doIGD4_src,1035
 toolz-0.8.2.dist-info/top_level.txt,sha256=oesCzopYB9UXPR4nDzhYaf-TbpkQoR6gYSsXvZDgk3s,10
 toolz-0.8.2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 tlz/__pycache__/__init__.cpython-36.pyc,,

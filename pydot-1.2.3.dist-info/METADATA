@@ -6,6 +6,7 @@ Home-page: https://github.com/erocarrera/pydot
 Author: Ioannis Filippidis
 Author-email: jfilippidis@gmail.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Keywords: graphviz dot graphs visualization
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable

@@ -44,10 +44,10 @@ odf/xforms.py,sha256=TchIc6KKaR-uzjr0kM2utg-jFkbvSqVduVn0lLf2LfE,1239
 ../../../bin/odfuserfield,sha256=ZsrrzunED3vW2oTE8EplIJRXxsF22TjbAvDjKfuUsCE,2618
 ../../../bin/xml2odf,sha256=oKhi0jcy82twVRIdefo_7_uOXoq79uxSr4lMl9kzD5A,8789
 odfpy-1.3.5.dist-info/DESCRIPTION.rst,sha256=PgSj0PfZ6l8FOhFgtX_3xrqd8bqzf0GH1JAAcVoioJc,1336
-odfpy-1.3.5.dist-info/METADATA,sha256=SiSIgL7OBLt5aewW8VCYS4ZP6nDY_7qOnWsisk3CmnA,2395
+odfpy-1.3.5.dist-info/METADATA,sha256=QrD8ZOm898w4OMCNHYRoWxTagOS0LvOlQLBQqB9R1WY,2429
 odfpy-1.3.5.dist-info/RECORD,,
 odfpy-1.3.5.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-odfpy-1.3.5.dist-info/metadata.json,sha256=I_uPbribjX5ZxgOZ0yE4X9FuoNkXI6LhPmKgWeE4iqo,1105
+odfpy-1.3.5.dist-info/metadata.json,sha256=IUGg6K78c6_M7fHk5wU8024MMqkFw65ixC08DOhpqmM,1144
 odfpy-1.3.5.dist-info/top_level.txt,sha256=52gL7htXz_fYOZLlmRl2N9OKdrJvQg8yT7ccr37kHco,4
 odfpy-1.3.5.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 odf/__pycache__/__init__.cpython-36.pyc,,

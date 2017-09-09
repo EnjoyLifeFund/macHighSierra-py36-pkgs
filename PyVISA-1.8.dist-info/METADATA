@@ -6,6 +6,7 @@ Home-page: https://github.com/hgrecco/pyvisa
 Author: Hernan E. Grecco
 Author-email: hernan.grecco@gmail.com
 License: MIT License
+Description-Content-Type: UNKNOWN
 Keywords: VISA GPIB USB serial RS232 measurement acquisition
 Platform: Linux
 Platform: Windows

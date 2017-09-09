@@ -25,6 +25,9 @@ from .errors import TypingError, UntypedAttributeError, new_error_context
 from .funcdesc import qualifying_prefix
 
 
+class NOTSET: pass
+
+
 class TypeVar(object):
     def __init__(self, context, var):
         self.context = context
@@ -33,6 +36,8 @@ class TypeVar(object):
         self.locked = False
         # Stores source location of first definition
         self.define_loc = None
+        # Qualifiers
+        self.literal_value = NOTSET
 
     def add_type(self, tp, loc):
         assert isinstance(tp, types.Type), type(tp)
@@ -62,7 +67,7 @@ class TypeVar(object):
 
         return self.type
 
-    def lock(self, tp, loc):
+    def lock(self, tp, loc, literal_value=NOTSET):
         assert isinstance(tp, types.Type), type(tp)
         assert not self.locked
 
@@ -77,6 +82,7 @@ class TypeVar(object):
         self.locked = True
         if self.define_loc is None:
             self.define_loc = loc
+        self.literal_value = literal_value
 
     def union(self, other, loc):
         if other.type is not None:
@@ -94,8 +100,10 @@ class TypeVar(object):
     def get(self):
         return (self.type,) if self.type is not None else ()
 
-    def getone(self):
+    def getone(self, get_literals=False):
         assert self.type is not None
+        if self.literal_value is not NOTSET and get_literals:
+            return types.Const(self.literal_value)
         return self.type
 
     def __len__(self):
@@ -157,6 +165,7 @@ class Propagate(object):
 
     def refine(self, typeinfer, target_type):
         # Do not back-propagate to locked variables (e.g. constants)
+        assert target_type.is_precise()
         typeinfer.add_type(self.src, target_type, unless_locked=True,
                            loc=self.loc)
 
@@ -177,6 +186,7 @@ class ArgConstraint(object):
             ty = src.getone()
             if isinstance(ty, types.Omitted):
                 ty = typeinfer.context.resolve_value_type(ty.value)
+            assert ty.is_precise()
             typeinfer.add_type(self.dst, ty, loc=self.loc)
 
 
@@ -197,6 +207,7 @@ class BuildTupleConstraint(object):
                 else:
                     # empty tuples fall here as well
                     tup = types.Tuple(vals)
+                assert tup.is_precise()
                 typeinfer.add_type(self.target, tup, loc=self.loc)
 
 
@@ -250,6 +261,7 @@ class ExhaustIterConstraint(object):
                 tp = tp.type if isinstance(tp, types.Optional) else tp
                 if isinstance(tp, types.BaseTuple):
                     if len(tp) == self.count:
+                        assert tp.is_precise()
                         typeinfer.add_type(self.target, tp, loc=self.loc)
                         break
                     else:
@@ -259,6 +271,7 @@ class ExhaustIterConstraint(object):
                 elif isinstance(tp, types.IterableType):
                     tup = types.UniTuple(dtype=tp.iterator_type.yield_type,
                                          count=self.count)
+                    assert tup.is_precise()
                     typeinfer.add_type(self.target, tup, loc=self.loc)
                     break
             else:
@@ -279,6 +292,7 @@ class PairFirstConstraint(object):
                 if not isinstance(tp, types.Pair):
                     # XXX is this an error?
                     continue
+                assert tp.first_type.is_precise()
                 typeinfer.add_type(self.target, tp.first_type, loc=self.loc)
 
 
@@ -296,6 +310,7 @@ class PairSecondConstraint(object):
                 if not isinstance(tp, types.Pair):
                     # XXX is this an error?
                     continue
+                assert tp.second_type.is_precise()
                 typeinfer.add_type(self.target, tp.second_type, loc=self.loc)
 
 
@@ -320,6 +335,7 @@ class StaticGetItemConstraint(object):
                 itemty = typeinfer.context.resolve_static_getitem(value=ty,
                                                                   index=self.index)
                 if itemty is not None:
+                    assert itemty.is_precise()
                     typeinfer.add_type(self.target, itemty, loc=self.loc)
                 elif self.fallback is not None:
                     self.fallback(typeinfer)
@@ -329,7 +345,7 @@ class StaticGetItemConstraint(object):
         return self.fallback and self.fallback.get_call_signature()
 
 
-def fold_arg_vars(typevars, args, vararg, kws):
+def fold_arg_vars(typevars, args, vararg, kws, get_literals=False):
     """
     Fold and resolve the argument variables of a function call.
     """
@@ -344,18 +360,37 @@ def fold_arg_vars(typevars, args, vararg, kws):
     if not all(a.defined for a in argtypes):
         return
 
-    args = tuple(a.getone() for a in argtypes)
+    args = tuple(a.getone(get_literals=get_literals) for a in argtypes)
+
     pos_args = args[:n_pos_args]
     if vararg is not None:
-        if not isinstance(args[-1], types.BaseTuple):
+        errmsg = "*args in function call should be a tuple, got %s"
+        # Handle constant literal used for `*args`
+        if isinstance(args[-1], types.Const):
+            const_val = args[-1].value
+            # Is the constant value a tuple?
+            if not isinstance(const_val, tuple):
+                raise TypeError(errmsg % (args[-1],))
+            # Append the elements in the const tuple to the positional args
+            pos_args += args[-1].value
+        # Handle non-constant
+        elif not isinstance(args[-1], types.BaseTuple):
             # Unsuitable for *args
             # (Python is more lenient and accepts all iterables)
-            raise TypeError("*args in function call should be a tuple, got %s"
-                            % (args[-1],))
-        pos_args += args[-1].types
+            raise TypeError(errmsg % (args[-1],))
+        else:
+            # Append the elements in the tuple to the positional args
+            pos_args += args[-1].types
+        # Drop the last arg
         args = args[:-1]
     kw_args = dict(zip(kwds, args[n_pos_args:]))
     return pos_args, kw_args
+
+
+def _is_array_not_precise(arrty):
+    """Check type is array and it is not precise
+    """
+    return isinstance(arrty, types.Array) and not arrty.is_precise()
 
 
 class CallConstraint(object):
@@ -389,8 +424,21 @@ class CallConstraint(object):
             return
         pos_args, kw_args = r
 
+        # Check argument to be precise
+        for a in itertools.chain(pos_args, kw_args.values()):
+            if not a.is_precise():
+                # Getitem on non-precise array is allowed to
+                # support array-comprehension
+                if fnty == 'getitem' and isinstance(pos_args[0], types.Array):
+                    pass
+                # Otherwise, don't compute type yet
+                else:
+                    return
+
+        literals = fold_arg_vars(typevars, self.args, self.vararg, self.kws,
+                                 get_literals=True)
         # Resolve call type
-        sig = typeinfer.resolve_call(fnty, pos_args, kw_args)
+        sig = typeinfer.resolve_call(fnty, pos_args, kw_args, literals=literals)
         if sig is None:
             # Arguments are invalid => explain why
             headtemp = "Invalid usage of {0} with parameters ({1})"
@@ -424,9 +472,24 @@ class CallConstraint(object):
             if target.defined:
                 targetty = target.getone()
                 if context.unify_pairs(targetty, sig.return_type) == targetty:
-                    sig.return_type = targetty
+                    sig = sig.replace(return_type=targetty)
 
         self.signature = sig
+
+        target_type = typevars[self.target].getone()
+        if isinstance(target_type, types.Array) and isinstance(sig.return_type.dtype, types.Undefined):
+            typeinfer.refine_map[self.target] = self
+
+    def refine(self, typeinfer, updated_type):
+        # Is getitem?
+        if self.func == 'getitem':
+            aryty = typeinfer.typevars[self.args[0].name].getone()
+            # is array not precise?
+            if _is_array_not_precise(aryty):
+                # allow refinement of dtype
+                assert updated_type.is_precise()
+                newtype = aryty.copy(dtype=updated_type.dtype)
+                typeinfer.add_type(self.args[0].name, newtype, loc=self.loc)
 
     def get_call_signature(self):
         return self.signature
@@ -455,12 +518,14 @@ class GetAttrConstraint(object):
                 if attrty is None:
                     raise UntypedAttributeError(ty, self.attr, loc=self.inst.loc)
                 else:
+                    assert attrty.is_precise()
                     typeinfer.add_type(self.target, attrty, loc=self.loc)
             typeinfer.refine_map[self.target] = self
 
     def refine(self, typeinfer, target_type):
         if isinstance(target_type, types.BoundFunction):
             recvr = target_type.this
+            assert recvr.is_precise()
             typeinfer.add_type(self.value.name, recvr, loc=self.loc)
             source_constraint = typeinfer.refine_map.get(self.value.name)
             if source_constraint is not None:
@@ -492,6 +557,12 @@ class SetItemConstraint(object):
             if sig is None:
                 raise TypingError("Cannot resolve setitem: %s[%s] = %s" %
                                   (targetty, idxty, valty), loc=self.loc)
+
+            # For array setitem, refine imprecise array dtype
+            if _is_array_not_precise(targetty):
+                assert sig.args[0].is_precise()
+                typeinfer.add_type(self.target.name, sig.args[0], loc=self.loc)
+
             self.signature = sig
 
     def get_call_signature(self):
@@ -790,9 +861,9 @@ class TypeInferer(object):
     def copy_type(self, src_var, dest_var, loc):
         unified = self.typevars[dest_var].union(self.typevars[src_var], loc=loc)
 
-    def lock_type(self, var, tp, loc):
+    def lock_type(self, var, tp, loc, literal_value=NOTSET):
         tv = self.typevars[var]
-        tv.lock(tp, loc=loc)
+        tv.lock(tp, loc=loc, literal_value=literal_value)
 
     def propagate_refined_type(self, updated_var, updated_type):
         source_constraint = self.refine_map.get(updated_var)
@@ -979,7 +1050,8 @@ class TypeInferer(object):
         # Special case string constant as Const type
         if ty == types.string:
             ty = types.Const(value=const)
-        self.lock_type(target.name, ty, loc=inst.loc)
+        self.lock_type(target.name, ty, loc=inst.loc,
+                       literal_value=const)
 
     def typeof_yield(self, inst, target, yield_):
         # Sending values into generators isn't supported.
@@ -1003,7 +1075,7 @@ class TypeInferer(object):
             raise TypingError("Modified builtin '%s'" % gvar.name,
                               loc=inst.loc)
 
-    def resolve_call(self, fnty, pos_args, kw_args):
+    def resolve_call(self, fnty, pos_args, kw_args, literals=None):
         """
         Resolve a call to a given function type.  A signature is returned.
         """
@@ -1037,7 +1109,8 @@ class TypeInferer(object):
             return sig
         else:
             # Normal non-recursive call
-            return self.context.resolve_function_type(fnty, pos_args, kw_args)
+            return self.context.resolve_function_type(fnty, pos_args, kw_args,
+                                                      literals=literals)
 
     def typeof_global(self, inst, target, gvar):
         try:
@@ -1068,7 +1141,10 @@ class TypeInferer(object):
             typ = typ.copy(readonly=True)
 
         self.sentry_modified_builtin(inst, gvar)
-        self.lock_type(target.name, typ, loc=inst.loc)
+        # Setting literal_value for globals because they are handled
+        # like const value in numba
+        self.lock_type(target.name, typ, loc=inst.loc,
+                       literal_value=gvar.value)
         self.assumed_immutables.add(inst)
 
     def typeof_expr(self, inst, target, expr):

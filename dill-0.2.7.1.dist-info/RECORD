@@ -12,10 +12,10 @@ dill/temp.py,sha256=tYloNItD8s-EklNM95a7uvxSiKoQ2UsMGkos6XuOJvQ,8308
 ../../../bin/dill_unpickle.py,sha256=NE3t_XdEElCXy8iGnMNqe5AOGRdbAIydqrDwlxA97f4,468
 ../../../bin/get_objgraph.py,sha256=WpUGAOeT83FiJZxUi6p2xdTHHISePOaoFjusDo0nH6Q,1241
 dill-0.2.7.1.dist-info/DESCRIPTION.rst,sha256=ZTmwY4tZ7EB0sZgkGud7QPUrqEvtF8yh1bn7xOicVbY,5652
-dill-0.2.7.1.dist-info/METADATA,sha256=qiotM9_nSTjzN9NBDHVk3BKuuJlL-hv0OnMdMVl1dwU,6333
+dill-0.2.7.1.dist-info/METADATA,sha256=Npk1Ym6YuKWKc6XCanO1tTMVzBckjUvQ41mvzoNAMJs,6367
 dill-0.2.7.1.dist-info/RECORD,,
 dill-0.2.7.1.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
-dill-0.2.7.1.dist-info/metadata.json,sha256=Ytzei8OX7MYOoE6BK52zvCXFOQBi822kVbZ3X_T0tAY,788
+dill-0.2.7.1.dist-info/metadata.json,sha256=oSa-bzkZEMnKWkyMFu0t9Epjj2LnHOG-IT7zqvzk3qs,827
 dill-0.2.7.1.dist-info/top_level.txt,sha256=HLSIyYIjQzJiBvs3_-16ntezE3j6mWGTW0DT1xDd7X0,5
 dill-0.2.7.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 dill/__pycache__/__diff.cpython-36.pyc,,

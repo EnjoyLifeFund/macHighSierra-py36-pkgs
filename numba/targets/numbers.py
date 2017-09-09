@@ -1242,6 +1242,24 @@ def hash_complex(context, builder, sig, args):
 #-------------------------------------------------------------------------------
 # Implicit casts between numerics
 
+@lower_cast(types.Integer, types.Const)
+def integer_to_constant(context, builder, fromty, toty, val):
+    # Perform runtime check to ensure that the runtime value
+    # matches the expected constant.
+    # The violation would imply an internal error.
+    # The runtime checking logic cannot be tested automatically.
+    # The easiest way to test is to change the comparison from `!=` to `==`
+    # so that the exception will raise when the expection is met.
+    const = context.get_constant(fromty, toty.value)
+    matches = builder.icmp_unsigned('!=', val, const)
+    with cgutils.if_unlikely(builder, matches):
+        # Raise RuntimeError about the assumption violation
+        usermsg = "numba constant integer assumption violated"
+        errmsg = "{}: expecting {}".format(usermsg, toty.value)
+        context.call_conv.return_user_exc(builder, RuntimeError, (errmsg,))
+    return cgutils.get_null_value(context.get_value_type(toty))
+
+
 @lower_cast(types.Integer, types.Integer)
 def integer_to_integer(context, builder, fromty, toty, val):
     if toty.bitwidth == fromty.bitwidth:

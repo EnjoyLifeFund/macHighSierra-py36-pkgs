@@ -6,6 +6,7 @@ Home-page: http://pypi.python.org/pypi/termcolor
 Author: Konstantin Lepa
 Author-email: konstantin.lepa@gmail.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Environment :: Console

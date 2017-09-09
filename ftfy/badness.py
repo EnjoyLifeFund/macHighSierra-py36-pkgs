@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 Heuristics to determine whether re-encoding text is actually making it
 more reasonable.
 """
 
+from __future__ import unicode_literals
 import re
 import unicodedata
 from ftfy.chardata import chars_to_classes
@@ -115,7 +117,6 @@ COMMON_SYMBOL_RE = re.compile(
     '\ufeff'  # The byte-order mark, whose encoding 'ï»¿' looks common
     ']'
 )
-
 
 def sequence_weirdness(text):
     """

@@ -6,6 +6,7 @@ Home-page: https://github.com/click-contrib/click-plugins
 Author: Kevin Wurster, Sean Gillies
 Author-email: wursterk@gmail.com, sean.gillies@gmail.com
 License: New BSD
+Description-Content-Type: UNKNOWN
 Keywords: click plugin setuptools entry-point
 Platform: UNKNOWN
 Classifier: Topic :: Utilities

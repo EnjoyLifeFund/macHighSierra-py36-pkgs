@@ -1,16 +1,19 @@
-import spacy
 import numpy
+try:
+    import spacy
+except ImportError:
+    spacy = None
 
 SPACY_MODELS = {}
 VECTORS = {}
 
-def get_spacy(lang, parser=False, tagger=False, entity=False):
+
+def get_spacy(lang, **kwargs):
     global SPACY_MODELS
     if spacy is None:
         raise ImportError("Could not import spacy. Is it installed?")
     if lang not in SPACY_MODELS:
-        SPACY_MODELS[lang] = spacy.load(
-            lang, parser=parser, tagger=tagger, entity=entity)
+        SPACY_MODELS[lang] = spacy.load(lang, **kwargs)
     return SPACY_MODELS[lang]
 
 
