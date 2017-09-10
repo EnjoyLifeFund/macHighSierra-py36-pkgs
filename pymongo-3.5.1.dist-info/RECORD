@@ -1,5 +1,5 @@
 bson/__init__.py,sha256=MLvbSgmuTE_ongUHIsLetqdPToDaoS7H9ScO1BjZjvQ,35237
-bson/_cbson.cpython-36m-darwin.so,sha256=CB7HjuWbz5BkxGJuwULPjp8VDy1GVf1_naiLZYxVkeo,121088
+bson/_cbson.cpython-36dm-darwin.so,sha256=O63bM-7Kv6BYJKjeCZDMnHkObcAsdtnhbtUh7utegEc,72492
 bson/binary.py,sha256=rSCIq82gln9Wseoamjm47EQUcd6e3aRzP4E87GIj5q4,7103
 bson/code.py,sha256=vNzKofSye9UMxQZMYANHYrEKdV-wqcaZGUmFGU2NlbQ,3379
 bson/codec_options.py,sha256=auaCZ4B4f_5lHXBDC2w7TxBO0Jtu1QLkwt2JBrjnU7M,6429
@@ -21,7 +21,7 @@ gridfs/__init__.py,sha256=H2xJnk4gRblxuDcpcPn7mRNfbECBbfe48EYAT9GKHVs,31230
 gridfs/errors.py,sha256=Z7E-XkxtrWNfob3cTBSgeRlTvHcG02DCPv4X_EmvBkQ,1056
 gridfs/grid_file.py,sha256=cw9dwoX_xhHiQddRXNVAfST39k_bEu30l9ojg9ziFyo,24683
 pymongo/__init__.py,sha256=wtWLyllHiUeQr6Crwb9G-BbbVcfU2Wlr6nm7hk16wwY,3011
-pymongo/_cmessage.cpython-36m-darwin.so,sha256=CEDhJb4xFNC_DI5EVdrfXB0ysvC4X_YP_ejh6_2f7Uw,58892
+pymongo/_cmessage.cpython-36dm-darwin.so,sha256=UlqWEL1DCI0VigeuH_1Hl9tdqGGmeGT2_I9NfI4Ofwk,30624
 pymongo/auth.py,sha256=eHkhz34O2oQcEZoEaCMrVVNd_lmwvo93tAv22mjw00s,17792
 pymongo/bulk.py,sha256=kJkqzVRIoook6CVXZR6YVv4gSQ8zPf6dGpNcEN4BEfg,26026
 pymongo/client_options.py,sha256=e1DfxtKsNT_W2OYaBV77O7alCKR0JJjsBmWrss4QL8M,7870
@@ -65,10 +65,10 @@ pymongo/topology_description.py,sha256=5E_Qa6UHZIFYDyUi8fJ0X19jr3iDt726Am8TsHIOW
 pymongo/uri_parser.py,sha256=yD2uTtwepInrsHJlsV_ayAKyQiRg-nAhFDPJ4HAcffU,12569
 pymongo/write_concern.py,sha256=yUd8x_rin5KxqJxPYTVEm_Vcj4AuF0DL_AUw8AngMTU,4503
 pymongo-3.5.1.dist-info/DESCRIPTION.rst,sha256=OLSaUjwiYldBtsdfFEfKk-GZx1JfRPfP6eQYxeN4sIY,6377
-pymongo-3.5.1.dist-info/METADATA,sha256=npalAjUrvhUmMcIyZ9_sounkEjjEwzRY5HVT1MsJtsw,7659
+pymongo-3.5.1.dist-info/METADATA,sha256=KXE_0JFkEK8pIq47w8CJ-cp1b_rbxu8iMQaJ0gG4Yyw,7693
 pymongo-3.5.1.dist-info/RECORD,,
-pymongo-3.5.1.dist-info/WHEEL,sha256=n5Qi9LsnJ0zl3SHl7-DnZPyZfWOd4go9ixl9Bl1aXdA,109
-pymongo-3.5.1.dist-info/metadata.json,sha256=sbNA8ftMVfhTj16AREwDqHCub5wfQqcBe3tuEHlLuPg,1359
+pymongo-3.5.1.dist-info/WHEEL,sha256=6ur8vMCzwgqlp_Bc7ZOgeoqRz-S5u3pdxcXcZrBMsJ4,112
+pymongo-3.5.1.dist-info/metadata.json,sha256=bfrx9LIPoXPHJS_7c-9NuQXe8N-eMAJDOR14tlEhhBg,1398
 pymongo-3.5.1.dist-info/top_level.txt,sha256=OinVojDdOfo1Dsp-NRfrZdp6gcJJ4bPRq61vSg5vyAs,20
 pymongo-3.5.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 bson/__pycache__/__init__.cpython-36.pyc,,

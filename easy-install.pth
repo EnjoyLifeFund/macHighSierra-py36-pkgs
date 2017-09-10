@@ -2,5 +2,5 @@
 ./numpy-1.13.1-py3.6-macosx-10.13-x86_64.egg
 ./gnureadline-6.3.3-py3.6-macosx-10.13-x86_64.egg
 ./redis-2.10.6-py3.6.egg
-./Pillow-4.2.0.dev0-py3.6-macosx-10.13-x86_64.egg
 ./Office365_REST_Python_Client-2.1.0-py3.6.egg
+./remotecv-2.2.1-py3.6.egg
