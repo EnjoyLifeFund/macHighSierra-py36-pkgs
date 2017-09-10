@@ -67,13 +67,13 @@ alembic/util/messaging.py,sha256=ij-TGsz003UcswO7iYl_JxR-L_rg30T7I0U9oA70d1I,244
 alembic/util/pyfiles.py,sha256=kQzBhav4Gktv7pwbOeiE0rWHmdKyypouynKpdNvE3Iw,3158
 alembic/util/sqla_compat.py,sha256=PZobtqE4W267gDS05vEON33m9kBcv2oVz9VLK4ivLUk,5626
 alembic-0.9.5.dist-info/DESCRIPTION.rst,sha256=Rvl__VBYhF3RHNXCe8Tgf-BxBhUbzpBDq561boPULU8,4928
-alembic-0.9.5.dist-info/METADATA,sha256=XGFsNXLcW3V6o2DuSYLvgi00LUE7WUJA-F2ohpnUIKI,5718
+alembic-0.9.5.dist-info/METADATA,sha256=Dev9twsydN6XQsOzYba8Q6S-4TeHUb3IZfJPvVWRxIM,5752
 alembic-0.9.5.dist-info/RECORD,,
 alembic-0.9.5.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7lm34,110
 alembic-0.9.5.dist-info/entry_points.txt,sha256=jOSnN_2fhU8xzDQ50rdNr425J8kf_exuY8GrAo1daz8,49
-alembic-0.9.5.dist-info/metadata.json,sha256=5LmwOs1dDYvm2-eTv3GB06PNOwXC7kOUnjyOU3ovaOk,1140
+alembic-0.9.5.dist-info/metadata.json,sha256=G6eMBUSryfD7Rb4pfn4LJjBdxdmwQJHeBFHRbGKeBUA,1179
 alembic-0.9.5.dist-info/top_level.txt,sha256=FwKWd5VsPFC8iQjpu1u9Cn-JnK3-V1RhUCmWqz1cl-s,8
-../../../bin/alembic,sha256=VwdjpWALE9LYMWUOBcDj1JtupDeeMXquBCRd2dHQP6c,246
+../../../bin/alembic,sha256=SFS1jSL1OlCd4n7b07r0m0X0Ned6OnkVSyz15fCsChU,289
 alembic-0.9.5.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 alembic/__pycache__/__init__.cpython-36.pyc,,
 alembic/__pycache__/command.cpython-36.pyc,,

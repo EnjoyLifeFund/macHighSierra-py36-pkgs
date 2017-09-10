@@ -7,6 +7,7 @@ Author: Lisandro Dalcin
 Author-email: dalcinl@gmail.com
 License: BSD
 Download-URL: https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-2.0.0.tar.gz
+Description-Content-Type: UNKNOWN
 Keywords: scientific computing,parallel computing,message passing interface,MPI
 Platform: Mac OS X
 Platform: Linux

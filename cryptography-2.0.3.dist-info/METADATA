@@ -6,6 +6,7 @@ Home-page: https://github.com/pyca/cryptography
 Author: The cryptography developers
 Author-email: cryptography-dev@python.org
 License: BSD or Apache License, Version 2.0
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: Apache Software License
@@ -47,7 +48,7 @@ Requires-Dist: cryptography-vectors (==2.0.3); extra == 'test'
 Requires-Dist: hypothesis (>=1.11.4); extra == 'test'
 Requires-Dist: iso8601; extra == 'test'
 Requires-Dist: pretend; extra == 'test'
-Requires-Dist: pytest (>=2.9.0,!=3.2.0); extra == 'test'
+Requires-Dist: pytest (!=3.2.0,>=2.9.0); extra == 'test'
 Requires-Dist: pytz; extra == 'test'
 
 pyca/cryptography

@@ -31,7 +31,7 @@ fabric/contrib/console.py,sha256=6nqr74tuJwlg0EjrD80XOeE2oHtaa8Kz3CvkpM2OAcI,117
 fabric/contrib/django.py,sha256=063BUy74l4yNEuTttz01udVmU7pjswQ37R432pSKIhw,3325
 fabric/contrib/files.py,sha256=ulbhBrnDsWJqnQSC0U2nJp712J65_Nw7xAPS7Fqy5hs,17890
 fabric/contrib/project.py,sha256=xFG-wpS6eHMU_NvzLYjLdVVwf025E-z6_M107tMPlEo,8749
-../../../bin/fab,sha256=_i02r8BqjCR2ChjjEhmKhOPCXNriTrKnnF4ZJlpKgRA,243
+../../../bin/fab,sha256=DQycca9-gAMUidKbVutboheDL8x4ZK_F9wPQrl81Ubs,286
 Fabric-1.14.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 fabric/__pycache__/__init__.cpython-36.pyc,,
 fabric/__pycache__/__main__.cpython-36.pyc,,

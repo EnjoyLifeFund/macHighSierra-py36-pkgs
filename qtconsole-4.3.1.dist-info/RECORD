@@ -46,7 +46,7 @@ qtconsole-4.3.1.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7lm
 qtconsole-4.3.1.dist-info/entry_points.txt,sha256=TIItkk8iMgYbiE0U8IvTIPcpbq_848p_ZMOJ0_9y8Yw,63
 qtconsole-4.3.1.dist-info/metadata.json,sha256=1v2nLTqrB3ZlfaHiTNqy8Xwsya-muhOSq_i43zu5Bzk,1412
 qtconsole-4.3.1.dist-info/top_level.txt,sha256=Vo9i7Mvpf6_8kJtNTCtBhnk--hyj_ZJ6mzrOsJaYzyg,10
-../../../bin/jupyter-qtconsole,sha256=fOc26dvzWc-Lt0dj20epp-PEwJ_daly3pgQjiWmdtWs,254
+../../../bin/jupyter-qtconsole,sha256=eoCFW-rjbmITQfBk9ffe_X3FhB6D_x3o-uFzLnfmGXY,297
 qtconsole-4.3.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 qtconsole/__pycache__/__init__.cpython-36.pyc,,
 qtconsole/__pycache__/__main__.cpython-36.pyc,,

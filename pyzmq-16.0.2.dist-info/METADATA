@@ -6,6 +6,7 @@ Home-page: https://pyzmq.readthedocs.org
 Author: Brian E. Granger, Min Ragan-Kelley
 Author-email: zeromq-dev@lists.zeromq.org
 License: LGPL+BSD
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers

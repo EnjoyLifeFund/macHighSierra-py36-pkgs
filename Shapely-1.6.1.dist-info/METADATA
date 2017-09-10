@@ -6,6 +6,7 @@ Home-page: https://github.com/Toblerity/Shapely
 Author: Sean Gillies
 Author-email: sean.gillies@gmail.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: geometry topology gis
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable

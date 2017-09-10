@@ -7,6 +7,7 @@ Author: John D. Hunter, Michael Droettboom
 Author-email: matplotlib-users@python.org
 License: BSD
 Download-URL: http://matplotlib.org/users/installing.html
+Description-Content-Type: UNKNOWN
 Platform: any
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Science/Research
@@ -21,7 +22,7 @@ Classifier: Programming Language :: Python :: 3.6
 Classifier: Topic :: Scientific/Engineering :: Visualization
 Requires-Dist: cycler (>=0.10)
 Requires-Dist: numpy (>=1.7.1)
-Requires-Dist: pyparsing (!=2.1.6,!=2.1.2,!=2.0.4,>=1.5.6)
+Requires-Dist: pyparsing (!=2.0.4,!=2.1.6,!=2.1.2,>=1.5.6)
 Requires-Dist: python-dateutil
 Requires-Dist: pytz
 Requires-Dist: six (>=1.10)

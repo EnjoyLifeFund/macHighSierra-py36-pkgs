@@ -77,9 +77,9 @@ ipyparallel-6.0.2.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7
 ipyparallel-6.0.2.dist-info/entry_points.txt,sha256=86GxbEEX-lyfp0RH_50Zgib6ggF5PXICciNHfLMFcj4,209
 ipyparallel-6.0.2.dist-info/metadata.json,sha256=d6_Nr6pjPnFF9HJomwGFd2xZpsFNAkXaGR7iKXS71YA,1812
 ipyparallel-6.0.2.dist-info/top_level.txt,sha256=V88V8Z0I-uroFYJKtRvAZVPxn1iYKuaUvJKgym7BE0c,12
-../../../bin/ipcluster,sha256=Ap89SuxdBnJXgRf_KTzMWDD22qdJR_t_Gd0h1ZjsSps,291
-../../../bin/ipcontroller,sha256=Bjtp7TRCvbjWWZI_7TjeSxK4W6wngGKRGDzLxViUKVI,294
-../../../bin/ipengine,sha256=c4KABimWmdW5HJ3C698MVqOWBz3FMl-TpCHdjGuBYQY,290
+../../../bin/ipcluster,sha256=t5I9QihJS7NIJ6CiKV6QGRoBAW2tsectX4prdlMAUGE,334
+../../../bin/ipcontroller,sha256=75u6JVeTaGIieJrTxZjHiCY9VsotvlWksIHHdfqltxs,337
+../../../bin/ipengine,sha256=s834K6QNqNxJ1QCZhTd98cYR6yqGWE-QZVuLu3uPRLA,333
 ipyparallel-6.0.2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 ipyparallel/__pycache__/__init__.cpython-36.pyc,,
 ipyparallel/__pycache__/_version.cpython-36.pyc,,

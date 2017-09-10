@@ -1169,10 +1169,10 @@ notebook-5.0.0.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7lm3
 notebook-5.0.0.dist-info/entry_points.txt,sha256=ht4-DT6_bCKJq1XvR5LZVA-Irg0qcKB8USJWxbYG650,237
 notebook-5.0.0.dist-info/metadata.json,sha256=YRVYsTimwP5xTadGWZvfpXBeXPhYWVTlYz8NW1Ms3Ss,1911
 notebook-5.0.0.dist-info/top_level.txt,sha256=2G0WZFzZhixyVqs6itqgKLxSNaqs3RgJ8iHOps3zIOg,9
-../../../bin/jupyter-bundlerextension,sha256=2cVOsaRoNennlPB8s2jwpZ8hbM8QbzY-kosQ0HtnhOQ,266
-../../../bin/jupyter-nbextension,sha256=JcF7ujV4G1ytSsy9MxroUJeJs7IWWYp6WEAn2kPoT-Q,253
-../../../bin/jupyter-notebook,sha256=dsTvX5VTGN3kVDJFMinlwNT1l9gB2EDGUK9RIQWgPLA,252
-../../../bin/jupyter-serverextension,sha256=t5W0pxzMdwwT4jFBZ63FuPh5QNP_s1iy84MjsahL6aA,257
+../../../bin/jupyter-bundlerextension,sha256=4D1b-eczprazRppFUbZDfNtBZA9nI6H7PZgjz3wnF38,309
+../../../bin/jupyter-nbextension,sha256=9sjN61XrGYLAzCtzo8Yw3PjSnpfNbUM77mE5cVkW2AA,296
+../../../bin/jupyter-notebook,sha256=9QbJVtYMqPl6ABwGtImLtkXi9TJBy8M6ZpuFnGRifS8,295
+../../../bin/jupyter-serverextension,sha256=x787a7uKA9Y83E5V7VvB7LiGIZVIzoiSpYMaPKZWxjc,300
 notebook-5.0.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 notebook/__pycache__/__init__.cpython-36.pyc,,
 notebook/__pycache__/__main__.cpython-36.pyc,,

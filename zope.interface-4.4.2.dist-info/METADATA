@@ -6,6 +6,7 @@ Home-page: https://github.com/zopefoundation/zope.interface
 Author: Zope Foundation and Contributors
 Author-email: zope-dev@zope.org
 License: ZPL 2.1
+Description-Content-Type: UNKNOWN
 Keywords: interface,components,plugins
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable

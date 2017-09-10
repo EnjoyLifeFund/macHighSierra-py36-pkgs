@@ -6,6 +6,7 @@ Home-page: http://pandas.pydata.org
 Author: The PyData Development Team
 Author-email: pydata@googlegroups.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Platform: any
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Environment :: Console

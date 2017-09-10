@@ -12,6 +12,8 @@ import os
 import sys
 import tempfile
 
+import pytest
+
 from ..data import (_get_download_cache_locs, CacheMissingWarning,
                     get_pkg_data_filename, get_readable_fileobj)
 
@@ -152,17 +154,49 @@ def test_local_data_obj(filename):
             assert f.read().rstrip() == b'CONTENT'
 
 
-@pytest.mark.parametrize(('filename'), ['invalid.dat.gz', 'invalid.dat.bz2'])
-def test_local_data_obj_invalid(filename):
+@pytest.fixture(params=['invalid.dat.bz2', 'invalid.dat.gz'])
+def bad_compressed(request, tmpdir):
+
+    # These contents have valid headers for their respective file formats, but
+    # are otherwise malformed and invalid.
+    bz_content = b'BZhinvalid'
+    gz_content = b'\x1f\x8b\x08invalid'
+
+    datafile = tmpdir.join(request.param)
+    filename = datafile.strpath
+
+    if filename.endswith('.bz2'):
+        contents = bz_content
+    elif filename.endswith('.gz'):
+        contents = gz_content
+    else:
+        contents = 'invalid'
+
+    datafile.write(contents, mode='wb')
+
+    return filename
+
+
+def test_local_data_obj_invalid(bad_compressed):
     from ..data import get_pkg_data_fileobj
 
-    if (not HAS_BZ2 and 'bz2' in filename) or (not HAS_XZ and 'xz' in filename):
+    is_bz2 = bad_compressed.endswith('.bz2')
+    is_xz = bad_compressed.endswith('.xz')
+
+    # Note, since these invalid files are created on the fly in order to avoid
+    # problems with detection by antivirus software
+    # (see https://github.com/astropy/astropy/issues/6520), it is no longer
+    # possible to use ``get_pkg_data_fileobj`` to read the files. Technically,
+    # they're not local anymore: they just live in a temporary directory
+    # created by pytest. However, we can still use get_readable_fileobj for the
+    # test.
+    if (not HAS_BZ2 and is_bz2) or (not HAS_XZ and is_xz):
         with pytest.raises(ValueError) as e:
-            with get_pkg_data_fileobj(os.path.join('data', filename), encoding='binary') as f:
+            with get_readable_fileobj(bad_compressed, encoding='binary') as f:
                 f.read()
         assert ' format files are not supported' in str(e)
     else:
-        with get_pkg_data_fileobj(os.path.join('data', filename), encoding='binary') as f:
+        with get_readable_fileobj(bad_compressed, encoding='binary') as f:
             assert f.read().rstrip().endswith(b'invalid')
 
 
@@ -321,12 +355,15 @@ def test_data_noastropy_fallback(monkeypatch):
     assert not os.path.isdir(lockdir), 'Cache dir lock was not released!'
 
 
-@pytest.mark.parametrize(('filename'), [
-    'unicode.txt',
-    'unicode.txt.gz',
-    pytest.mark.xfail(not HAS_BZ2, reason='no bz2 support')('unicode.txt.bz2'),
-    pytest.mark.xfail(not HAS_XZ, reason='no lzma support')('unicode.txt.xz')])
+@pytest.mark.parametrize(('filename'), ['unicode.txt', 'unicode.txt.gz',
+                                        'unicode.txt.bz2', 'unicode.txt.xz'])
 def test_read_unicode(filename):
+    if filename == 'unicode.txt.bz2' and not HAS_BZ2:
+        pytest.xfail(reason='no bz2 support')
+
+    if filename == 'unicode.txt.xz' and not HAS_XZ:
+        pytest.xfail(reason='no lzma support')
+
     from ..data import get_pkg_data_contents
 
     contents = get_pkg_data_contents(os.path.join('data', filename), encoding='utf-8')

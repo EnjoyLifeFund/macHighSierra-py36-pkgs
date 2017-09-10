@@ -1,4 +1,4 @@
-Wand-0.4.4.data/data/README.rst,sha256=1IUFOLw3u6GbfJtY8sPM1n0b-1eImGHtfCod41TbwqE,2135
+../../../README.rst,sha256=1IUFOLw3u6GbfJtY8sPM1n0b-1eImGHtfCod41TbwqE,2135
 Wand-0.4.4.dist-info/DESCRIPTION.rst,sha256=rBao1vVM4Y4j2fxBBWNO28H7sVBptBne2f7kVcl8KnU,2137
 Wand-0.4.4.dist-info/METADATA,sha256=uyQLO51Rk6akYfXXuKZcT_2iIfrCyFvTTPa60evEGk4,3284
 Wand-0.4.4.dist-info/RECORD,,
@@ -17,3 +17,16 @@ wand/image.py,sha256=eKlYImV6IWMZPrs6F_bwC0b86voR5aaGeAmNGMUAj-c,140070
 wand/resource.py,sha256=HhdcQvMhS8PSa6vZbo_IgXD6TUERfw7-nQue95X9ZbE,7050
 wand/sequence.py,sha256=ISYLgbm4voH3L29fO6f6gqB9WQemXAxk9BEPpxbs6zo,12444
 wand/version.py,sha256=BvZLnbOQocrRnaPAqsmaGmPiun8RYz0QrAsrxCK4yks,8399
+Wand-0.4.4.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+wand/__pycache__/__init__.cpython-36.pyc,,
+wand/__pycache__/api.cpython-36.pyc,,
+wand/__pycache__/color.cpython-36.pyc,,
+wand/__pycache__/compat.cpython-36.pyc,,
+wand/__pycache__/display.cpython-36.pyc,,
+wand/__pycache__/drawing.cpython-36.pyc,,
+wand/__pycache__/exceptions.cpython-36.pyc,,
+wand/__pycache__/font.cpython-36.pyc,,
+wand/__pycache__/image.cpython-36.pyc,,
+wand/__pycache__/resource.cpython-36.pyc,,
+wand/__pycache__/sequence.cpython-36.pyc,,
+wand/__pycache__/version.cpython-36.pyc,,

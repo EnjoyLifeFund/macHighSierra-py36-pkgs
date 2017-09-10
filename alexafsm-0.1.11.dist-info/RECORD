@@ -8,10 +8,10 @@ alexafsm/states.py,sha256=o0K2DSZbPODSL3wZWGfWheRr3UnMk7NyuMUvZTiJ3Ys,2272
 alexafsm/test_helpers.py,sha256=L0jN6k3RsD-Q1mHyX6BW3KuZ2ah_A9m41Q9HQryDMHk,2389
 alexafsm/utils.py,sha256=PjrD6VTZeTKQ8EVWkt4mx0iNF0IAIqVbjimdVulfTYU,6139
 alexafsm-0.1.11.dist-info/DESCRIPTION.rst,sha256=Zg0SeHmkMKilrgiQdrLClFkP84T6hBmNkKtm1wu8aCk,85
-alexafsm-0.1.11.dist-info/METADATA,sha256=NHem_FO1fl5vQcI94svPD6IIQaFp5mjKehLh6e8rRy0,786
+alexafsm-0.1.11.dist-info/METADATA,sha256=F7Q8WANOHrQIe6m9L7xWtEMlmZRJwY0fRxcRucMNTmU,820
 alexafsm-0.1.11.dist-info/RECORD,,
 alexafsm-0.1.11.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDIpl7lm34,110
-alexafsm-0.1.11.dist-info/metadata.json,sha256=alEUmzyEPnAG_MFGHA6TtOypdKclqH75b0KDkP-SMTk,1010
+alexafsm-0.1.11.dist-info/metadata.json,sha256=w5Hq2SHOMJv71TvA-A5XBRtUY47F524WQa-FZCvnal8,1049
 alexafsm-0.1.11.dist-info/top_level.txt,sha256=66JxTiVaoO64h7jy4w_1uW3IimTlwkYPeZLDuSlU3aE,9
 alexafsm-0.1.11.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 alexafsm/__pycache__/__init__.cpython-36.pyc,,

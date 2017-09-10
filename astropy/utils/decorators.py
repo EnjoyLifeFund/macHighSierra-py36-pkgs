@@ -479,7 +479,7 @@ def deprecated_renamed_argument(old_name, new_name, since,
                             'and will be removed in a future version. '
                             'Use argument "{2}" instead.'
                             ''.format(old_name[i], since[i], new_name[i]),
-                            AstropyDeprecationWarning)
+                            AstropyDeprecationWarning, stacklevel=2)
 
                     # Check if the newkeyword was given as well.
                     newarg_in_args = (position[i] is not None and
@@ -810,10 +810,6 @@ class sharedmethod(classmethod):
         this implements the Example.identify classmethod
     """
 
-    def __getobjwrapper(func):
-        return func
-
-    @__getobjwrapper
     def __get__(self, obj, objtype=None):
         if obj is None:
             mcls = type(objtype)
@@ -833,8 +829,6 @@ class sharedmethod(classmethod):
             return self._make_method(func, objtype)
         else:
             return self._make_method(self.__func__, obj)
-
-    del __getobjwrapper
 
     if not six.PY2:
         # The 'instancemethod' type of Python 2 and the method type of

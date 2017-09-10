@@ -6,6 +6,7 @@ Home-page: http://deeplearning.net/software/theano/
 Author: LISA laboratory, University of Montreal
 Author-email: theano-dev@googlegroups.com
 License: BSD
+Description-Content-Type: UNKNOWN
 Keywords: theano math numerical symbolic blas numpy gpu autodiff differentiation
 Platform: Windows
 Platform: Linux

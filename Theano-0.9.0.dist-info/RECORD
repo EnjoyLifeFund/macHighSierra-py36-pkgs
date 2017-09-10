@@ -1,9 +1,9 @@
 Theano-0.9.0.dist-info/DESCRIPTION.rst,sha256=PqWbRcAQbeuxcP9pNuFOfKkqC8ii7WOQw2Ib7e0_q18,8691
-Theano-0.9.0.dist-info/METADATA,sha256=WB6k-JDSilxbeHtfv5QV_IrdAwv06ASm7crIsb0oew4,10383
+Theano-0.9.0.dist-info/METADATA,sha256=0x8wfk91ySKQ5ENhZE7lHJtjlsXGCzuOymeMCkdLd1o,10417
 Theano-0.9.0.dist-info/RECORD,,
 Theano-0.9.0.dist-info/WHEEL,sha256=UMxW5ad6zjudXe4jPWTM-wnTIGreEj2qx-IkE2LS1Rk,93
 Theano-0.9.0.dist-info/entry_points.txt,sha256=jcu6U-gN2IuhJetyyDckMUVOmLRL8ok6FCkeWPoo9sA,91
-Theano-0.9.0.dist-info/metadata.json,sha256=trbwUV1srS9-vDZ6-n3_ZpF_CaPwb2bupxH3-u7YrhM,1865
+Theano-0.9.0.dist-info/metadata.json,sha256=pqmmd0OxIO-GLYogQv6zGWJD81Ufj7mmO0vDZ1Qj4SA,1904
 Theano-0.9.0.dist-info/top_level.txt,sha256=z9F1dp43qo7WTd3dWh3lKTVoW_d-3IDP5PiFFehKL5I,11
 bin/__init__.py,sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0
 bin/theano_cache.py,sha256=HHkhp0xuYH7XPrm10x0IiMBFJPGFmNIqwko4-cnf1G4,4043

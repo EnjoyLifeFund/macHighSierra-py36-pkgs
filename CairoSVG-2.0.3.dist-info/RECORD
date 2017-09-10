@@ -21,7 +21,7 @@ cairosvg/svg.py,sha256=eext1ViLkOaIRqEaUyNc19ABVQYP4SbH4B0i01ZxaxE,1715
 cairosvg/test_api.py,sha256=jOfDV7G3M7OofM2FHQWbY75TVwkKlSTydtW7IadSAo4,7321
 cairosvg/text.py,sha256=6CK6ExDtKDcDNfTnBwIZdW5hNR7JmpcmALzOfRq4I-I,9814
 cairosvg/url.py,sha256=5Uw4_vEQIH_DPhJur5BQ9wlkKGibkvAOobiuqkqzheQ,3333
-../../../bin/cairosvg,sha256=DV7_9rKVSvOC8ytrqr8_IwMt2ZFfCs3FZLNwV3yzy0w,240
+../../../bin/cairosvg,sha256=Q7_yuCaXEfwP-TSLEwHKuMuZ5Y1uSQnNr1JZ-POH3nY,283
 CairoSVG-2.0.3.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 cairosvg/__pycache__/__init__.cpython-36.pyc,,
 cairosvg/__pycache__/bounding_box.cpython-36.pyc,,

@@ -390,7 +390,7 @@ jupyter_contrib_nbextensions-0.3.1.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6V
 jupyter_contrib_nbextensions-0.3.1.dist-info/entry_points.txt,sha256=YMyu5iwWL9JzEpCJKOn43CjyUGyhvi6sHtZVTeELYZk,616
 jupyter_contrib_nbextensions-0.3.1.dist-info/metadata.json,sha256=hJ2vFlqP9yhNI3do6B2Hf0R-g70L5N5Hlsn3JmsDYc8,2291
 jupyter_contrib_nbextensions-0.3.1.dist-info/top_level.txt,sha256=GZJKugWyvBhBZTPWBBWjboHOeBBxAoZoE1C1fcYB8AA,29
-../../../bin/jupyter-contrib-nbextension,sha256=ypH6_s0VwR8caBGB8OFeVn51MqU_Uclr_f14X5tUyls,263
+../../../bin/jupyter-contrib-nbextension,sha256=CEBuZ73wMdZxTOZUyAlo-Eq2EoxH_p25rFEw9nverDw,315
 jupyter_contrib_nbextensions-0.3.1.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 jupyter_contrib_nbextensions/__pycache__/__init__.cpython-36.pyc,,
 jupyter_contrib_nbextensions/__pycache__/application.cpython-36.pyc,,

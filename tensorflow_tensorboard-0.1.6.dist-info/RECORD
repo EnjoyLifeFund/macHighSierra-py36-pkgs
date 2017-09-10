@@ -243,7 +243,7 @@ tensorflow_tensorboard-0.1.6.dist-info/WHEEL,sha256=rNo05PbNqwnXiIHFsYm0m22u4Zm6
 tensorflow_tensorboard-0.1.6.dist-info/entry_points.txt,sha256=6EFD2sCY6w4BHLKCQS251xU64XPkBGnH1DGfPjDWQWg,55
 tensorflow_tensorboard-0.1.6.dist-info/metadata.json,sha256=fv07DoQ9hoWWiTjbTa5T7iH--Ebxdeu2C9F8hxwCl3c,1519
 tensorflow_tensorboard-0.1.6.dist-info/top_level.txt,sha256=Bg-a5NI_nlMJCY-Svipvak-WaWDF_Iql2kZPIy390v4,21
-../../../bin/tensorboard,sha256=ugX2SxotHWjWcYE9py0PbpADvJ1JmN11ibgapXc6Oc4,248
+../../../bin/tensorboard,sha256=a4AQVi5c02MIdghTW3B2vAspaBlSgk0_S2sS5oxrgjA,291
 tensorflow_tensorboard-0.1.6.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 external/__pycache__/__init__.cpython-36.pyc,,
 external/org_html5lib/__pycache__/__init__.cpython-36.pyc,,

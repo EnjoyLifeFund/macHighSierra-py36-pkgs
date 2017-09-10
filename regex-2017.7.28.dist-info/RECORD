@@ -1,11 +1,11 @@
-_regex.cpython-36m-darwin.so,sha256=8YIm7jEKrB3WRGbw3UhFy8Dsmf7KRZzNU6LEUzCAN9k,544248
+_regex.cpython-36dm-darwin.so,sha256=Is1noIufO0oikuXQPzj6g06fbmCxNo-2hy0a-CEZMWQ,520448
 _regex_core.py,sha256=j44iKnjBXg3CYsHKwazHpvOXXtzSFFLb23itAU-QJYs,141790
 regex.py,sha256=ZHfbFM59wrqfwi40FstmQBmhKoDA-b8qVe5F2pXvros,30470
 test_regex.py,sha256=c3e3W8euIEWcd0l9uGD6CHlRh2lS44gVrkxluggQKog,192351
 regex-2017.7.28.dist-info/DESCRIPTION.rst,sha256=Bz-gRPqO99Oaxw7hZs4UHUb4ZLNRA_v06H3jusbEt6M,38485
 regex-2017.7.28.dist-info/METADATA,sha256=8-EgKw-HXR1IE1dUMtxC8vNneOqFwxwErI2UnEudWXs,39714
 regex-2017.7.28.dist-info/RECORD,,
-regex-2017.7.28.dist-info/WHEEL,sha256=y2Z6Warz5bPErf2T4gQ3bzoUAc9U05WHg09oTBqzt6w,111
+regex-2017.7.28.dist-info/WHEEL,sha256=6ur8vMCzwgqlp_Bc7ZOgeoqRz-S5u3pdxcXcZrBMsJ4,112
 regex-2017.7.28.dist-info/metadata.json,sha256=XGrZbe9Sn5O7Tbk0FJmGQ1-C3rDmYEta0gwkSAbTBmU,1284
 regex-2017.7.28.dist-info/top_level.txt,sha256=tw5-CKEX1sGxIMsvl7R_WzlX0H-avTd1QAeuFxI2VeQ,36
 regex-2017.7.28.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4

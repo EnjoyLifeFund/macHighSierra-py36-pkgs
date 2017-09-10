@@ -21,6 +21,7 @@ tornado/process.py,sha256=T1qweLJJyCa4keX9kAiyG6oPRE8IejKH17zVGMbG7X4,12762
 tornado/queues.py,sha256=hKZMeovzB0mYgw6L8d6fb5MSuQikXYFGEzM2BZ06Z_I,10308
 tornado/routing.py,sha256=SyCRfR_4ZPsZcTyNUiGcT6DeDlf5vg_zHN_cogBsNcA,21735
 tornado/simple_httpclient.py,sha256=p2HTh8NqBgcg23m6RDFQGf5gJIzrPZE-msudBXmfKNU,24720
+tornado/speedups.cpython-36dm-darwin.so,sha256=pIN4pkBj4b3nGwju_XKtwfDEK3ExFojomxsnth6_xqc,9160
 tornado/stack_context.py,sha256=A98swJXqk-oOBewsEBgvX6CrnKysIRUfC4ZBaoQmr7E,13160
 tornado/tcpclient.py,sha256=UCrMeLw5J2kn6Vhc3te0FNF4UbaUCBn_w8zfZDzrPuE,8635
 tornado/tcpserver.py,sha256=8_mzseU1E1mNRMjTrELp-Na9HjzMzkuaJi4Ne3it-tM,12491
@@ -96,7 +97,7 @@ tornado/test/templates/utf8.html,sha256=9d1eiaw5KCjUTCbRRIl_RLSy0LCJXaO-bzVF2L_3
 tornado-4.5.2.dist-info/DESCRIPTION.rst,sha256=vDSClYzbm1CdQT6XQ2BcbW3rahLMy8P4jUJ507ZOue4,1571
 tornado-4.5.2.dist-info/METADATA,sha256=bRFcU4DY0sQUMBTQhLND4HhLl2uJUH3B-48gEmEkbNk,2494
 tornado-4.5.2.dist-info/RECORD,,
-tornado-4.5.2.dist-info/WHEEL,sha256=y2Z6Warz5bPErf2T4gQ3bzoUAc9U05WHg09oTBqzt6w,111
+tornado-4.5.2.dist-info/WHEEL,sha256=6ur8vMCzwgqlp_Bc7ZOgeoqRz-S5u3pdxcXcZrBMsJ4,112
 tornado-4.5.2.dist-info/metadata.json,sha256=xp7YdK4aG3vVK28gC1WhDPLXEo9a_ZRbuRSu7o_no_I,1041
 tornado-4.5.2.dist-info/top_level.txt,sha256=5QAK1MeNpWgYdqWoU8iYlDuGB8j6NDPgx-uSUHTe0A4,8
 tornado-4.5.2.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4

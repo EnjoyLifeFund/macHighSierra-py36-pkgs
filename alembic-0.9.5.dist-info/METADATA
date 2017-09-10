@@ -6,6 +6,7 @@ Home-page: http://bitbucket.org/zzzeek/alembic
 Author: Mike Bayer
 Author-email: mike@zzzcomputing.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Keywords: SQLAlchemy migrations
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta

@@ -131,8 +131,8 @@ jupyterthemes-0.17.6.dist-info/WHEEL,sha256=o2k-Qa-RMNIJmUdIc7KU6VWR_ErNRbWNlxDI
 jupyterthemes-0.17.6.dist-info/entry_points.txt,sha256=m8A4K2FP9hvrS8kRx9iYv_NtqGAWeT4Y_dwE0JcTCxo,78
 jupyterthemes-0.17.6.dist-info/metadata.json,sha256=QdGtFcfOFQA9Ld44v3SxQn-UJ-CZJ3BOucUX_dg-Jys,1253
 jupyterthemes-0.17.6.dist-info/top_level.txt,sha256=H2EC-tjVJfLroNQxAfgS-iPk21aJF6nv6NuW4z5WJy4,14
-../../../bin/jt,sha256=XfuHxE1xT5b5XG6U7QfApr2ehuPz2rSRuyG-yL-I8T0,245
-../../../bin/jupyter-theme,sha256=XfuHxE1xT5b5XG6U7QfApr2ehuPz2rSRuyG-yL-I8T0,245
+../../../bin/jt,sha256=FwcW2J0F3Xc4DSuAA7l-i13j7PQzVF3bEowBPMrK6O8,288
+../../../bin/jupyter-theme,sha256=FwcW2J0F3Xc4DSuAA7l-i13j7PQzVF3bEowBPMrK6O8,288
 jupyterthemes-0.17.6.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
 jupyterthemes/__pycache__/__init__.cpython-36.pyc,,
 jupyterthemes/__pycache__/jtplot.cpython-36.pyc,,
