@@ -83,27 +83,27 @@ if pycompat.osname != 'nt':
 
     class _iovec(ctypes.Structure):
         _fields_ = [
-            ('iov_base', ctypes.c_void_p),
-            ('iov_len', ctypes.c_size_t),
+            (str('iov_base'), ctypes.c_void_p),
+            (str('iov_len'), ctypes.c_size_t),
         ]
 
     class _msghdr(ctypes.Structure):
         _fields_ = [
-            ('msg_name', ctypes.c_void_p),
-            ('msg_namelen', _socklen_t),
-            ('msg_iov', ctypes.POINTER(_iovec)),
-            ('msg_iovlen', _msg_iovlen_t),
-            ('msg_control', ctypes.c_void_p),
-            ('msg_controllen', _msg_controllen_t),
-            ('msg_flags', ctypes.c_int),
+            (str('msg_name'), ctypes.c_void_p),
+            (str('msg_namelen'), _socklen_t),
+            (str('msg_iov'), ctypes.POINTER(_iovec)),
+            (str('msg_iovlen'), _msg_iovlen_t),
+            (str('msg_control'), ctypes.c_void_p),
+            (str('msg_controllen'), _msg_controllen_t),
+            (str('msg_flags'), ctypes.c_int),
         ]
 
     class _cmsghdr(ctypes.Structure):
         _fields_ = [
-            ('cmsg_len', _cmsg_len_t),
-            ('cmsg_level', ctypes.c_int),
-            ('cmsg_type', ctypes.c_int),
-            ('cmsg_data', ctypes.c_ubyte * 0),
+            (str('cmsg_len'), _cmsg_len_t),
+            (str('cmsg_level'), ctypes.c_int),
+            (str('cmsg_type'), ctypes.c_int),
+            (str('cmsg_data'), ctypes.c_ubyte * 0),
         ]
 
     _libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)

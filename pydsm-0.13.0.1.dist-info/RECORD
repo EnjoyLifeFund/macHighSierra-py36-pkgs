@@ -96,7 +96,7 @@ pydsm/delsig/_rms.py,sha256=QFjXsif-m2jdb4-nckZ08xMdTBAwTTFMrMrx4im2okc,3299
 pydsm/delsig/_rmsGain.py,sha256=VYP2Qq8iAjI4EWYYzcGH6nVVXa96Rjb4Lp3zMsAWUtc,4045
 pydsm/delsig/_simulateDSM.py,sha256=-IHbYcNi_3JOLr8v0dfeOT4fDl3VH9aAfjFLUvv6Myg,6574
 pydsm/delsig/_simulateDSM_scipy.py,sha256=mJc7a-GMjdIJAGB-8cLJEfvgSN9lp9wnGbKOsbXahDM,6653
-pydsm/delsig/_simulateDSM_scipy_blas.cpython-36m-darwin.so,sha256=gGSYdV6h17578wgNSMOLh99OD4CDsk0hMrbb2E6psGY,134552
+pydsm/delsig/_simulateDSM_scipy_blas.cpython-36dm-darwin.so,sha256=sfwarve5BTTXOujUY8sX6a_LwbdW8jrnMAjGBLGZVj0,141832
 pydsm/delsig/_synthesizeChebyshevNTF.py,sha256=SgeBoz0QTPm5BaspwQwt8vGKFVj_6CmvCVh23VGq6zc,6191
 pydsm/delsig/_synthesizeNTF.py,sha256=S0ufDF8n0wbCXtyY526VNiRUPmvgoqqUAfpBXya0O9U,6184
 pydsm/delsig/_synthesizeNTF0.py,sha256=L5jOFWc2mdFxiyhJNLqrBkedrJbyA8dFEJu9pxkGKZQ,6544
@@ -117,7 +117,7 @@ pydsm/tests/test_ir.py,sha256=_kQrL5oM8cXyZ3JpJbkttMBvu2SbA8QzfIvQNZO9PWA,2123
 pydsm-0.13.0.1.dist-info/DESCRIPTION.rst,sha256=97Tn34TR0g-nFQkZP8hsPc6CRwrFBfTpnugi4ttPjqY,7353
 pydsm-0.13.0.1.dist-info/METADATA,sha256=i1AXieNfMhSyR3o8PnMRCxK8pKw1G0MoN9yyd2Gt6_8,8893
 pydsm-0.13.0.1.dist-info/RECORD,,
-pydsm-0.13.0.1.dist-info/WHEEL,sha256=y2Z6Warz5bPErf2T4gQ3bzoUAc9U05WHg09oTBqzt6w,111
+pydsm-0.13.0.1.dist-info/WHEEL,sha256=6ur8vMCzwgqlp_Bc7ZOgeoqRz-S5u3pdxcXcZrBMsJ4,112
 pydsm-0.13.0.1.dist-info/metadata.json,sha256=0_Ev9zpIKK24si6u0Om7WyXNGccF6X0rxwTm8YIrP4Q,1401
 pydsm-0.13.0.1.dist-info/pbr.json,sha256=HcYo830VY-GXYEM0XsBoz3Wba8wt805p5HLolXTwj_s,46
 pydsm-0.13.0.1.dist-info/top_level.txt,sha256=2mwaxVzGPzwP8gK2Qe8WXqd5SGzwJkhBBzzPC9ppLsc,19

@@ -1,6 +1,6 @@
-
-from itertools import zip_longest
-import queue
+from __future__ import absolute_import
+from itertools import izip_longest
+import Queue
 
 import MySQLdb as mysql
 from MySQLdb.cursors import DictCursor
@@ -287,7 +287,7 @@ class SQLDatabase(Database):
             mapper[hash.upper()] = offset
 
         # Get an iteratable of all the hashes we need
-        values = list(mapper.keys())
+        values = mapper.keys()
 
         with self.cursor() as cur:
             for split_values in grouper(values, 1000):
@@ -311,8 +311,8 @@ class SQLDatabase(Database):
 
 def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
-    return ([_f for _f in values if _f] for values
-            in zip_longest(fillvalue=fillvalue, *args))
+    return (filter(None, values) for values
+            in izip_longest(fillvalue=fillvalue, *args))
 
 
 def cursor_factory(**factory_options):
@@ -333,14 +333,14 @@ class Cursor(object):
         cur.execute(query)
     ```
     """
-    _cache = queue.Queue(maxsize=5)
+    _cache = Queue.Queue(maxsize=5)
 
     def __init__(self, cursor_type=mysql.cursors.Cursor, **options):
         super(Cursor, self).__init__()
 
         try:
             conn = self._cache.get_nowait()
-        except queue.Empty:
+        except Queue.Empty:
             conn = mysql.connect(**options)
         else:
             # Ping the connection before using it from the cache.
@@ -352,7 +352,7 @@ class Cursor(object):
 
     @classmethod
     def clear_cache(cls):
-        cls._cache = queue.Queue(maxsize=5)
+        cls._cache = Queue.Queue(maxsize=5)
 
     def __enter__(self):
         self.cursor = self.conn.cursor(self.cursor_type)
@@ -369,5 +369,5 @@ class Cursor(object):
         # Put it back on the queue
         try:
             self._cache.put_nowait(self.conn)
-        except queue.Full:
+        except Queue.Full:
             self.conn.close()

@@ -653,7 +653,7 @@ class _lrucachenode(object):
     Holds a reference to nodes on either side as well as a key-value
     pair for the dictionary entry.
     """
-    __slots__ = ('next', 'prev', 'key', 'value')
+    # __slots__ = (str("next"), str("prev"), str("key"), str("value"))
 
     def __init__(self):
         self.next = None
@@ -1022,7 +1022,7 @@ def mainfrozen():
     """
     return (safehasattr(sys, "frozen") or # new py2exe
             safehasattr(sys, "importers") or # old py2exe
-            imp.is_frozen("__main__")) # tools/freeze
+            imp.is_frozen(str("__main__"))) # tools/freeze
 
 # the location of data files matching the source code
 if mainfrozen() and getattr(sys, 'frozen', None) != 'macosx_app':
@@ -3142,9 +3142,9 @@ def finddirs(path):
 SERVERROLE = 'server'
 CLIENTROLE = 'client'
 
-compewireprotosupport = collections.namedtuple('compenginewireprotosupport',
-                                               ('name', 'serverpriority',
-                                                'clientpriority'))
+compewireprotosupport = collections.namedtuple(str('compenginewireprotosupport'),
+                                               (str('name'), str('serverpriority'),
+                                                str('clientpriority')))
 
 class compressormanager(object):
     """Holds registrations of various compression engines.

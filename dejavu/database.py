@@ -1,8 +1,10 @@
-
+from __future__ import absolute_import
 import abc
 
 
-class Database(object, metaclass=abc.ABCMeta):
+class Database(object):
+    __metaclass__ = abc.ABCMeta
+
     FIELD_FILE_SHA1 = 'file_sha1'
     FIELD_SONG_ID = 'song_id'
     FIELD_SONGNAME = 'song_name'

@@ -24,20 +24,16 @@ provides an object oriented interface which closely follows MPI-2 C++
 bindings.
 """
 
-__version__ = '2.0.0'
-__author__  = 'Lisandro Dalcin'
+__version__ = '2.0.1a0'
+__author__ = 'Lisandro Dalcin'
 __credits__ = 'MPI Forum, MPICH Team, Open MPI Team'
 
-# --------------------------------------------------------------------
 
 __all__ = ['MPI']
 
-# --------------------------------------------------------------------
-
 
 def get_include():
-    """
-    Return the directory in the package that contains header files.
+    """Return the directory in the package that contains header files.
 
     Extension modules that need to compile against mpi4py should use
     this function to locate the appropriate include directory. Using
@@ -51,30 +47,21 @@ def get_include():
     from os.path import join, dirname
     return join(dirname(__file__), 'include')
 
-# --------------------------------------------------------------------
-
 
 def get_config():
-    """
-    Return a dictionary with information about MPI.
-    """
+    """Return a dictionary with information about MPI."""
     from os.path import join, dirname
     try:
-        # pylint: disable=import-error
         from configparser import ConfigParser
-    except ImportError:
-        # pylint: disable=import-error
+    except ImportError:  # pragma: no cover
         from ConfigParser import ConfigParser
     parser = ConfigParser()
     parser.read(join(dirname(__file__), 'mpi.cfg'))
     return dict(parser.items('mpi'))
 
-# --------------------------------------------------------------------
-
 
 def rc(**kargs):  # pylint: disable=invalid-name
-    """
-    Runtime configuration options.
+    """Runtime configuration options.
 
     Parameters
     ----------
@@ -96,7 +83,7 @@ def rc(**kargs):  # pylint: disable=invalid-name
     """
     for key in kargs:
         if not hasattr(rc, key):
-            raise TypeError("unexpected argument '%s'" % key)
+            raise TypeError("unexpected argument '{0}'".format(key))
     for key, value in kargs.items():
         setattr(rc, key, value)
 
@@ -107,49 +94,29 @@ rc.finalize = None
 rc.fast_reduce = True
 rc.recv_mprobe = True
 rc.errors = 'exception'
-
-from sys import modules
-modules[__name__ + '.rc'] = rc
-del modules
-
-# --------------------------------------------------------------------
+__import__('sys').modules[__name__ + '.rc'] = rc
 
 
-def profile(name='mpe', **kargs):
-    """
-    Support for the MPI profiling interface.
+def profile(name, **kargs):
+    """Support for the MPI profiling interface.
 
     Parameters
     ----------
-    name : str, optional
-       Name of the profiler to load.
+    name : str
+       Name of the profiler library to load.
     path : list of str, optional
        Additional paths to search for the profiler.
     logfile : str, optional
        Filename prefix for dumping profiler output.
+
     """
-    # pylint: disable=too-many-locals
-    # pylint: disable=too-many-branches
     import sys
     import os
-    try:
-        from .dl import dlopen, dlerror, RTLD_NOW, RTLD_GLOBAL
-    except ImportError:  # pragma: no cover
-        from ctypes import CDLL as dlopen, RTLD_GLOBAL
-        try:
-            # pylint: disable=import-error
-            from DLFCN import RTLD_NOW
-        except ImportError:
-            RTLD_NOW = 2  # pylint: disable=invalid-name
-        dlerror = None
+    from .dl import dlopen, dlerror, RTLD_NOW, RTLD_GLOBAL
 
     def lookup_dylib(name, path):
         # pylint: disable=missing-docstring
-        import imp
         pattern = []
-        for suffix, _, kind in imp.get_suffixes():
-            if kind == imp.C_EXTENSION:
-                pattern.append(('', suffix))
         if sys.platform.startswith('win'):  # pragma: no cover
             pattern.append(('', '.dll'))
         elif sys.platform == 'darwin':  # pragma: no cover
@@ -161,9 +128,9 @@ def profile(name='mpe', **kargs):
             for (lib, dso) in pattern:
                 filename = os.path.join(pth, lib + name + dso)
                 if os.path.isfile(filename):
-                    return filename
+                    return os.path.abspath(filename)
         return None
-    #
+
     logfile = kargs.pop('logfile', None)
     if logfile:
         if name in ('mpe',):
@@ -172,33 +139,23 @@ def profile(name='mpe', **kargs):
         if name in ('vt', 'vt-mpi', 'vt-hyb'):
             if 'VT_FILE_PREFIX' not in os.environ:
                 os.environ['VT_FILE_PREFIX'] = logfile
-    path = kargs.pop('path', None)
-    if path is None:
-        path = []
-    elif isinstance(path, str):
+
+    path = kargs.pop('path', [])
+    if isinstance(path, str):
         path = [path]
     else:
         path = list(path)
-
     prefix = os.path.dirname(__file__)
     path.append(os.path.join(prefix, 'lib-pmpi'))
     filename = lookup_dylib(name, path)
     if filename is None:
-        raise ValueError("profiler '%s' not found" % name)
-    else:
-        filename = os.path.abspath(filename)
+        raise ValueError("profiler '{0}' not found".format(name))
 
     handle = dlopen(filename, RTLD_NOW | RTLD_GLOBAL)
-    if handle:  # pragma: no branch
+    if handle:
         profile.registry.append((name, (handle, filename)))
-    else:  # pragma: no cover
+    else:
         from warnings import warn
-        if dlerror:
-            message = dlerror()
-        else:
-            message = "error loading '%s'" % filename
-        warn(message)
+        warn(dlerror())
 
 profile.registry = []
-
-# --------------------------------------------------------------------

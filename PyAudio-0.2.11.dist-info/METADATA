@@ -6,6 +6,7 @@ Home-page: http://people.csail.mit.edu/hubert/pyaudio/
 Author: Hubert Pham
 Author-email: UNKNOWN
 License: UNKNOWN
+Description-Content-Type: UNKNOWN
 Platform: UNKNOWN
 
 PyAudio v0.2.11: Python Bindings for PortAudio.

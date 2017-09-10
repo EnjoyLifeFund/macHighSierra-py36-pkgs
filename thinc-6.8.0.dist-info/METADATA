@@ -32,10 +32,10 @@ Requires-Dist: msgpack-numpy
 Requires-Dist: msgpack-python
 Requires-Dist: murmurhash (>=0.28,<0.29)
 Requires-Dist: numpy (>=1.7)
-Requires-Dist: pathlib (<2.0.0,>=1.0.0)
-Requires-Dist: plac (<1.0.0,>=0.9.6)
-Requires-Dist: preshed (<2.0.0,>=1.0.0)
-Requires-Dist: six (<2.0.0,>=1.10.0)
+Requires-Dist: pathlib (>=1.0.0,<2.0.0)
+Requires-Dist: plac (>=0.9.6,<1.0.0)
+Requires-Dist: preshed (>=1.0.0,<2.0.0)
+Requires-Dist: six (>=1.10.0,<2.0.0)
 Requires-Dist: termcolor
 Requires-Dist: tqdm (>=4.10.0,<5.0.0)
 Requires-Dist: wrapt
