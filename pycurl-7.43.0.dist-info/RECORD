@@ -1,4 +1,4 @@
-pycurl.cpython-36m-darwin.so,sha256=vDLuJQD8MS-Ue5bivLvVgOdX5KXgd1wDhGE9es2LOwk,134992
+pycurl.cpython-36dm-darwin.so,sha256=iKdZe-kErtvOr8-JcyRXUSh9TsmZcw1ed3Q7rYt5b8o,149532
 curl/__init__.py,sha256=WX-WkvK2VxtCnfXKjYi6Mh5206Ksl9NeA7GgzCfsQpk,7023
 ../../../share/doc/pycurl/AUTHORS,sha256=k8amGudPBINJHK34FbuTVVIQ4VFWavOYDdfch8f65d8,2017
 ../../../share/doc/pycurl/COPYING-LGPL,sha256=3GJlINzVOiL3J68-5Cx3DlbJemT-OtsGN5nYqwMv5VE,26530
@@ -30,7 +30,7 @@ curl/__init__.py,sha256=WX-WkvK2VxtCnfXKjYi6Mh5206Ksl9NeA7GgzCfsQpk,7023
 pycurl-7.43.0.dist-info/DESCRIPTION.rst,sha256=k5MfKgmz2RCCq44vpI6BgK2p7EgRwITHMb7OasO1EI0,3011
 pycurl-7.43.0.dist-info/METADATA,sha256=n8CZivzbZ0NkQLeO3AxruFS4fu7rSAxAe7pLdKQ9LqI,3912
 pycurl-7.43.0.dist-info/RECORD,,
-pycurl-7.43.0.dist-info/WHEEL,sha256=y2Z6Warz5bPErf2T4gQ3bzoUAc9U05WHg09oTBqzt6w,111
+pycurl-7.43.0.dist-info/WHEEL,sha256=6ur8vMCzwgqlp_Bc7ZOgeoqRz-S5u3pdxcXcZrBMsJ4,112
 pycurl-7.43.0.dist-info/metadata.json,sha256=IhOMW6iPK0wXT6Nhs_aSkNscUiiynrpkC3GhH7prvTU,1064
 pycurl-7.43.0.dist-info/top_level.txt,sha256=nGOR8naDoonDhRxux0vjGbA45NpodXw1NT2dpl-FJEI,12
 pycurl-7.43.0.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
