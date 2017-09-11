@@ -1,0 +1,23 @@
+
+******************************************************************
+* FATAL ERROR:                                                   *
+* This OpenCV build doesn't support current CPU/HW configuration *
+*                                                                *
+* Use OPENCV_DUMP_CONFIG=1 environment variable for details      *
+******************************************************************
+
+Required baseline features:
+SSE - OK
+SSE2 - OK
+SSE3 - OK
+SSSE3 - OK
+SSE4.1 - OK
+POPCNT - OK
+SSE4.2 - OK
+FMA3 - NOT AVAILABLE
+AVX - OK
+AVX2 - NOT AVAILABLE
+OpenCV Error: Assertion failed (Missing support for required CPU baseline features. Check OpenCV build configuration and required CPU/HW setup.) in initialize, file /Users/dojo/opencv-python/opencv/modules/core/src/system.cpp, line 518
+libc++abi.dylib: terminating with uncaught exception of type cv::Exception: /Users/dojo/opencv-python/opencv/modules/core/src/system.cpp:518: error: (-215) Missing support for required CPU baseline features. Check OpenCV build configuration and required CPU/HW setup. in function initialize
+
+Abort trap: 6
