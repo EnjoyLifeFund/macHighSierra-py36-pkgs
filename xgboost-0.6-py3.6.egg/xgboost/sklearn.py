@@ -1,7 +1,7 @@
 # coding: utf-8
 # pylint: disable=too-many-arguments, too-many-locals, invalid-name, fixme, E0012, R0912
 """Scikit-Learn Wrapper interface for XGBoost."""
-from __future__ import absolute_import
+
 
 import numpy as np
 import warnings
@@ -155,25 +155,10 @@ class XGBModel(XGBModelBase):
         self.missing = missing if missing is not None else np.nan
         self.kwargs = kwargs
         self._Booster = None
-        if seed:
-            warnings.warn('The seed parameter is deprecated as of version .6.'
-                          'Please use random_state instead.'
-                          'seed is deprecated.', DeprecationWarning)
-            self.seed = seed
-            self.random_state = seed
-        else:
-            self.seed = random_state
-            self.random_state = random_state
-
-        if nthread:
-            warnings.warn('The nthread parameter is deprecated as of version .6.'
-                          'Please use n_jobs instead.'
-                          'nthread is deprecated.', DeprecationWarning)
-            self.nthread = nthread
-            self.n_jobs = nthread
-        else:
-            self.nthread = n_jobs
-            self.n_jobs = n_jobs
+        self.seed = seed
+        self.random_state = random_state
+        self.nthread = nthread
+        self.n_jobs = n_jobs
 
     def __setstate__(self, state):
         # backward compatibility code
@@ -198,7 +183,7 @@ class XGBModel(XGBModelBase):
         return self._Booster
 
     def get_params(self, deep=False):
-        """Get parameter.s"""
+        """Get parameters."""
         params = super(XGBModel, self).get_params(deep=deep)
         if isinstance(self.kwargs, dict):  # if kwargs is a dict, update params accordingly
             params.update(self.kwargs)
@@ -211,12 +196,24 @@ class XGBModel(XGBModelBase):
     def get_xgb_params(self):
         """Get xgboost type parameters."""
         xgb_params = self.get_params()
-        xgb_params.pop('random_state')
-        xgb_params.pop('n_jobs')
+        random_state = xgb_params.pop('random_state')
+        if xgb_params['seed'] is not None:
+            warnings.warn('The seed parameter is deprecated as of version .6.'
+                          'Please use random_state instead.'
+                          'seed is deprecated.', DeprecationWarning)
+        else:
+            xgb_params['seed'] = random_state
+        n_jobs = xgb_params.pop('n_jobs')
+        if xgb_params['nthread'] is not None:
+            warnings.warn('The nthread parameter is deprecated as of version .6.'
+                          'Please use n_jobs instead.'
+                          'nthread is deprecated.', DeprecationWarning)
+        else:
+            xgb_params['nthread'] = n_jobs
 
         xgb_params['silent'] = 1 if self.silent else 0
 
-        if self.nthread <= 0:
+        if xgb_params['nthread'] <= 0:
             xgb_params.pop('nthread', None)
         return xgb_params
 
@@ -260,13 +257,15 @@ class XGBModel(XGBModelBase):
             metric measured on the validation set to stderr.
         """
         if sample_weight is not None:
-            trainDmatrix = DMatrix(X, label=y, weight=sample_weight, missing=self.missing)
+            trainDmatrix = DMatrix(X, label=y, weight=sample_weight,
+                                   missing=self.missing, nthread=self.n_jobs)
         else:
-            trainDmatrix = DMatrix(X, label=y, missing=self.missing)
+            trainDmatrix = DMatrix(X, label=y, missing=self.missing, nthread=self.n_jobs)
 
         evals_result = {}
         if eval_set is not None:
-            evals = list(DMatrix(x[0], label=x[1], missing=self.missing) for x in eval_set)
+            evals = list(DMatrix(x[0], label=x[1], missing=self.missing,
+                                 nthread=self.n_jobs) for x in eval_set)
             evals = list(zip(evals, ["validation_{}".format(i) for i in
                                      range(len(evals))]))
         else:
@@ -294,7 +293,7 @@ class XGBModel(XGBModelBase):
                               verbose_eval=verbose)
 
         if evals_result:
-            for val in evals_result.items():
+            for val in list(evals_result.items()):
                 evals_result_key = list(val[1].keys())[0]
                 evals_result[val[0]][evals_result_key] = val[1][evals_result_key]
             self.evals_result_ = evals_result
@@ -307,7 +306,7 @@ class XGBModel(XGBModelBase):
 
     def predict(self, data, output_margin=False, ntree_limit=0):
         # pylint: disable=missing-docstring,invalid-name
-        test_dmatrix = DMatrix(data, missing=self.missing)
+        test_dmatrix = DMatrix(data, missing=self.missing, nthread=self.n_jobs)
         return self.get_booster().predict(test_dmatrix,
                                           output_margin=output_margin,
                                           ntree_limit=ntree_limit)
@@ -330,7 +329,7 @@ class XGBModel(XGBModelBase):
             leaf x ends up in. Leaves are numbered within
             ``[0; 2**(self.max_depth+1))``, possibly with gaps in the numbering.
         """
-        test_dmatrix = DMatrix(X, missing=self.missing)
+        test_dmatrix = DMatrix(X, missing=self.missing, nthread=self.n_jobs)
         return self.get_booster().predict(test_dmatrix,
                                           pred_leaf=True,
                                           ntree_limit=ntree_limit)
@@ -478,7 +477,8 @@ class XGBClassifier(XGBModel, XGBClassifierBase):
         if eval_set is not None:
             # TODO: use sample_weight if given?
             evals = list(
-                DMatrix(x[0], label=self._le.transform(x[1]), missing=self.missing)
+                DMatrix(x[0], label=self._le.transform(x[1]),
+                        missing=self.missing, nthread=self.n_jobs)
                 for x in eval_set
             )
             nevals = len(evals)
@@ -491,10 +491,10 @@ class XGBClassifier(XGBModel, XGBClassifierBase):
 
         if sample_weight is not None:
             train_dmatrix = DMatrix(X, label=training_labels, weight=sample_weight,
-                                    missing=self.missing)
+                                    missing=self.missing, nthread=self.n_jobs)
         else:
             train_dmatrix = DMatrix(X, label=training_labels,
-                                    missing=self.missing)
+                                    missing=self.missing, nthread=self.n_jobs)
 
         self._Booster = train(xgb_options, train_dmatrix, self.n_estimators,
                               evals=evals,
@@ -504,7 +504,7 @@ class XGBClassifier(XGBModel, XGBClassifierBase):
 
         self.objective = xgb_options["objective"]
         if evals_result:
-            for val in evals_result.items():
+            for val in list(evals_result.items()):
                 evals_result_key = list(val[1].keys())[0]
                 evals_result[val[0]][evals_result_key] = val[1][evals_result_key]
             self.evals_result_ = evals_result
@@ -517,7 +517,7 @@ class XGBClassifier(XGBModel, XGBClassifierBase):
         return self
 
     def predict(self, data, output_margin=False, ntree_limit=0):
-        test_dmatrix = DMatrix(data, missing=self.missing)
+        test_dmatrix = DMatrix(data, missing=self.missing, nthread=self.n_jobs)
         class_probs = self.get_booster().predict(test_dmatrix,
                                                  output_margin=output_margin,
                                                  ntree_limit=ntree_limit)
@@ -529,7 +529,7 @@ class XGBClassifier(XGBModel, XGBClassifierBase):
         return self._le.inverse_transform(column_indexes)
 
     def predict_proba(self, data, output_margin=False, ntree_limit=0):
-        test_dmatrix = DMatrix(data, missing=self.missing)
+        test_dmatrix = DMatrix(data, missing=self.missing, nthread=self.n_jobs)
         class_probs = self.get_booster().predict(test_dmatrix,
                                                  output_margin=output_margin,
                                                  ntree_limit=ntree_limit)

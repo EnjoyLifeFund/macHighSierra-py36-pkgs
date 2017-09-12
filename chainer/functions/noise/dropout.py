@@ -1,7 +1,9 @@
 import numpy
 
+from chainer import configuration
 from chainer import cuda
 from chainer import function
+from chainer.utils import argument
 from chainer.utils import type_check
 
 
@@ -10,6 +12,8 @@ class Dropout(function.Function):
     """Dropout regularization."""
 
     def __init__(self, dropout_ratio):
+        if not 0.0 <= dropout_ratio < 1.0:
+            raise ValueError('dropout_ratio must be in the range [0, 1)')
         self.dropout_ratio = dropout_ratio
 
     def check_type_forward(self, in_types):
@@ -17,6 +21,7 @@ class Dropout(function.Function):
         type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
+        self.retain_inputs(())
         if not hasattr(self, 'mask'):
             scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
             xp = cuda.get_array_module(*x)
@@ -32,17 +37,25 @@ class Dropout(function.Function):
         return gy[0] * self.mask,
 
 
-def dropout(x, ratio=.5, train=True):
-    """Drops elements of input variable randomly.
+def dropout(x, ratio=.5, **kwargs):
+    """dropout(x, ratio=.5)
+
+    Drops elements of input variable randomly.
 
     This function drops input elements randomly with probability ``ratio`` and
     scales the remaining elements by factor ``1 / (1 - ratio)``. In testing
     mode, it does nothing and just returns ``x``.
 
+    .. warning::
+
+       ``train`` argument is not supported anymore since v2.
+       Instead, use ``chainer.using_config('train', boolean)``.
+       See :func:`chainer.using_config`.
+
     Args:
         x (~chainer.Variable): Input variable.
-        ratio (float): Dropout ratio.
-        train (bool): If ``True``, executes dropout. Otherwise, does nothing.
+        ratio (float): Dropout ratio. The ``ratio`` must be
+        ``0.0 <= ratio < 1.0``.
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -51,6 +64,11 @@ def dropout(x, ratio=.5, train=True):
     co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_.
 
     """
-    if train:
+    argument.check_unexpected_kwargs(
+        kwargs, train='train argument is not supported anymore. '
+        'Use chainer.using_config')
+    argument.assert_kwargs_empty(kwargs)
+
+    if configuration.config.train:
         return Dropout(ratio)(x)
     return x

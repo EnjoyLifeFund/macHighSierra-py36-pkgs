@@ -4,7 +4,7 @@
 Contributors: https://github.com/dmlc/xgboost/blob/master/CONTRIBUTORS.md
 """
 
-from __future__ import absolute_import
+
 
 import os
 

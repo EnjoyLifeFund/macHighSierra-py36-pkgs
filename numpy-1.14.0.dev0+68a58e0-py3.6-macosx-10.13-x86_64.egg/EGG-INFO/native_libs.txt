@@ -1,0 +1,12 @@
+numpy/core/_dummy.cpython-36dm-darwin.so
+numpy/core/multiarray.cpython-36dm-darwin.so
+numpy/core/multiarray_tests.cpython-36dm-darwin.so
+numpy/core/operand_flag_tests.cpython-36dm-darwin.so
+numpy/core/struct_ufunc_test.cpython-36dm-darwin.so
+numpy/core/test_rational.cpython-36dm-darwin.so
+numpy/core/umath.cpython-36dm-darwin.so
+numpy/core/umath_tests.cpython-36dm-darwin.so
+numpy/fft/fftpack_lite.cpython-36dm-darwin.so
+numpy/linalg/_umath_linalg.cpython-36dm-darwin.so
+numpy/linalg/lapack_lite.cpython-36dm-darwin.so
+numpy/random/mtrand.cpython-36dm-darwin.so

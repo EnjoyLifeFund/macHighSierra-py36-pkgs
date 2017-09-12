@@ -2,7 +2,7 @@
 # pylint: disable= invalid-name
 
 """Distributed XGBoost Rabit related API."""
-from __future__ import absolute_import
+
 import sys
 import ctypes
 import numpy as np

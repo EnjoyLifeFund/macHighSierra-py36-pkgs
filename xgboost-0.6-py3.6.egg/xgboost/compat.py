@@ -2,7 +2,7 @@
 # pylint: disable= invalid-name,  unused-import
 """For compatibility"""
 
-from __future__ import absolute_import
+
 
 import sys
 
@@ -18,14 +18,14 @@ if PY3:
         return x.decode('utf-8')
 else:
     # pylint: disable=invalid-name
-    STRING_TYPES = basestring,
+    STRING_TYPES = str,
 
     def py_str(x):
         """convert c string back to python string"""
         return x
 
 try:
-    import cPickle as pickle   # noqa
+    import pickle as pickle   # noqa
 except ImportError:
     import pickle              # noqa
 

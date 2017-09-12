@@ -1,0 +1,7 @@
+cvxopt/amd.cpython-36dm-darwin.so
+cvxopt/base.cpython-36dm-darwin.so
+cvxopt/blas.cpython-36dm-darwin.so
+cvxopt/cholmod.cpython-36dm-darwin.so
+cvxopt/lapack.cpython-36dm-darwin.so
+cvxopt/misc_solvers.cpython-36dm-darwin.so
+cvxopt/umfpack.cpython-36dm-darwin.so

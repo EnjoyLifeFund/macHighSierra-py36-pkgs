@@ -2,7 +2,7 @@
 # pylint: disable=too-many-locals, too-many-arguments, invalid-name
 # pylint: disable=too-many-branches, too-many-statements
 """Training Library containing training routines."""
-from __future__ import absolute_import
+
 
 import warnings
 import numpy as np
@@ -22,7 +22,7 @@ def _train_internal(params, dtrain,
     if isinstance(params, dict) \
             and 'eval_metric' in params \
             and isinstance(params['eval_metric'], list):
-        params = dict((k, v) for k, v in params.items())
+        params = dict((k, v) for k, v in list(params.items()))
         eval_metrics = params['eval_metric']
         params.pop("eval_metric", None)
         params = list(params.items())
@@ -235,8 +235,7 @@ def mknfold(dall, nfold, param, seed, evals=(), fpreproc=None, stratified=False,
             idx = np.random.permutation(dall.num_row())
         else:
             idx = np.arange(dall.num_row())
-        kstep = int(len(idx) / nfold)
-        idset = [idx[(i * kstep): min(len(idx), (i + 1) * kstep)] for i in range(nfold)]
+        idset = np.array_split(idx, nfold)
     elif folds is not None and isinstance(folds, list):
         idset = [x[1] for x in folds]
         nfold = len(idset)
@@ -281,7 +280,7 @@ def aggcv(rlist):
             cvmap[k].append(float(v))
     msg = idx
     results = []
-    for k, v in sorted(cvmap.items(), key=lambda x: (x[0].startswith('test'), x[0])):
+    for k, v in sorted(list(cvmap.items()), key=lambda x: (x[0].startswith('test'), x[0])):
         v = np.array(v)
         if not isinstance(msg, STRING_TYPES):
             msg = msg.decode()
@@ -362,7 +361,7 @@ def cv(params, dtrain, num_boost_round=10, nfold=3, stratified=False, folds=None
         if 'eval_metric' in params:
             params['eval_metric'] = _metrics
     else:
-        params = dict((k, v) for k, v in params.items())
+        params = dict((k, v) for k, v in list(params.items()))
 
     if len(metrics) == 0 and 'eval_metric' in params:
         if isinstance(params['eval_metric'], list):
@@ -424,7 +423,7 @@ def cv(params, dtrain, num_boost_round=10, nfold=3, stratified=False, folds=None
                                rank=0,
                                evaluation_result_list=res))
         except EarlyStopException as e:
-            for k in results.keys():
+            for k in list(results.keys()):
                 results[k] = results[k][:(e.best_iteration + 1)]
             break
     if as_pandas:

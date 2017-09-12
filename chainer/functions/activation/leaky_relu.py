@@ -24,19 +24,33 @@ class LeakyReLU(function.Function):
     def forward_cpu(self, x):
         y = x[0].copy()
         y[x[0] < 0] *= self.slope
+        if self.slope >= 0:
+            self.retain_inputs(())
+            self.retain_outputs((0,))
         return y,
 
     def forward_gpu(self, x):
         y = _kern()(x[0], x[0], self.slope)
+        if self.slope >= 0:
+            self.retain_inputs(())
+            self.retain_outputs((0,))
         return y,
 
     def backward_cpu(self, x, gy):
         gx = gy[0].copy()
-        gx[x[0] < 0] *= self.slope
+        if self.slope >= 0:
+            y = self.output_data
+            gx[y[0] < 0] *= self.slope
+        else:
+            gx[x[0] < 0] *= self.slope
         return gx,
 
     def backward_gpu(self, x, gy):
-        gx = _kern()(x[0], gy[0], self.slope)
+        if self.slope >= 0:
+            y = self.output_data
+            gx = _kern()(y[0], gy[0], self.slope)
+        else:
+            gx = _kern()(x[0], gy[0], self.slope)
         return gx,
 
 
@@ -45,7 +59,12 @@ def leaky_relu(x, slope=0.2):
 
     This function is expressed as
 
-    .. math:: f(x)=\\max(x, ax),
+    .. math::
+
+        f(x) = \\left \\{ \\begin{array}{ll}
+        x  & {\\rm if}~ x \\ge 0 \\\\
+        ax & {\\rm if}~ x < 0,
+        \\end{array} \\right.
 
     where :math:`a` is a configurable slope value.
 

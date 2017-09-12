@@ -1,3 +1,5 @@
+import math
+
 import numpy
 
 from chainer import cuda
@@ -17,15 +19,17 @@ class Exp(function.Function):
         type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.exp(x[0]))
-        return self.y,
+        self.retain_inputs(())
+        self.retain_outputs((0,))
+        return utils.force_array(numpy.exp(x[0])),
 
     def forward_gpu(self, x):
-        self.y = cuda.cupy.exp(x[0])
-        return self.y,
+        self.retain_inputs(())
+        self.retain_outputs((0,))
+        return cuda.cupy.exp(x[0]),
 
     def backward(self, x, gy):
-        return utils.force_array(self.y * gy[0]),
+        return utils.force_array(self.output_data[0] * gy[0]),
 
 
 def exp(x):
@@ -73,10 +77,9 @@ class Log2(function.Function):
         return utils.force_array(xp.log2(x[0])),
 
     def backward(self, x, gy):
-        xp = cuda.get_array_module(*x)
-        gx = utils.force_array(xp.reciprocal(x[0]))
-        gx /= xp.log(2)
-        gx *= gy[0]
+        gx = gy[0].copy()
+        gx /= x[0]
+        gx *= 1 / math.log(2)
         return gx,
 
 
@@ -110,10 +113,9 @@ class Log10(function.Function):
         return utils.force_array(xp.log10(x[0])),
 
     def backward(self, x, gy):
-        xp = cuda.get_array_module(*x)
-        gx = utils.force_array(xp.reciprocal(x[0]))
-        gx /= xp.log(10)
-        gx *= gy[0]
+        gx = gy[0].copy()
+        gx /= x[0]
+        gx *= 1 / math.log(10)
         return gx,
 
 

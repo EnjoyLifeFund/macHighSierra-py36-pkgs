@@ -64,7 +64,7 @@ class LSTM(function.Function):
             x_type.shape[0] <= c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
-        for i in six.moves.range(2, c_type.ndim.eval()):
+        for i in six.moves.range(2, type_check.eval(c_type.ndim)):
             type_check.expect(x_type.shape[i] == c_type.shape[i])
 
     def forward(self, inputs):
@@ -223,8 +223,10 @@ def lstm(c_prev, x):
         >>> y = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> h = chainer.Variable(np.zeros((1, n_units), 'f'))
         >>> c = chainer.Variable(np.zeros((1, n_units), 'f'))
-        >>> model = chainer.Chain(w=L.Linear(n_units, 4 * n_units),
-        ...                       v=L.Linear(n_units, 4 * n_units),)
+        >>> model = chainer.Chain()
+        >>> with model.init_scope():
+        ...   model.w = L.Linear(n_units, 4 * n_units)
+        ...   model.v = L.Linear(n_units, 4 * n_units)
         >>> x = model.w(y) + model.v(h)
         >>> c, h = F.lstm(c, x)
 

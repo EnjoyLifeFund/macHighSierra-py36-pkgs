@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 from chainer.utils import type_check
+from chainer import variable
 
 
 def _logsumexp(a, xp, axis=None):
@@ -264,7 +265,7 @@ def connectionist_temporal_classification(
     of sequence labeling where the alignment between the inputs and target is
     unknown. See also [Graves2012]_
 
-    The output is a varialbe whose value depends on the value of
+    The output is a variable whose value depends on the value of
     the option ``reduce``. If it is ``'no'``, it holds the samplewise
     loss values. If it is ``'mean'``, it takes the mean of loss values.
 
@@ -290,7 +291,7 @@ def connectionist_temporal_classification(
     Returns:
        ~chainer.Variable:
            A variable holding a scalar value of the CTC loss.
-           If ``reduce`` is ``'no'``, the output varialbe holds array
+           If ``reduce`` is ``'no'``, the output variable holds array
            whose shape is `(B,)` where `B` is the number of samples.
            If it is ``'mean'``, it holds a scalar.
 
@@ -330,12 +331,10 @@ def connectionist_temporal_classification(
 
     if input_length is None:
         xp = cuda.get_array_module(x[0].data)
-        input_length = chainer.Variable(
-            xp.full((len(x[0].data),), len(x), dtype=numpy.int32),
-            volatile='auto')
-        label_length = chainer.Variable(
-            xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32),
-            volatile='auto')
+        input_length = variable.Variable(
+            xp.full((len(x[0].data),), len(x), dtype=numpy.int32))
+        label_length = variable.Variable(
+            xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32))
 
     return ConnectionistTemporalClassification(blank_symbol, reduce)(
         input_length, label_length, t, *x)
