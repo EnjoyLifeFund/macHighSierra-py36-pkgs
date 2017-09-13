@@ -144,6 +144,7 @@
 # import fs
 # import ftfy
 # import future
+# import gdal
 # import google
 # import google_speech
 # import googleapiclient

@@ -1,0 +1,5 @@
+osgeo/_gdal.cpython-36dm-darwin.so
+osgeo/_gdal_array.cpython-36dm-darwin.so
+osgeo/_gdalconst.cpython-36dm-darwin.so
+osgeo/_ogr.cpython-36dm-darwin.so
+osgeo/_osr.cpython-36dm-darwin.so
