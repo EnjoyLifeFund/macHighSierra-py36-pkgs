@@ -228,6 +228,7 @@ class SSHClient (ClosingContextManager):
         gss_host=None,
         banner_timeout=None,
         auth_timeout=None,
+        gss_trust_dns=True,
     ):
         """
         Connect to an SSH server and authenticate to it.  The server's host key
@@ -240,9 +241,23 @@ class SSHClient (ClosingContextManager):
         Authentication is attempted in the following order of priority:
 
             - The ``pkey`` or ``key_filename`` passed in (if any)
+
+              - ``key_filename`` may contain OpenSSH public certificate paths
+                as well as regular private-key paths; when files ending in
+                ``-cert.pub`` are found, they are assumed to match a private
+                key, and both components will be loaded. (The private key
+                itself does *not* need to be listed in ``key_filename`` for
+                this to occur - *just* the certificate.)
+
             - Any key we can find through an SSH agent
             - Any "id_rsa", "id_dsa" or "id_ecdsa" key discoverable in
               ``~/.ssh/``
+
+              - When OpenSSH-style public certificates exist that match an
+                existing such private key (so e.g. one has ``id_rsa`` and
+                ``id_rsa-cert.pub``) the certificate will be loaded alongside
+                the private key and used for authentication.
+
             - Plain username/password auth, if a password was given
 
         If a private key requires a password to unlock it, and a password is
@@ -257,8 +272,8 @@ class SSHClient (ClosingContextManager):
             a password to use for authentication or for unlocking a private key
         :param .PKey pkey: an optional private key to use for authentication
         :param str key_filename:
-            the filename, or list of filenames, of optional private key(s) to
-            try for authentication
+            the filename, or list of filenames, of optional private key(s)
+            and/or certs to try for authentication
         :param float timeout:
             an optional timeout (in seconds) for the TCP connect
         :param bool allow_agent:
@@ -277,6 +292,10 @@ class SSHClient (ClosingContextManager):
         :param bool gss_deleg_creds: Delegate GSS-API client credentials or not
         :param str gss_host:
             The targets name in the kerberos database. default: hostname
+        :param bool gss_trust_dns:
+            Indicates whether or not the DNS is trusted to securely
+            canonicalize the name of the host being connected to (default
+            ``True``).
         :param float banner_timeout: an optional timeout (in seconds) to wait
             for the SSH banner to be presented.
         :param float auth_timeout: an optional timeout (in seconds) to wait for
@@ -294,6 +313,8 @@ class SSHClient (ClosingContextManager):
         .. versionchanged:: 1.15
             Added the ``banner_timeout``, ``gss_auth``, ``gss_kex``,
             ``gss_deleg_creds`` and ``gss_host`` arguments.
+        .. versionchanged:: 2.3
+            Added the ``gss_trust_dns`` argument.
         """
         if not sock:
             errors = {}
@@ -329,14 +350,16 @@ class SSHClient (ClosingContextManager):
                 raise NoValidConnectionsError(errors)
 
         t = self._transport = Transport(
-            sock, gss_kex=gss_kex, gss_deleg_creds=gss_deleg_creds)
+            sock, gss_kex=gss_kex, gss_deleg_creds=gss_deleg_creds
+        )
         t.use_compression(compress=compress)
-        if gss_kex and gss_host is None:
-            t.set_gss_host(hostname)
-        elif gss_kex and gss_host is not None:
-            t.set_gss_host(gss_host)
-        else:
-            pass
+        t.set_gss_host(
+            # t.hostname may be None, but GSS-API requires a target name.
+            # Therefore use hostname as fallback.
+            gss_host=gss_host or hostname,
+            trust_dns=gss_trust_dns,
+            gssapi_requested=gss_auth or gss_kex,
+        )
         if self._log_channel is not None:
             t.set_log_channel(self._log_channel)
         if banner_timeout is not None:
@@ -350,22 +373,21 @@ class SSHClient (ClosingContextManager):
             server_hostkey_name = "[%s]:%d" % (hostname, port)
         our_server_keys = None
 
-        # If GSS-API Key Exchange is performed we are not required to check the
-        # host key, because the host is authenticated via GSS-API / SSPI as
-        # well as our client.
-        if not self._transport.use_gss_kex:
-            our_server_keys = self._system_host_keys.get(server_hostkey_name)
-            if our_server_keys is None:
-                our_server_keys = self._host_keys.get(server_hostkey_name)
-            if our_server_keys is not None:
-                keytype = our_server_keys.keys()[0]
-                sec_opts = t.get_security_options()
-                other_types = [x for x in sec_opts.key_types if x != keytype]
-                sec_opts.key_types = [keytype] + other_types
+        our_server_keys = self._system_host_keys.get(server_hostkey_name)
+        if our_server_keys is None:
+            our_server_keys = self._host_keys.get(server_hostkey_name)
+        if our_server_keys is not None:
+            keytype = our_server_keys.keys()[0]
+            sec_opts = t.get_security_options()
+            other_types = [x for x in sec_opts.key_types if x != keytype]
+            sec_opts.key_types = [keytype] + other_types
 
         t.start_client(timeout=timeout)
 
-        if not self._transport.use_gss_kex:
+        # If GSS-API Key Exchange is performed we are not required to check the
+        # host key, because the host is authenticated via GSS-API / SSPI as
+        # well as our client.
+        if not self._transport.gss_kex_used:
             server_key = t.get_remote_server_key()
             if our_server_keys is None:
                 # will raise exception if the key is rejected
@@ -388,10 +410,11 @@ class SSHClient (ClosingContextManager):
             key_filenames = [key_filename]
         else:
             key_filenames = key_filename
-        if gss_host is None:
-            gss_host = hostname
-        self._auth(username, password, pkey, key_filenames, allow_agent,
-                   look_for_keys, gss_auth, gss_kex, gss_deleg_creds, gss_host)
+
+        self._auth(
+            username, password, pkey, key_filenames, allow_agent,
+            look_for_keys, gss_auth, gss_kex, gss_deleg_creds, t.gss_host,
+        )
 
     def close(self):
         """
@@ -499,12 +522,44 @@ class SSHClient (ClosingContextManager):
         """
         return self._transport
 
+    def _key_from_filepath(self, filename, klass, password):
+        """
+        Attempt to derive a `.PKey` from given string path ``filename``:
+
+        - If ``filename`` appears to be a cert, the matching private key is
+          loaded.
+        - Otherwise, the filename is assumed to be a private key, and the
+          matching public cert will be loaded if it exists.
+        """
+        cert_suffix = '-cert.pub'
+        # Assume privkey, not cert, by default
+        if filename.endswith(cert_suffix):
+            key_path = filename[:-len(cert_suffix)]
+            cert_path = filename
+        else:
+            key_path = filename
+            cert_path = filename + cert_suffix
+        # Blindly try the key path; if no private key, nothing will work.
+        key = klass.from_private_key_file(key_path, password)
+        # TODO: change this to 'Loading' instead of 'Trying' sometime; probably
+        # when #387 is released, since this is a critical log message users are
+        # likely testing/filtering for (bah.)
+        msg = "Trying discovered key {0} in {1}".format(
+            hexlify(key.get_fingerprint()), key_path,
+        )
+        self._log(DEBUG, msg)
+        # Attempt to load cert if it exists.
+        if os.path.isfile(cert_path):
+            key.load_certificate(cert_path)
+            self._log(DEBUG, "Adding public certificate {0}".format(cert_path))
+        return key
+
     def _auth(self, username, password, pkey, key_filenames, allow_agent,
               look_for_keys, gss_auth, gss_kex, gss_deleg_creds, gss_host):
         """
         Try, in order:
 
-            - The key passed in, if one was passed in.
+            - The key(s) passed in, if one was passed in.
             - Any key we can find through an SSH agent (if allowed).
             - Any "id_rsa", "id_dsa" or "id_ecdsa" key discoverable in ~/.ssh/
               (if allowed).
@@ -533,9 +588,9 @@ class SSHClient (ClosingContextManager):
         # why should we do that again?
         if gss_auth:
             try:
-                self._transport.auth_gssapi_with_mic(username, gss_host,
-                                                     gss_deleg_creds)
-                return
+                return self._transport.auth_gssapi_with_mic(
+                    username, gss_host, gss_deleg_creds,
+                )
             except Exception as e:
                 saved_exception = e
 
@@ -556,12 +611,9 @@ class SSHClient (ClosingContextManager):
             for key_filename in key_filenames:
                 for pkey_class in (RSAKey, DSSKey, ECDSAKey, Ed25519Key):
                     try:
-                        key = pkey_class.from_private_key_file(
-                            key_filename, password)
-                        self._log(
-                            DEBUG,
-                            'Trying key %s from %s' % (
-                                hexlify(key.get_fingerprint()), key_filename))
+                        key = self._key_from_filepath(
+                            key_filename, pkey_class, password,
+                        )
                         allowed_types = set(
                             self._transport.auth_publickey(username, key))
                         two_factor = (allowed_types & two_factor_types)
@@ -607,19 +659,19 @@ class SSHClient (ClosingContextManager):
                         "~/%s/id_%s" % (directory, name)
                     )
                     if os.path.isfile(full_path):
+                        # TODO: only do this append if below did not run
                         keyfiles.append((keytype, full_path))
+                        if os.path.isfile(full_path + '-cert.pub'):
+                            keyfiles.append((keytype, full_path + '-cert.pub'))
 
             if not look_for_keys:
                 keyfiles = []
 
             for pkey_class, filename in keyfiles:
                 try:
-                    key = pkey_class.from_private_key_file(filename, password)
-                    self._log(
-                        DEBUG,
-                        'Trying discovered key %s in %s' % (
-                            hexlify(key.get_fingerprint()), filename))
-
+                    key = self._key_from_filepath(
+                        filename, pkey_class, password,
+                    )
                     # for 2-factor auth a successfully auth'd key will result
                     # in ['password']
                     allowed_types = set(

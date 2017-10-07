@@ -13,22 +13,21 @@ from msrest.serialization import Model
 
 
 class ServiceTypeInfo(Model):
-    """Information about a service type that is defined in a service manifest of
-    a provisioned application type.
+    """Information about a service type that is defined in a service manifest of a
+    provisioned application type.
 
     :param service_type_description:
     :type service_type_description: :class:`ServiceTypeDescription
      <azure.servicefabric.models.ServiceTypeDescription>`
-    :param service_manifest_name: The name of the service manifest in which
-     this service type is defined.
+    :param service_manifest_name:
     :type service_manifest_name: str
     :param service_manifest_version: The version of the service manifest in
      which this service type is defined.
     :type service_manifest_version: str
-    :param is_service_group: Indicates whether the service is a service
-     group. If it is, the property value is true otherwise false.
+    :param is_service_group: Indicates whether the service is a service group.
+     If it is, the property value is true otherwise false.
     :type is_service_group: bool
-    """ 
+    """
 
     _attribute_map = {
         'service_type_description': {'key': 'ServiceTypeDescription', 'type': 'ServiceTypeDescription'},

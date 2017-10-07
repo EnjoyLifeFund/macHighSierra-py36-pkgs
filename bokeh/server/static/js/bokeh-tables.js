@@ -17,7 +17,7 @@
     }
   })
 ({
-398: /* models/widgets/tables/cell_editors */ function(require, module, exports) {
+402: /* models/widgets/tables/cell_editors */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend1 = function (child, parent) {
@@ -33,12 +33,12 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var object_1 = require(28    /* core/util/object */);
-var dom_view_1 = require(5    /* core/dom_view */);
-var model_1 = require(48    /* ../../../model */);
-var data_table_1 = require(400    /* ./data_table */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var object_1 = require(29    /* core/util/object */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var model_1 = require(49    /* ../../../model */);
+var data_table_1 = require(404    /* ./data_table */);
 exports.CellEditorView = function (superClass) {
     extend1(CellEditorView, superClass);
     CellEditorView.prototype.className = 'bk-cell-editor';
@@ -421,7 +421,7 @@ exports.DateEditor = function (superClass) {
     return DateEditor;
 }(exports.CellEditor);    
 },
-399: /* models/widgets/tables/cell_formatters */ function(require, module, exports) {
+403: /* models/widgets/tables/cell_formatters */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend1 = function (child, parent) {
@@ -437,20 +437,21 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var Numbro = require(325    /* numbro */);
-var compile_template = require(414    /* underscore.template */);
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
-var model_1 = require(48    /* ../../../model */);
+var Numbro = require(329    /* numbro */);
+var compile_template = require(418    /* underscore.template */);
+var tz = require(360    /* timezone */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
+var model_1 = require(49    /* ../../../model */);
 exports.CellFormatter = function (superClass) {
     extend1(CellFormatter, superClass);
     function CellFormatter() {
         return CellFormatter.__super__.constructor.apply(this, arguments);
     }
     CellFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
-        if (value === null) {
+        if (value == null) {
             return '';
         } else {
             return (value + '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -477,27 +478,24 @@ exports.StringFormatter = function (superClass) {
     });
     StringFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         var font_style, text, text_align, text_color;
-        text = StringFormatter.__super__.doFormat.call(this, row, cell, value, columnDef, dataContext);
         font_style = this.font_style;
         text_align = this.text_align;
         text_color = this.text_color;
-        if (font_style != null || text_align != null || text_color != null) {
-            text = dom_1.span({}, text);
-            switch (font_style) {
-            case 'bold':
-                text.style.fontWeight = 'bold';
-                break;
-            case 'italic':
-                text.style.fontStyle = 'italic';
-            }
-            if (text_align != null) {
-                text.style.textAlign = text_align;
-            }
-            if (text_color != null) {
-                text.style.color = text_color;
-            }
-            text = text.outerHTML;
+        text = dom_1.span({}, value == null ? '' : '' + value);
+        switch (font_style) {
+        case 'bold':
+            text.style.fontWeight = 'bold';
+            break;
+        case 'italic':
+            text.style.fontStyle = 'italic';
         }
+        if (text_align != null) {
+            text.style.textAlign = text_align;
+        }
+        if (text_color != null) {
+            text.style.color = text_color;
+        }
+        text = text.outerHTML;
         return text;
     };
     return StringFormatter;
@@ -574,46 +572,45 @@ exports.DateFormatter = function (superClass) {
     DateFormatter.define({
         format: [
             p.String,
-            'yy M d'
+            'ISO-8601'
         ]
     });
     DateFormatter.prototype.getFormat = function () {
-        var format, name;
-        format = this.format;
-        name = function () {
-            switch (format) {
+        var fmt;
+        fmt = function () {
+            switch (this.format) {
             case 'ATOM':
             case 'W3C':
             case 'RFC-3339':
             case 'ISO-8601':
-                return 'ISO-8601';
+                return '%Y-%m-%d';
             case 'COOKIE':
-                return 'COOKIE';
+                return '%a, %d %b %Y';
             case 'RFC-850':
-                return 'RFC-850';
-            case 'RFC-1036':
-                return 'RFC-1036';
+                return '%A, %d-%b-%y';
             case 'RFC-1123':
-                return 'RFC-1123';
             case 'RFC-2822':
-                return 'RFC-2822';
+                return '%a, %e %b %Y';
             case 'RSS':
             case 'RFC-822':
-                return 'RFC-822';
-            case 'TICKS':
-                return 'TICKS';
+            case 'RFC-1036':
+                return '%a, %e %b %y';
             case 'TIMESTAMP':
-                return 'TIMESTAMP';
-            default:
                 return null;
+            default:
+                return '__CUSTOM__';
             }
-        }();
-        return format;
+        }.call(this);
+        if (fmt === '__CUSTOM__') {
+            return this.format;
+        } else {
+            return fmt;
+        }
     };
     DateFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         var date;
         value = types_1.isString(value) ? parseInt(value, 10) : value;
-        date = value;
+        date = tz(value, this.getFormat());
         return DateFormatter.__super__.doFormat.call(this, row, cell, date, columnDef, dataContext);
     };
     return DateFormatter;
@@ -644,7 +641,7 @@ exports.HTMLTemplateFormatter = function (superClass) {
     return HTMLTemplateFormatter;
 }(exports.CellFormatter);    
 },
-400: /* models/widgets/tables/data_table */ function(require, module, exports) {
+404: /* models/widgets/tables/data_table */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -660,16 +657,16 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var slickgrid_1 = require(412    /* slickgrid */);
-var slick_rowselectionmodel_1 = require(410    /* slickgrid/plugins/slick.rowselectionmodel */);
-var slick_checkboxselectcolumn_1 = require(409    /* slickgrid/plugins/slick.checkboxselectcolumn */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
-var string_1 = require(35    /* core/util/string */);
-var array_1 = require(20    /* core/util/array */);
-var logging_1 = require(12    /* core/logging */);
-var table_widget_1 = require(404    /* ./table_widget */);
-var widget_1 = require(405    /* ../widget */);
+var slickgrid_1 = require(416    /* slickgrid */);
+var slick_rowselectionmodel_1 = require(414    /* slickgrid/plugins/slick.rowselectionmodel */);
+var slick_checkboxselectcolumn_1 = require(413    /* slickgrid/plugins/slick.checkboxselectcolumn */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
+var string_1 = require(36    /* core/util/string */);
+var array_1 = require(21    /* core/util/array */);
+var logging_1 = require(13    /* core/logging */);
+var table_widget_1 = require(408    /* ./table_widget */);
+var widget_1 = require(409    /* ../widget */);
 exports.DTINDEX_NAME = '__bkdt_internal_index__';
 exports.DataProvider = function () {
     function DataProvider(source, view) {
@@ -991,28 +988,28 @@ exports.DataTable = function (superClass) {
     return DataTable;
 }(table_widget_1.TableWidget);    
 },
-401: /* models/widgets/tables/index */ function(require, module, exports) {
+405: /* models/widgets/tables/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(398    /* ./cell_editors */), exports);
-tslib_1.__exportStar(require(399    /* ./cell_formatters */), exports);
-var data_table_1 = require(400    /* ./data_table */);
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(402    /* ./cell_editors */), exports);
+tslib_1.__exportStar(require(403    /* ./cell_formatters */), exports);
+var data_table_1 = require(404    /* ./data_table */);
 exports.DataTable = data_table_1.DataTable;
-var table_column_1 = require(403    /* ./table_column */);
+var table_column_1 = require(407    /* ./table_column */);
 exports.TableColumn = table_column_1.TableColumn;
-var table_widget_1 = require(404    /* ./table_widget */);
+var table_widget_1 = require(408    /* ./table_widget */);
 exports.TableWidget = table_widget_1.TableWidget;    
 },
-402: /* models/widgets/tables/main */ function(require, module, exports) {
+406: /* models/widgets/tables/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var Tables = require(401    /* ./index */);
+var Tables = require(405    /* ./index */);
 exports.Tables = Tables;
 var base_1 = require(0    /* ../../../base */);
 base_1.register_models(Tables);    
 },
-403: /* models/widgets/tables/table_column */ function(require, module, exports) {
+407: /* models/widgets/tables/table_column */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1028,11 +1025,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var cell_formatters_1 = require(399    /* ./cell_formatters */);
-var cell_editors_1 = require(398    /* ./cell_editors */);
-var p = require(13    /* core/properties */);
-var string_1 = require(35    /* core/util/string */);
-var model_1 = require(48    /* ../../../model */);
+var cell_formatters_1 = require(403    /* ./cell_formatters */);
+var cell_editors_1 = require(402    /* ./cell_editors */);
+var p = require(14    /* core/properties */);
+var string_1 = require(36    /* core/util/string */);
+var model_1 = require(49    /* ../../../model */);
 exports.TableColumn = function (superClass) {
     extend(TableColumn, superClass);
     function TableColumn() {
@@ -1084,7 +1081,7 @@ exports.TableColumn = function (superClass) {
     return TableColumn;
 }(model_1.Model);    
 },
-404: /* models/widgets/tables/table_widget */ function(require, module, exports) {
+408: /* models/widgets/tables/table_widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1100,9 +1097,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(405    /* ../widget */);
-var cds_view_1 = require(167    /* ../../sources/cds_view */);
-var p = require(13    /* core/properties */);
+var widget_1 = require(409    /* ../widget */);
+var cds_view_1 = require(169    /* ../../sources/cds_view */);
+var p = require(14    /* core/properties */);
 exports.TableWidget = function (superClass) {
     extend(TableWidget, superClass);
     function TableWidget() {
@@ -1128,7 +1125,7 @@ exports.TableWidget = function (superClass) {
     return TableWidget;
 }(widget_1.Widget);    
 },
-405: /* models/widgets/widget */ function(require, module, exports) {
+409: /* models/widgets/widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1144,7 +1141,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
 exports.WidgetView = function (superClass) {
     extend(WidgetView, superClass);
     function WidgetView() {
@@ -1172,7 +1169,7 @@ exports.Widget = function (superClass) {
     return Widget;
 }(layout_dom_1.LayoutDOM);    
 },
-406: /* jquery/dist/jquery */ function(require, module, exports) {
+410: /* jquery/dist/jquery */ function(require, module, exports) {
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -7434,7 +7431,7 @@ exports.Widget = function (superClass) {
             }).get();
         }
     });
-    var r20 = /%20/g, rhash = /#.*$/, rantiCache = /([?&])_=[^&]*/, rheaders = /^(.*?):[ \t]*([^\r\n]*)$/gm,
+    var r20 = /%20/g, rhash = /#.*$/, rantiCache = /([?&])_=[^&]*/, rheaders = /^(.*?):[ \t]*([^\r\n]*)$/mg,
         // #7653, #8125, #8152: local protocol detection
         rlocalProtocol = /^(?:about|app|app-storage|.+-extension|file|res|widget):$/, rnoContent = /^(?:GET|HEAD)$/, rprotocol = /^\/\//,
         /* Prefilters
@@ -8770,7 +8767,7 @@ exports.Widget = function (superClass) {
     }
     return jQuery;
 }));},
-407: /* slickgrid/lib/jquery.event.drag-2.3.0 */ function(require, module, exports) {
+411: /* slickgrid/lib/jquery.event.drag-2.3.0 */ function(require, module, exports) {
 /*!
  * jquery.event.drag - v 2.3.0
  * Copyright (c) 2010 Three Dub Media - http://threedubmedia.com
@@ -8781,7 +8778,7 @@ exports.Widget = function (superClass) {
 // Updated: 2016-08-16   Luiz Gonzaga dos Santos Filho
 // REQUIRES: jquery 1.8 +, , event.drag 2.3.0
 // TESTED WITH: jQuery 1.8.3, 1.11.2, 2.2.4, and 3.1.0
-var $ = require(413    /* ../slick.jquery */);
+var $ = require(417    /* ../slick.jquery */);
 // add the jquery instance method
 $.fn.drag = function (str, arg, opts) {
     // figure out the event type
@@ -9156,7 +9153,7 @@ $event.dispatch = function (event) {
 };
 // share the same special event configuration with related events...
 $special.draginit = $special.dragstart = $special.dragend = drag;},
-408: /* slickgrid/lib/jquery.event.drop-2.3.0 */ function(require, module, exports) {
+412: /* slickgrid/lib/jquery.event.drop-2.3.0 */ function(require, module, exports) {
 /*!
  * jquery.event.drop - v 2.3.0
  * Copyright (c) 2010 Three Dub Media - http://threedubmedia.com
@@ -9167,7 +9164,7 @@ $special.draginit = $special.dragstart = $special.dragend = drag;},
 // Updated: 2016-08-16   Luiz Gonzaga dos Santos Filho
 // REQUIRES: jquery 1.8 +, , event.drag 2.3.0
 // TESTED WITH: jQuery 1.8.3, 1.11.2, 2.2.4, and 3.1.0
-var $ = require(413    /* ../slick.jquery */);
+var $ = require(417    /* ../slick.jquery */);
 // Events: drop, dropstart, dropend
 // add the jquery instance method
 $.fn.drop = function (str, arg, opts) {
@@ -9456,10 +9453,10 @@ var $event = $.event, $special = $event.special,
     };
 // share the same special event configuration with related events...
 $special.dropinit = $special.dropstart = $special.dropend = drop;},
-409: /* slickgrid/plugins/slick.checkboxselectcolumn */ function(require, module, exports) {
+413: /* slickgrid/plugins/slick.checkboxselectcolumn */ function(require, module, exports) {
 'use strict';
-var $ = require(413    /* ../slick.jquery */);
-var Slick = require(411    /* ../slick.core */);
+var $ = require(417    /* ../slick.jquery */);
+var Slick = require(415    /* ../slick.core */);
 function CheckboxSelectColumn(options) {
     var _grid;
     var _self = this;
@@ -9605,10 +9602,10 @@ function CheckboxSelectColumn(options) {
     });
 }
 module.exports = { 'CheckboxSelectColumn': CheckboxSelectColumn };},
-410: /* slickgrid/plugins/slick.rowselectionmodel */ function(require, module, exports) {
+414: /* slickgrid/plugins/slick.rowselectionmodel */ function(require, module, exports) {
 'use strict';
-var $ = require(413    /* ../slick.jquery */);
-var Slick = require(411    /* ../slick.core */);
+var $ = require(417    /* ../slick.jquery */);
+var Slick = require(415    /* ../slick.core */);
 function RowSelectionModel(options) {
     var _grid;
     var _ranges = [];
@@ -9759,7 +9756,7 @@ function RowSelectionModel(options) {
     });
 }
 module.exports = { 'RowSelectionModel': RowSelectionModel };},
-411: /* slickgrid/slick.core */ function(require, module, exports) {
+415: /* slickgrid/slick.core */ function(require, module, exports) {
 'use strict';
 /***
  * Contains core SlickGrid classes.
@@ -10188,7 +10185,7 @@ module.exports = {
     },
     'preClickClassName': 'slick-edit-preclick'
 };},
-412: /* slickgrid/slick.grid */ function(require, module, exports) {
+416: /* slickgrid/slick.grid */ function(require, module, exports) {
 'use strict';
 /**
  * @license
@@ -10207,8 +10204,8 @@ module.exports = {
  *     or data associated with any cell/row DOM nodes.  Cell editors must make sure they implement .destroy()
  *     and do proper cleanup.
  */
-var $ = require(413    /* ./slick.jquery */);
-var Slick = require(411    /* ./slick.core */);
+var $ = require(417    /* ./slick.jquery */);
+var Slick = require(415    /* ./slick.core */);
 // shared across all grids on the page
 var scrollbarDimensions;
 var maxSupportedCssHeight;
@@ -10226,10 +10223,10 @@ var maxSupportedCssHeight;
    **/
 function SlickGrid(container, data, columns, options) {
     if (!$.fn.drag) {
-        require(407    /* ./lib/jquery.event.drag-2.3.0 */);
+        require(411    /* ./lib/jquery.event.drag-2.3.0 */);
     }
     if (!$.fn.drop) {
-        require(408    /* ./lib/jquery.event.drop-2.3.0 */);
+        require(412    /* ./lib/jquery.event.drop-2.3.0 */);
     }
     // settings
     var defaults = {
@@ -13566,12 +13563,11 @@ function SlickGrid(container, data, columns, options) {
     init();
 }
 module.exports = { Grid: SlickGrid };},
-413: /* slickgrid/slick.jquery */ function(require, module, exports) {
-var $ = require(406    /* jquery */);
-module.exports = $;},
-414: /* underscore.template/lib/index */ function(require, module, exports) {
+417: /* slickgrid/slick.jquery */ function(require, module, exports) {
+module.exports = typeof $ !== 'undefined' ? $ : require(410    /* jquery */);},
+418: /* underscore.template/lib/index */ function(require, module, exports) {
 'use strict';
-var _ = require(415    /* ./underscore.template */);
+var _ = require(419    /* ./underscore.template */);
 var UnderscoreTemplate = _.template;
 function Template(text, data, settings) {
     return UnderscoreTemplate(text, data, settings);
@@ -13587,7 +13583,7 @@ if (typeof define === 'function' && define.amd) {
 } else if (typeof window !== 'undefined' || typeof navigator !== 'undefined') {
     window.UnderscoreTemplate = Template;
 }},
-415: /* underscore.template/lib/underscore.template */ function(require, module, exports) {
+419: /* underscore.template/lib/underscore.template */ function(require, module, exports) {
 'use strict';
 //     Underscore.js 1.5.2
 //     http://underscorejs.org
@@ -13771,7 +13767,7 @@ _.template = function (text, data, settings) {
     return template;
 };
 module.exports = _;}
-}, {"models/widgets/tables/cell_editors":398,"models/widgets/tables/cell_formatters":399,"models/widgets/tables/data_table":400,"models/widgets/tables/index":401,"models/widgets/tables/main":402,"models/widgets/tables/table_column":403,"models/widgets/tables/table_widget":404,"models/widgets/widget":405}, 402);
+}, {"models/widgets/tables/cell_editors":402,"models/widgets/tables/cell_formatters":403,"models/widgets/tables/data_table":404,"models/widgets/tables/index":405,"models/widgets/tables/main":406,"models/widgets/tables/table_column":407,"models/widgets/tables/table_widget":408,"models/widgets/widget":409}, 406);
 })
 
 //# sourceMappingURL=bokeh-tables.js.map

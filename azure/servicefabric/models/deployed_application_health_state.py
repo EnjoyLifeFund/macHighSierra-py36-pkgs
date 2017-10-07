@@ -18,13 +18,13 @@ class DeployedApplicationHealthState(EntityHealthState):
 
     :param aggregated_health_state: Possible values include: 'Invalid', 'Ok',
      'Warning', 'Error', 'Unknown'
-    :type aggregated_health_state: str
-    :param node_name: Name of the node on which the service package is
-     deployed.
+    :type aggregated_health_state: str or :class:`enum
+     <azure.servicefabric.models.enum>`
+    :param node_name:
     :type node_name: str
-    :param application_name: Full name of the application.
+    :param application_name:
     :type application_name: str
-    """ 
+    """
 
     _attribute_map = {
         'aggregated_health_state': {'key': 'AggregatedHealthState', 'type': 'str'},

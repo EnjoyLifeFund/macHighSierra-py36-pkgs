@@ -56,8 +56,8 @@
 /* base */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var models = require(130    /* ./models/index */);
-var object_1 = require(28    /* ./core/util/object */);
+var models = require(132    /* ./models/index */);
+var object_1 = require(29    /* ./core/util/object */);
 exports.overrides = {};
 var _all_models = object_1.clone(models);
 exports.Models = function (name) {
@@ -99,114 +99,18 @@ exports.Models.registered_names = function () {
 // by embed.coffee.
 exports.index = {};    
 },
-/* client */ function(require, module, exports) {
+/* client/connection */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var ClientConnection, ClientSession, Message, message_handlers;
-var es6_promise_1 = require(295    /* es6-promise */);
-var logging_1 = require(12    /* ./core/logging */);
-var string_1 = require(35    /* ./core/util/string */);
-var object_1 = require(28    /* ./core/util/object */);
-var document_1 = require(45    /* ./document */);
+var es6_promise_1 = require(299    /* es6-promise */);
+var logging_1 = require(13    /* core/logging */);
+var document_1 = require(46    /* document */);
+var message_1 = require(242    /* protocol/message */);
+var receiver_1 = require(243    /* protocol/receiver */);
+var session_1 = require(2    /* ./session */);
 exports.DEFAULT_SERVER_WEBSOCKET_URL = 'ws://localhost:5006/ws';
 exports.DEFAULT_SESSION_ID = 'default';
-Message = function () {
-    function Message(header1, metadata1, content1) {
-        this.header = header1;
-        this.metadata = metadata1;
-        this.content = content1;
-        this.buffers = [];
-    }
-    Message.assemble = function (header_json, metadata_json, content_json) {
-        var content, header, metadata;
-        header = JSON.parse(header_json);
-        metadata = JSON.parse(metadata_json);
-        content = JSON.parse(content_json);
-        return new Message(header, metadata, content);
-    };
-    Message.create_header = function (msgtype, options) {
-        var header;
-        header = {
-            'msgid': string_1.uniqueId(),
-            'msgtype': msgtype
-        };
-        return object_1.extend(header, options);
-    };
-    Message.create = function (msgtype, header_options, content) {
-        var header;
-        if (content == null) {
-            content = {};
-        }
-        header = Message.create_header(msgtype, header_options);
-        return new Message(header, {}, content);
-    };
-    Message.prototype.send = function (socket) {
-        var content_json, header_json, metadata_json;
-        header_json = JSON.stringify(this.header);
-        metadata_json = JSON.stringify(this.metadata);
-        content_json = JSON.stringify(this.content);
-        socket.send(header_json);
-        socket.send(metadata_json);
-        return socket.send(content_json);
-    };
-    Message.prototype.complete = function () {
-        if (this.header != null && this.metadata != null && this.content != null) {
-            if ('num_buffers' in this.header) {
-                return this.buffers.length === this.header['num_buffers'];
-            } else {
-                return true;
-            }
-        } else {
-            return false;
-        }
-    };
-    Message.prototype.add_buffer = function (buffer) {
-        return this.buffers.push(buffer);
-    };
-    Message.prototype._header_field = function (field) {
-        if (field in this.header) {
-            return this.header[field];
-        } else {
-            return null;
-        }
-    };
-    Message.prototype.msgid = function () {
-        return this._header_field('msgid');
-    };
-    Message.prototype.msgtype = function () {
-        return this._header_field('msgtype');
-    };
-    Message.prototype.sessid = function () {
-        return this._header_field('sessid');
-    };
-    Message.prototype.reqid = function () {
-        return this._header_field('reqid');
-    };
-    Message.prototype.problem = function () {
-        if (!('msgid' in this.header)) {
-            return 'No msgid in header';
-        } else if (!('msgtype' in this.header)) {
-            return 'No msgtype in header';
-        } else {
-            return null;
-        }
-    };
-    return Message;
-}();
-message_handlers = {
-    'PATCH-DOC': function (connection, message) {
-        return connection._for_session(function (session) {
-            return session._handle_patch(message);
-        });
-    },
-    'OK': function (connection, message) {
-        return logging_1.logger.trace('Unhandled OK reply to ' + message.reqid());
-    },
-    'ERROR': function (connection, message) {
-        return logging_1.logger.error('Unhandled ERROR reply to ' + message.reqid() + ': ' + message.content['text']);
-    }
-};
-ClientConnection = function () {
+exports.ClientConnection = function () {
     ClientConnection._connection_count = 0;
     function ClientConnection(url1, id, args_string1, _on_have_session_hook, _on_closed_permanently_hook) {
         this.url = url1;
@@ -224,19 +128,13 @@ ClientConnection = function () {
         }
         logging_1.logger.debug('Creating websocket ' + this._number + ' to \'' + this.url + '\' session \'' + this.id + '\'');
         this.socket = null;
+        this.session = null;
         this.closed_permanently = false;
-        this._fragments = [];
-        this._partial = null;
         this._current_handler = null;
         this._pending_ack = null;
         this._pending_replies = {};
-        this.session = null;
+        this._receiver = new receiver_1.Receiver();
     }
-    ClientConnection.prototype._for_session = function (f) {
-        if (this.session !== null) {
-            return f(this.session);
-        }
-    };
     ClientConnection.prototype.connect = function () {
         var error, ref, versioned_url;
         if (this.closed_permanently) {
@@ -245,8 +143,6 @@ ClientConnection = function () {
         if (this.socket != null) {
             return es6_promise_1.Promise.reject(new Error('Already connected'));
         }
-        this._fragments = [];
-        this._partial = null;
         this._pending_replies = {};
         this._current_handler = null;
         try {
@@ -290,9 +186,7 @@ ClientConnection = function () {
             if (this.socket != null) {
                 this.socket.close(1000, 'close method called on ClientConnection ' + this._number);
             }
-            this._for_session(function (session) {
-                return session._connection_closed();
-            });
+            this.session._connection_closed();
             if (this._on_closed_permanently_hook != null) {
                 this._on_closed_permanently_hook();
                 return this._on_closed_permanently_hook = null;
@@ -321,11 +215,6 @@ ClientConnection = function () {
         }
         return message.send(this.socket);
     };
-    ClientConnection.prototype.send_event = function (event) {
-        var message;
-        message = Message.create('EVENT', {}, JSON.stringify(event));
-        return this.send(message);
-    };
     ClientConnection.prototype.send_with_reply = function (message) {
         var promise;
         promise = new es6_promise_1.Promise(function (_this) {
@@ -349,7 +238,7 @@ ClientConnection = function () {
     };
     ClientConnection.prototype._pull_doc_json = function () {
         var message, promise;
-        message = Message.create('PULL-DOC-REQ', {});
+        message = message_1.Message.create('PULL-DOC-REQ', {});
         promise = this.send_with_reply(message);
         return promise.then(function (reply) {
             if (!('doc' in reply.content)) {
@@ -377,10 +266,10 @@ ClientConnection = function () {
                         patch = document_1.Document._compute_patch_since_json(doc_json, document);
                         if (patch.events.length > 0) {
                             logging_1.logger.debug('Sending ' + patch.events.length + ' changes from model construction back to server');
-                            patch_message = Message.create('PATCH-DOC', {}, patch);
+                            patch_message = message_1.Message.create('PATCH-DOC', {}, patch);
                             _this.send(patch_message);
                         }
-                        _this.session = new ClientSession(_this, document, _this.id);
+                        _this.session = new session_1.ClientSession(_this, document, _this.id);
                         logging_1.logger.debug('Created a new session from new pulled doc');
                         if (_this._on_have_session_hook != null) {
                             _this._on_have_session_hook(_this.session);
@@ -414,37 +303,25 @@ ClientConnection = function () {
         }(this);
     };
     ClientConnection.prototype._on_message = function (event) {
-        return this._on_message_unchecked(event);
-    };
-    ClientConnection.prototype._on_message_unchecked = function (event) {
-        var msg, problem;
+        var e, msg, problem;
         if (this._current_handler == null) {
-            logging_1.logger.error('got a message but haven\'t set _current_handler');
+            logging_1.logger.error('Got a message with no current handler set');
         }
-        if (event.data instanceof ArrayBuffer) {
-            if (this._partial != null && !this._partial.complete()) {
-                this._partial.add_buffer(event.data);
-            } else {
-                this._close_bad_protocol('Got binary from websocket but we were expecting text');
-            }
-        } else if (this._partial != null) {
-            this._close_bad_protocol('Got text from websocket but we were expecting binary');
-        } else {
-            this._fragments.push(event.data);
-            if (this._fragments.length === 3) {
-                this._partial = Message.assemble(this._fragments[0], this._fragments[1], this._fragments[2]);
-                this._fragments = [];
-                problem = this._partial.problem();
-                if (problem !== null) {
-                    this._close_bad_protocol(problem);
-                }
-            }
+        try {
+            this._receiver.consume(event.data);
+        } catch (error1) {
+            e = error1;
+            this._close_bad_protocol(e.toString());
         }
-        if (this._partial != null && this._partial.complete()) {
-            msg = this._partial;
-            this._partial = null;
-            return this._current_handler(msg);
+        if (this._receiver.message === null) {
+            return null;
         }
+        msg = this._receiver.message;
+        problem = msg.problem();
+        if (problem !== null) {
+            this._close_bad_protocol(problem);
+        }
+        return this._current_handler(msg);
     };
     ClientConnection.prototype._on_close = function (event) {
         var pop_pending, promise_funcs;
@@ -507,72 +384,18 @@ ClientConnection = function () {
             promise_funcs = this._pending_replies[message.reqid()];
             delete this._pending_replies[message.reqid()];
             return promise_funcs[0](message);
-        } else if (message.msgtype() in message_handlers) {
-            return message_handlers[message.msgtype()](this, message);
         } else {
-            return logging_1.logger.debug('Doing nothing with message ' + message.msgtype());
+            return this.session.handle(message);
         }
     };
     return ClientConnection;
-}();
-ClientSession = function () {
-    function ClientSession(_connection, document1, id) {
-        this._connection = _connection;
-        this.document = document1;
-        this.id = id;
-        this.document_listener = function (_this) {
-            return function (event) {
-                return _this._document_changed(event);
-            };
-        }(this);
-        this.document.on_change(this.document_listener);
-        this.event_manager = this.document.event_manager;
-        this.event_manager.session = this;
-    }
-    ClientSession.prototype.close = function () {
-        return this._connection.close();
-    };
-    ClientSession.prototype.send_event = function (type) {
-        return this._connection.send_event(type);
-    };
-    ClientSession.prototype._connection_closed = function () {
-        return this.document.remove_on_change(this.document_listener);
-    };
-    ClientSession.prototype.request_server_info = function () {
-        var message, promise;
-        message = Message.create('SERVER-INFO-REQ', {});
-        promise = this._connection.send_with_reply(message);
-        return promise.then(function (reply) {
-            return reply.content;
-        });
-    };
-    ClientSession.prototype.force_roundtrip = function () {
-        return this.request_server_info().then(function (ignored) {
-            return void 0;
-        });
-    };
-    ClientSession.prototype._document_changed = function (event) {
-        var patch;
-        if (event.setter_id === this.id) {
-            return;
-        }
-        if (event instanceof document_1.ModelChangedEvent && !(event.attr in event.model.serializable_attributes())) {
-            return;
-        }
-        patch = Message.create('PATCH-DOC', {}, this.document.create_json_patch([event]));
-        return this._connection.send(patch);
-    };
-    ClientSession.prototype._handle_patch = function (message) {
-        return this.document.apply_json_patch(message.content, this.id);
-    };
-    return ClientSession;
 }();
 exports.pull_session = function (url, session_id, args_string) {
     var connection, promise, rejecter;
     rejecter = null;
     connection = null;
     promise = new es6_promise_1.Promise(function (resolve, reject) {
-        connection = new ClientConnection(url, session_id, args_string, function (session) {
+        connection = new exports.ClientConnection(url, session_id, args_string, function (session) {
             var e;
             try {
                 return resolve(session);
@@ -597,12 +420,92 @@ exports.pull_session = function (url, session_id, args_string) {
     return promise;
 };    
 },
+/* client/session */ function(require, module, exports) {
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+var logging_1 = require(13    /* core/logging */);
+var document_1 = require(46    /* document */);
+var message_1 = require(242    /* protocol/message */);
+exports.ClientSession = function () {
+    function ClientSession(_connection, document, id) {
+        this._connection = _connection;
+        this.document = document;
+        this.id = id;
+        this.document_listener = function (_this) {
+            return function (event) {
+                return _this._document_changed(event);
+            };
+        }(this);
+        this.document.on_change(this.document_listener);
+        this.event_manager = this.document.event_manager;
+        this.event_manager.session = this;
+    }
+    ClientSession.prototype.handle = function (message) {
+        var msgtype;
+        msgtype = message.msgtype();
+        if (msgtype === 'PATCH-DOC') {
+            return this._handle_patch(message);
+        } else if (msgtype === 'OK') {
+            return this._handle_ok(message);
+        } else if (msgtype === 'ERROR') {
+            return this._handle_error(message);
+        } else {
+            return logging_1.logger.debug('Doing nothing with message ' + message.msgtype());
+        }
+    };
+    ClientSession.prototype.close = function () {
+        return this._connection.close();
+    };
+    ClientSession.prototype.send_event = function (event) {
+        var message;
+        message = message_1.Message.create('EVENT', {}, JSON.stringify(event));
+        return this._connection.send(message);
+    };
+    ClientSession.prototype._connection_closed = function () {
+        return this.document.remove_on_change(this.document_listener);
+    };
+    ClientSession.prototype.request_server_info = function () {
+        var message, promise;
+        message = message_1.Message.create('SERVER-INFO-REQ', {});
+        promise = this._connection.send_with_reply(message);
+        return promise.then(function (reply) {
+            return reply.content;
+        });
+    };
+    ClientSession.prototype.force_roundtrip = function () {
+        return this.request_server_info().then(function (ignored) {
+            return void 0;
+        });
+    };
+    ClientSession.prototype._document_changed = function (event) {
+        var message;
+        if (event.setter_id === this.id) {
+            return;
+        }
+        if (event instanceof document_1.ModelChangedEvent && !(event.attr in event.model.serializable_attributes())) {
+            return;
+        }
+        message = message_1.Message.create('PATCH-DOC', {}, this.document.create_json_patch([event]));
+        return this._connection.send(message);
+    };
+    ClientSession.prototype._handle_patch = function (message) {
+        return this.document.apply_json_patch(message.content, message.buffers, this.id);
+    };
+    ClientSession.prototype._handle_ok = function (message) {
+        return logging_1.logger.trace('Unhandled OK reply to ' + message.reqid());
+    };
+    ClientSession.prototype._handle_error = function (message) {
+        return logging_1.logger.error('Unhandled ERROR reply to ' + message.reqid() + ': ' + message.content['text']);
+    };
+    return ClientSession;
+}();    
+},
 /* core/bokeh_events */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-var logging_1 = require(12    /* ./logging */);
-var object_1 = require(28    /* ./util/object */);
+var tslib_1 = require(361    /* tslib */);
+var logging_1 = require(13    /* ./logging */);
+var object_1 = require(29    /* ./util/object */);
 var event_classes = {};
 function register_event_class(event_name) {
     return function (event_cls) {
@@ -712,6 +615,15 @@ var SelectionGeometry = function (_super) {
     return SelectionGeometry;
 }(UIEvent);
 exports.SelectionGeometry = SelectionGeometry;
+var Reset = function (_super) {
+    tslib_1.__extends(Reset, _super);
+    function Reset() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    Reset = tslib_1.__decorate([register_event_class('reset')], Reset);
+    return Reset;
+}(UIEvent);
+exports.Reset = Reset;
 var PointEvent = function (_super) {
     tslib_1.__extends(PointEvent, _super);
     function PointEvent(options) {
@@ -916,8 +828,8 @@ exports.PinchEnd = PinchEnd;
 /* core/build_views */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var array_1 = require(20    /* ./util/array */);
-var object_1 = require(28    /* ./util/object */);
+var array_1 = require(21    /* ./util/array */);
+var object_1 = require(29    /* ./util/object */);
 exports.build_views = function (view_storage, view_models, options, view_types) {
     var created_views, i, j, k, len, len1, model, model_id, new_models, ref, to_remove, view, view_cls, view_options;
     if (view_types == null) {
@@ -965,7 +877,7 @@ exports.remove_views = function (view_storage) {
 /* core/dom */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var types_1 = require(40    /* ./util/types */);
+var types_1 = require(41    /* ./util/types */);
 var _createElement = function (tag) {
     return function (attrs) {
         if (attrs === void 0) {
@@ -1131,8 +1043,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var view_1 = require(43    /* ./view */);
-var DOM = require(4    /* ./dom */);
+var view_1 = require(44    /* ./view */);
+var DOM = require(5    /* ./dom */);
 exports.DOMView = function (superClass) {
     extend(DOMView, superClass);
     function DOMView() {
@@ -1331,16 +1243,16 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var logging_1 = require(12    /* ./logging */);
-var signaling_1 = require(18    /* ./signaling */);
-var property_mixins = require(14    /* ./property_mixins */);
-var refs = require(31    /* ./util/refs */);
-var p = require(13    /* ./properties */);
-var string_1 = require(35    /* ./util/string */);
-var array_1 = require(20    /* ./util/array */);
-var object_1 = require(28    /* ./util/object */);
-var types_1 = require(40    /* ./util/types */);
-var eq_1 = require(26    /* ./util/eq */);
+var logging_1 = require(13    /* ./logging */);
+var signaling_1 = require(19    /* ./signaling */);
+var property_mixins = require(15    /* ./property_mixins */);
+var refs = require(32    /* ./util/refs */);
+var p = require(14    /* ./properties */);
+var string_1 = require(36    /* ./util/string */);
+var array_1 = require(21    /* ./util/array */);
+var object_1 = require(29    /* ./util/object */);
+var types_1 = require(41    /* ./util/types */);
+var eq_1 = require(27    /* ./util/eq */);
 exports.HasProps = function () {
     extend1(HasProps.prototype, signaling_1.Signalable);
     HasProps.getters = function (specs) {
@@ -1521,7 +1433,8 @@ exports.HasProps = function () {
         return new this.constructor(this.attributes);
     };
     HasProps.prototype._setv = function (attrs, options) {
-        var attr, changes, changing, current, i, j, ref, silent, val;
+        var attr, changes, changing, check_eq, current, i, j, ref, silent, val;
+        check_eq = options.check_eq;
         silent = options.silent;
         changes = [];
         changing = this._changing;
@@ -1530,7 +1443,11 @@ exports.HasProps = function () {
         for (attr in attrs) {
             val = attrs[attr];
             val = attrs[attr];
-            if (!eq_1.isEqual(current[attr], val)) {
+            if (check_eq !== false) {
+                if (!eq_1.isEqual(current[attr], val)) {
+                    changes.push(attr);
+                }
+            } else {
                 changes.push(attr);
             }
             current[attr] = val;
@@ -1835,8 +1752,8 @@ exports.HasProps = function () {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var dist_to_segment_squared, nullreturner, sqr;
-var array_1 = require(20    /* ./util/array */);
-var object_1 = require(28    /* ./util/object */);
+var array_1 = require(21    /* ./util/array */);
+var object_1 = require(29    /* ./util/object */);
 exports.point_in_poly = function (x, y, px, py) {
     var i, inside, j, ref, x1, x2, y1, y2;
     inside = false;
@@ -2011,8 +1928,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var solver_1 = require(11    /* ./solver */);
-var model_1 = require(48    /* ../../model */);
+var solver_1 = require(12    /* ./solver */);
+var model_1 = require(49    /* ../../model */);
 exports.LayoutCanvas = function (superClass) {
     extend(LayoutCanvas, superClass);
     function LayoutCanvas() {
@@ -2026,13 +1943,12 @@ exports.LayoutCanvas = function (superClass) {
         this._width = new solver_1.Variable(this.toString() + '.width');
         this._height = new solver_1.Variable(this.toString() + '.height');
         this._right = new solver_1.Variable(this.toString() + '.right');
-        return this._bottom = new solver_1.Variable(this.toString() + '.bottom');
+        this._bottom = new solver_1.Variable(this.toString() + '.bottom');
+        this._hcenter = new solver_1.Variable(this.toString() + '.hcenter');
+        return this._vcenter = new solver_1.Variable(this.toString() + '.vcenter');
     };
     LayoutCanvas.prototype.get_editables = function () {
-        return [
-            this._width,
-            this._height
-        ];
+        return [];
     };
     LayoutCanvas.prototype.get_constraints = function () {
         return [
@@ -2049,6 +1965,26 @@ exports.LayoutCanvas = function (superClass) {
             solver_1.EQ(this._bottom, this._height, [
                 -1,
                 this._top
+            ]),
+            solver_1.EQ([
+                2,
+                this._hcenter
+            ], [
+                -1,
+                this._left
+            ], [
+                -1,
+                this._right
+            ]),
+            solver_1.EQ([
+                2,
+                this._vcenter
+            ], [
+                -1,
+                this._bottom
+            ], [
+                -1,
+                this._top
             ])
         ];
     };
@@ -2060,13 +1996,12 @@ exports.LayoutCanvas = function (superClass) {
                 width: this._width.value,
                 height: this._height.value,
                 right: this._right.value,
-                bottom: this._bottom.value
+                bottom: this._bottom.value,
+                hcenter: this._hcenter.value,
+                vcenter: this._vcenter.value
             };
         }
     });
-    LayoutCanvas.prototype.dump_layout = function () {
-        return console.log(this.toString(), this.layout_bbox);
-    };
     return LayoutCanvas;
 }(model_1.Model);    
 },
@@ -2086,11 +2021,11 @@ var ALPHABETIC, BOTTOM, CENTER, HANGING, LEFT, MIDDLE, RIGHT, TOP, _align_lookup
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var solver_1 = require(11    /* ./solver */);
-var layout_canvas_1 = require(9    /* ./layout_canvas */);
-var p = require(13    /* core/properties */);
-var logging_1 = require(12    /* core/logging */);
-var types_1 = require(40    /* core/util/types */);
+var solver_1 = require(12    /* ./solver */);
+var layout_canvas_1 = require(10    /* ./layout_canvas */);
+var p = require(14    /* core/properties */);
+var logging_1 = require(13    /* core/logging */);
+var types_1 = require(41    /* core/util/types */);
 pi2 = Math.PI / 2;
 ALPHABETIC = 'alphabetic';
 TOP = 'top';
@@ -2207,28 +2142,8 @@ exports.update_panel_constraints = function (view) {
     if (view._size_constraint != null && s.has_constraint(view._size_constraint)) {
         s.remove_constraint(view._size_constraint);
     }
-    view._size_constraint = solver_1.GE(view.model.panel._size, -view._get_size());
-    s.add_constraint(view._size_constraint);
-    if (view._full_constraint != null && s.has_constraint(view._full_constraint)) {
-        s.remove_constraint(view._full_constraint);
-    }
-    view._full_constraint = function () {
-        switch (view.model.panel.side) {
-        case 'above':
-        case 'below':
-            return solver_1.EQ(view.model.panel._width, [
-                -1,
-                view.plot_model.canvas._width
-            ]);
-        case 'left':
-        case 'right':
-            return solver_1.EQ(view.model.panel._height, [
-                -1,
-                view.plot_model.canvas._height
-            ]);
-        }
-    }();
-    return s.add_constraint(view._full_constraint);
+    view._size_constraint = solver_1.EQ(view.model.panel._size, -view._get_size());
+    return s.add_constraint(view._size_constraint);
 };
 exports.SidePanel = function (superClass) {
     extend(SidePanel, superClass);
@@ -2240,6 +2155,9 @@ exports.SidePanel = function (superClass) {
         side: [p.String],
         plot: [p.Instance]
     });
+    SidePanel.prototype.toString = function () {
+        return this.type + '(' + this.id + ', ' + this.side + ')';
+    };
     SidePanel.prototype.initialize = function (attrs, options) {
         SidePanel.__super__.initialize.call(this, attrs, options);
         switch (this.side) {
@@ -2314,7 +2232,7 @@ exports.SidePanel = function (superClass) {
 /* core/layout/solver */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var kiwi_1 = require(314    /* kiwi */);
+var kiwi_1 = require(318    /* kiwi */);
 exports.Variable = kiwi_1.Variable;
 exports.Expression = kiwi_1.Expression;
 exports.Constraint = kiwi_1.Constraint;
@@ -2400,7 +2318,7 @@ exports.Solver = Solver;
 'use strict';
 // This is based on https://github.com/pimterry/loglevel
 Object.defineProperty(exports, '__esModule', { value: true });
-var types_1 = require(40    /* ./util/types */);
+var types_1 = require(41    /* ./util/types */);
 var _loggers = {};
 var LogLevel = function () {
     function LogLevel(name, level) {
@@ -2556,12 +2474,12 @@ var valueToString, extend = function (child, parent) {
         }
         return -1;
     };
-var signaling_1 = require(18    /* ./signaling */);
-var enums = require(6    /* ./enums */);
-var svg_colors = require(36    /* ./util/svg_colors */);
-var color_1 = require(24    /* ./util/color */);
-var array_1 = require(20    /* ./util/array */);
-var types_1 = require(40    /* ./util/types */);
+var signaling_1 = require(19    /* ./signaling */);
+var enums = require(7    /* ./enums */);
+var svg_colors = require(37    /* ./util/svg_colors */);
+var color_1 = require(25    /* ./util/color */);
+var array_1 = require(21    /* ./util/array */);
+var types_1 = require(41    /* ./util/types */);
 valueToString = function (value) {
     try {
         return JSON.stringify(value);
@@ -3095,8 +3013,8 @@ exports.StringSpec = function (superClass) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var _fill_mixin, _gen_mixin, _line_mixin, _text_mixin;
-var p = require(13    /* ./properties */);
-var object_1 = require(28    /* ./util/object */);
+var p = require(14    /* ./properties */);
+var object_1 = require(29    /* ./util/object */);
 _gen_mixin = function (mixin, prefix) {
     var name, result, type;
     result = {};
@@ -3183,6 +3101,10 @@ _text_mixin = {
     text_baseline: [
         p.TextBaseline,
         'bottom'
+    ],
+    text_line_height: [
+        p.Number,
+        1.2
     ]
 };
 exports.text = function (prefix) {
@@ -3218,10 +3140,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var has_props_1 = require(7    /* ./has_props */);
-var selector_1 = require(16    /* ./selector */);
-var hittest = require(8    /* ./hittest */);
-var p = require(13    /* ./properties */);
+var has_props_1 = require(8    /* ./has_props */);
+var selector_1 = require(17    /* ./selector */);
+var hittest = require(9    /* ./hittest */);
+var p = require(14    /* ./properties */);
 exports.SelectionManager = function (superClass) {
     extend(SelectionManager, superClass);
     function SelectionManager() {
@@ -3281,9 +3203,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var has_props_1 = require(7    /* ./has_props */);
-var hittest = require(8    /* ./hittest */);
-var p = require(13    /* ./properties */);
+var has_props_1 = require(8    /* ./has_props */);
+var hittest = require(9    /* ./hittest */);
+var p = require(14    /* ./properties */);
 exports.Selector = function (superClass) {
     extend(Selector, superClass);
     function Selector() {
@@ -3345,9 +3267,9 @@ exports.settings = new Settings();
 'use strict';
 // Based on https://github.com/phosphorjs/phosphor/blob/master/packages/signaling/src/index.ts
 Object.defineProperty(exports, '__esModule', { value: true });
-var logging_1 = require(12    /* ./logging */);
-var callback_1 = require(22    /* ./util/callback */);
-var array_1 = require(20    /* ./util/array */);
+var logging_1 = require(13    /* ./logging */);
+var callback_1 = require(23    /* ./util/callback */);
+var array_1 = require(21    /* ./util/array */);
 var Signal = function () {
     function Signal(sender, name) {
         this.sender = sender;
@@ -3526,13 +3448,13 @@ function cleanupDirtySet() {
 /* core/ui_events */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var Hammer = require(311    /* hammerjs */);
-var signaling_1 = require(18    /* ./signaling */);
-var logging_1 = require(12    /* ./logging */);
-var dom_1 = require(4    /* ./dom */);
-var wheel_1 = require(41    /* ./util/wheel */);
-var object_1 = require(28    /* ./util/object */);
-var bokeh_events_1 = require(2    /* ./bokeh_events */);
+var Hammer = require(315    /* hammerjs */);
+var signaling_1 = require(19    /* ./signaling */);
+var logging_1 = require(13    /* ./logging */);
+var dom_1 = require(5    /* ./dom */);
+var wheel_1 = require(42    /* ./util/wheel */);
+var object_1 = require(29    /* ./util/object */);
+var bokeh_events_1 = require(3    /* ./bokeh_events */);
 exports.UIEvents = function () {
     function UIEvents(plot_view, toolbar, hit_area, plot) {
         this.plot_view = plot_view;
@@ -4030,7 +3952,7 @@ exports.UIEvents = function () {
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
 //     Underscore may be freely distributed under the MIT license.
 Object.defineProperty(exports, '__esModule', { value: true });
-var math_1 = require(27    /* ./math */);
+var math_1 = require(28    /* ./math */);
 var slice = Array.prototype.slice;
 function last(array) {
     return array[array.length - 1];
@@ -4696,7 +4618,7 @@ var _component2hex, indexOf = [].indexOf || function (item) {
         }
         return -1;
     };
-var svg_colors = require(36    /* ./svg_colors */);
+var svg_colors = require(37    /* ./svg_colors */);
 _component2hex = function (v) {
     var h;
     h = Number(v).toString(16);
@@ -4814,9 +4736,9 @@ exports.valid_rgb = function (value) {
 /* core/util/data_structures */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var array_1 = require(20    /* ./array */);
-var eq_1 = require(26    /* ./eq */);
-var types_1 = require(40    /* ./types */);
+var array_1 = require(21    /* ./array */);
+var eq_1 = require(27    /* ./eq */);
+var types_1 = require(41    /* ./types */);
 var MultiDict = function () {
     function MultiDict() {
         this._dict = {};
@@ -4952,7 +4874,7 @@ exports.Set = Set;
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
 //     Underscore may be freely distributed under the MIT license.
 Object.defineProperty(exports, '__esModule', { value: true });
-var types_1 = require(40    /* ./types */);
+var types_1 = require(41    /* ./types */);
 var toString = Object.prototype.toString;
 // Internal recursive comparison function for `isEqual`.
 function eq(a, b, aStack, bStack) {
@@ -5130,7 +5052,7 @@ exports.clamp = clamp;
 /* core/util/object */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var array_1 = require(20    /* ./array */);
+var array_1 = require(21    /* ./array */);
 exports.keys = Object.keys;
 function values(object) {
     var keys = Object.keys(object);
@@ -5192,12 +5114,12 @@ exports.isEmpty = isEmpty;
 /* core/util/proj4 */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var proj4 = require(338    /* proj4/lib/core */);
+var proj4 = require(342    /* proj4/lib/core */);
 exports.proj4 = proj4;
-var Proj = require(326    /* proj4/lib/Proj */);
-var toPoint = require(332    /* proj4/lib/common/toPoint */);
-var defs = require(342    /* proj4/lib/defs */);
-var transform = require(351    /* proj4/lib/transform */);
+var Proj = require(330    /* proj4/lib/Proj */);
+var toPoint = require(336    /* proj4/lib/common/toPoint */);
+var defs = require(346    /* proj4/lib/defs */);
+var transform = require(355    /* proj4/lib/transform */);
 proj4.defaultDatum = 'WGS84';
 proj4.WGS84 = new Proj('WGS84');
 proj4.Proj = Proj;
@@ -5210,7 +5132,7 @@ exports.wgs84 = defs('WGS84');
 /* core/util/projections */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var proj4_1 = require(29    /* ./proj4 */);
+var proj4_1 = require(30    /* ./proj4 */);
 function project_xy(x, y) {
     var n = Math.min(x.length, y.length);
     var merc_x_s = new Array(n);
@@ -5248,8 +5170,8 @@ exports.project_xsys = project_xsys;
 /* core/util/refs */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var has_props_1 = require(7    /* ../has_props */);
-var types_1 = require(40    /* ./types */);
+var has_props_1 = require(8    /* ../has_props */);
+var types_1 = require(41    /* ./types */);
 // Create a Bokeh reference from a HasProps subclass
 //
 // @param obj [HasProps] the object to create a reference for
@@ -5310,9 +5232,9 @@ exports.get_indices = function (data_source) {
 /* core/util/serialization */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var ARRAY_TYPES, DTYPES, _arrayBufferToBase64, _base64ToArrayBuffer, k, v;
-var types_1 = require(40    /* ./types */);
-ARRAY_TYPES = {
+var _order, buf, buf16, buf8, k, v;
+var types_1 = require(41    /* ./types */);
+exports.ARRAY_TYPES = {
     float32: Float32Array,
     float64: Float64Array,
     uint8: Uint8Array,
@@ -5322,12 +5244,105 @@ ARRAY_TYPES = {
     uint32: Uint32Array,
     int32: Int32Array
 };
-DTYPES = {};
-for (k in ARRAY_TYPES) {
-    v = ARRAY_TYPES[k];
-    DTYPES[v.name] = k;
+exports.DTYPES = {};
+for (k in exports.ARRAY_TYPES) {
+    v = exports.ARRAY_TYPES[k];
+    exports.DTYPES[v.name] = k;
 }
-_arrayBufferToBase64 = function (buffer) {
+buf = new ArrayBuffer(2);
+buf8 = new Uint8Array(buf);
+buf16 = new Uint16Array(buf);
+buf8[0] = 170;
+buf8[1] = 187;
+if (buf16[0] === 48042) {
+    _order = 'little';
+} else {
+    _order = 'big';
+}
+exports.BYTE_ORDER = _order;
+exports.swap16 = function (a) {
+    var i, j, ref, t, x;
+    x = new Uint8Array(a.buffer, a.byteOffset, a.length * 2);
+    for (i = j = 0, ref = x.length; j < ref; i = j += 2) {
+        t = x[i];
+        x[i] = x[i + 1];
+        x[i + 1] = t;
+    }
+    return null;
+};
+exports.swap32 = function (a) {
+    var i, j, ref, t, x;
+    x = new Uint8Array(a.buffer, a.byteOffset, a.length * 4);
+    for (i = j = 0, ref = x.length; j < ref; i = j += 4) {
+        t = x[i];
+        x[i] = x[i + 3];
+        x[i + 3] = t;
+        t = x[i + 1];
+        x[i + 1] = x[i + 2];
+        x[i + 2] = t;
+    }
+    return null;
+};
+exports.swap64 = function (a) {
+    var i, j, ref, t, x;
+    x = new Uint8Array(a.buffer, a.byteOffset, a.length * 8);
+    for (i = j = 0, ref = x.length; j < ref; i = j += 8) {
+        t = x[i];
+        x[i] = x[i + 7];
+        x[i + 7] = t;
+        t = x[i + 1];
+        x[i + 1] = x[i + 6];
+        x[i + 6] = t;
+        t = x[i + 2];
+        x[i + 2] = x[i + 5];
+        x[i + 5] = t;
+        t = x[i + 3];
+        x[i + 3] = x[i + 4];
+        x[i + 4] = t;
+    }
+    return null;
+};
+exports.process_buffer = function (spec, buffers) {
+    var arr, bytes, header, j, len1, need_swap, shape;
+    need_swap = spec.order !== exports.BYTE_ORDER;
+    shape = spec.shape;
+    bytes = null;
+    for (j = 0, len1 = buffers.length; j < len1; j++) {
+        buf = buffers[j];
+        header = JSON.parse(buf[0]);
+        if (header.id === spec.__buffer__) {
+            bytes = buf[1];
+            break;
+        }
+    }
+    arr = new exports.ARRAY_TYPES[spec.dtype](bytes);
+    if (need_swap) {
+        if (arr.BYTES_PER_ELEMENT === 2) {
+            exports.swap16(arr);
+        } else if (arr.BYTES_PER_ELEMENT === 4) {
+            exports.swap32(arr);
+        } else if (arr.BYTES_PER_ELEMENT === 8) {
+            exports.swap64(arr);
+        }
+    }
+    return [
+        arr,
+        shape
+    ];
+};
+exports.process_array = function (obj, buffers) {
+    if (types_1.isObject(obj) && '__ndarray__' in obj) {
+        return exports.decode_base64(obj);
+    } else if (types_1.isObject(obj) && '__buffer__' in obj) {
+        return exports.process_buffer(obj, buffers);
+    } else if (types_1.isArray(obj)) {
+        return [
+            obj,
+            []
+        ];
+    }
+};
+exports.arrayBufferToBase64 = function (buffer) {
     var b, binary, bytes;
     bytes = new Uint8Array(buffer);
     binary = function () {
@@ -5341,7 +5356,7 @@ _arrayBufferToBase64 = function (buffer) {
     }();
     return btoa(binary.join(''));
 };
-_base64ToArrayBuffer = function (base64) {
+exports.base64ToArrayBuffer = function (base64) {
     var binary_string, bytes, i, j, len, ref;
     binary_string = atob(base64);
     len = binary_string.length;
@@ -5353,10 +5368,10 @@ _base64ToArrayBuffer = function (base64) {
 };
 exports.decode_base64 = function (input) {
     var array, bytes, dtype, shape;
-    bytes = _base64ToArrayBuffer(input['__ndarray__']);
+    bytes = exports.base64ToArrayBuffer(input['__ndarray__']);
     dtype = input['dtype'];
-    if (dtype in ARRAY_TYPES) {
-        array = new ARRAY_TYPES[dtype](bytes);
+    if (dtype in exports.ARRAY_TYPES) {
+        array = new exports.ARRAY_TYPES[dtype](bytes);
     }
     shape = input['shape'];
     return [
@@ -5366,8 +5381,8 @@ exports.decode_base64 = function (input) {
 };
 exports.encode_base64 = function (array, shape) {
     var b64, data, dtype;
-    b64 = _arrayBufferToBase64(array.buffer);
-    dtype = DTYPES[array.constructor.name];
+    b64 = exports.arrayBufferToBase64(array.buffer);
+    dtype = exports.DTYPES[array.constructor.name];
     data = {
         __ndarray__: b64,
         shape: shape,
@@ -5375,44 +5390,36 @@ exports.encode_base64 = function (array, shape) {
     };
     return data;
 };
-exports.decode_column_data = function (data) {
-    var arr, arrays, data_shapes, j, len1, new_data, ref, ref1, shape, shapes;
+exports.decode_column_data = function (data, buffers) {
+    var arr, arrays, j, len1, new_data, new_shapes, obj, ref, ref1, shape, shapes;
     new_data = {};
-    data_shapes = {};
+    new_shapes = {};
     for (k in data) {
         v = data[k];
         if (types_1.isArray(v)) {
+            if (v.length === 0 || !(types_1.isObject(v[0]) || types_1.isArray(v[0]))) {
+                new_data[k] = v;
+                continue;
+            }
             arrays = [];
             shapes = [];
             for (j = 0, len1 = v.length; j < len1; j++) {
-                arr = v[j];
-                if (types_1.isObject(arr) && '__ndarray__' in arr) {
-                    ref = exports.decode_base64(arr), arr = ref[0], shape = ref[1];
-                    shapes.push(shape);
-                    arrays.push(arr);
-                } else if (types_1.isArray(arr)) {
-                    shapes.push([]);
-                    arrays.push(arr);
-                }
+                obj = v[j];
+                ref = exports.process_array(obj, buffers), arr = ref[0], shape = ref[1];
+                arrays.push(arr);
+                shapes.push(shape);
             }
-            if (shapes.length > 0) {
-                new_data[k] = arrays;
-                data_shapes[k] = shapes;
-            } else {
-                new_data[k] = v;
-            }
-        } else if (types_1.isObject(v) && '__ndarray__' in v) {
-            ref1 = exports.decode_base64(v), arr = ref1[0], shape = ref1[1];
-            new_data[k] = arr;
-            data_shapes[k] = shape;
+            new_data[k] = arrays;
+            new_shapes[k] = shapes;
         } else {
-            new_data[k] = v;
-            data_shapes[k] = [];
+            ref1 = exports.process_array(v, buffers), arr = ref1[0], shape = ref1[1];
+            new_data[k] = arr;
+            new_shapes[k] = shape;
         }
     }
     return [
         new_data,
-        data_shapes
+        new_shapes
     ];
 };
 exports.encode_column_data = function (data, shapes) {
@@ -5441,9 +5448,9 @@ exports.encode_column_data = function (data, shapes) {
 /* core/util/spatial */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
+var tslib_1 = require(361    /* tslib */);
 /// <reference types="@types/rbush" />
-var rbush = require(354    /* rbush */);
+var rbush = require(358    /* rbush */);
 var SpatialIndex = function () {
     function SpatialIndex() {
     }
@@ -5490,7 +5497,7 @@ exports.RBush = RBush;
 /* core/util/string */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var settings_1 = require(17    /* ../settings */);
+var settings_1 = require(18    /* ../settings */);
 function startsWith(str, searchString, position) {
     if (position === void 0) {
         position = 0;
@@ -5699,11 +5706,11 @@ exports.black = '#000000';
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var _format_number;
-var sprintf_js_1 = require(355    /* sprintf-js */);
-var Numbro = require(325    /* numbro */);
-var tz = require(356    /* timezone */);
-var string_1 = require(35    /* ./string */);
-var types_1 = require(40    /* ./types */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
+var Numbro = require(329    /* numbro */);
+var tz = require(360    /* timezone */);
+var string_1 = require(36    /* ./string */);
+var types_1 = require(41    /* ./types */);
 _format_number = function (number) {
     var format;
     if (types_1.isNumber(number)) {
@@ -5769,7 +5776,7 @@ exports.replace_placeholders = function (string, data_source, i, formatters, spe
 /* core/util/text */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var dom_1 = require(4    /* ../dom */);
+var dom_1 = require(5    /* ../dom */);
 var cache = {};
 function get_text_height(font) {
     if (cache[font] != null)
@@ -5929,7 +5936,7 @@ exports.getDeltaY = getDeltaY;
 /* core/util/zoom */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var math_1 = require(27    /* ./math */);
+var math_1 = require(28    /* ./math */);
 exports.scale_highlow = function (range, factor, center) {
     var high, low, ref, x, x0, x1;
     if (center == null) {
@@ -6012,8 +6019,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var signaling_1 = require(18    /* ./signaling */);
-var string_1 = require(35    /* ./util/string */);
+var signaling_1 = require(19    /* ./signaling */);
+var string_1 = require(36    /* ./util/string */);
 exports.View = function () {
     extend(View.prototype, signaling_1.Signalable);
     View.getters = function (specs) {
@@ -6093,8 +6100,8 @@ var ContextProperties, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var mixins = require(14    /* ./property_mixins */);
-var color_1 = require(24    /* ./util/color */);
+var mixins = require(15    /* ./property_mixins */);
+var color_1 = require(25    /* ./util/color */);
 ContextProperties = function () {
     function ContextProperties(obj, prefix) {
         var attr, do_spec, j, len, ref;
@@ -6340,19 +6347,19 @@ var EventManager, extend1 = function (child, parent) {
         return -1;
     };
 var base_1 = require(0    /* ./base */);
-var version_1 = require(241    /* ./version */);
-var logging_1 = require(12    /* ./core/logging */);
-var has_props_1 = require(7    /* ./core/has_props */);
-var signaling_1 = require(18    /* ./core/signaling */);
-var refs_1 = require(31    /* ./core/util/refs */);
-var serialization_1 = require(33    /* ./core/util/serialization */);
-var data_structures_1 = require(25    /* ./core/util/data_structures */);
-var array_1 = require(20    /* ./core/util/array */);
-var object_1 = require(28    /* ./core/util/object */);
-var eq_1 = require(26    /* ./core/util/eq */);
-var types_1 = require(40    /* ./core/util/types */);
-var layout_dom_1 = require(134    /* ./models/layouts/layout_dom */);
-var column_data_source_1 = require(168    /* ./models/sources/column_data_source */);
+var version_1 = require(245    /* ./version */);
+var logging_1 = require(13    /* ./core/logging */);
+var has_props_1 = require(8    /* ./core/has_props */);
+var signaling_1 = require(19    /* ./core/signaling */);
+var refs_1 = require(32    /* ./core/util/refs */);
+var serialization_1 = require(34    /* ./core/util/serialization */);
+var data_structures_1 = require(26    /* ./core/util/data_structures */);
+var array_1 = require(21    /* ./core/util/array */);
+var object_1 = require(29    /* ./core/util/object */);
+var eq_1 = require(27    /* ./core/util/eq */);
+var types_1 = require(41    /* ./core/util/types */);
+var layout_dom_1 = require(136    /* ./models/layouts/layout_dom */);
+var column_data_source_1 = require(170    /* ./models/sources/column_data_source */);
 EventManager = function () {
     function EventManager(document) {
         this.document = document;
@@ -7030,11 +7037,8 @@ exports.Document = function () {
             references: Document._references_json(object_1.values(references))
         };
     };
-    Document.prototype.apply_json_patch_string = function (patch) {
-        return this.apply_json_patch(JSON.parse(patch));
-    };
-    Document.prototype.apply_json_patch = function (patch, setter_id) {
-        var attr, column_source, column_source_id, data, event_json, events_json, id, j, l, len, len1, model_id, model_type, new_references, obj1, old_references, patched_id, patched_obj, patches, ref1, references, references_json, results, rollover, root_id, root_obj, shapes, value;
+    Document.prototype.apply_json_patch = function (patch, buffers, setter_id) {
+        var attr, column_source, column_source_id, data, event_json, events_json, id, j, k, l, len, len1, model_id, model_type, new_references, obj1, old_references, patched_id, patched_obj, patches, ref1, ref2, references, references_json, results, rollover, root_id, root_obj, shapes, value;
         references_json = patch['references'];
         events_json = patch['events'];
         references = Document._instantiate_references_json(references_json, this._all_models);
@@ -7076,7 +7080,7 @@ exports.Document = function () {
                 attr = event_json['attr'];
                 model_type = event_json['model']['type'];
                 if (attr === 'data' && model_type === 'ColumnDataSource') {
-                    ref1 = serialization_1.decode_column_data(event_json['new']), data = ref1[0], shapes = ref1[1];
+                    ref1 = serialization_1.decode_column_data(event_json['new'], buffers), data = ref1[0], shapes = ref1[1];
                     results.push(patched_obj.setv({
                         _shapes: shapes,
                         data: data
@@ -7085,6 +7089,33 @@ exports.Document = function () {
                     value = Document._resolve_refs(event_json['new'], old_references, new_references);
                     results.push(patched_obj.setv((obj1 = {}, obj1['' + attr] = value, obj1), { setter_id: setter_id }));
                 }
+                break;
+            case 'ColumnDataChanged':
+                column_source_id = event_json['column_source']['id'];
+                if (!(column_source_id in this._all_models)) {
+                    throw new Error('Cannot stream to ' + column_source_id + ' which is not in the document');
+                }
+                column_source = this._all_models[column_source_id];
+                ref2 = serialization_1.decode_column_data(event_json['new'], buffers), data = ref2[0], shapes = ref2[1];
+                if (event_json['cols'] != null) {
+                    for (k in column_source.data) {
+                        if (!(k in data)) {
+                            data[k] = column_source.data[k];
+                        }
+                    }
+                    for (k in column_source._shapes) {
+                        if (!(k in shapes)) {
+                            shapes[k] = column_source._shapes[k];
+                        }
+                    }
+                }
+                results.push(column_source.setv({
+                    _shapes: shapes,
+                    data: data
+                }, {
+                    setter_id: setter_id,
+                    check_eq: false
+                }));
                 break;
             case 'ColumnsStreamed':
                 column_source_id = event_json['column_source']['id'];
@@ -7138,17 +7169,17 @@ exports.Document = function () {
 Object.defineProperty(exports, '__esModule', { value: true });
 var _create_view, _get_session, _handle_notebook_comms, _init_comms, _render_document_to_element, _sessions, _update_comms_callback, add_document_from_session, add_model_from_session, add_model_static, fill_render_item_from_script_tag;
 var base = require(0    /* ./base */);
-var client_1 = require(1    /* ./client */);
-var logging_1 = require(12    /* ./core/logging */);
-var document_1 = require(45    /* ./document */);
-var dom_1 = require(4    /* ./core/dom */);
+var connection_1 = require(1    /* ./client/connection */);
+var logging_1 = require(13    /* ./core/logging */);
+var document_1 = require(46    /* ./document */);
+var dom_1 = require(5    /* ./core/dom */);
 exports.BOKEH_ROOT = 'bk-root';
 _handle_notebook_comms = function (msg) {
     var data;
     logging_1.logger.debug('handling notebook comms');
     data = JSON.parse(msg.content.data);
     if ('events' in data && 'references' in data) {
-        return this.apply_json_patch(data);
+        return this.apply_json_patch(data, []);
     } else if ('doc' in data) {
         return this.replace_with_json(data['doc']);
     } else {
@@ -7261,7 +7292,7 @@ _get_session = function (websocket_url, session_id, args_string) {
     }
     subsessions = _sessions[websocket_url];
     if (!(session_id in subsessions)) {
-        subsessions[session_id] = client_1.pull_session(websocket_url, session_id, args_string);
+        subsessions[session_id] = connection_1.pull_session(websocket_url, session_id, args_string);
     }
     return subsessions[session_id];
 };
@@ -7405,22 +7436,22 @@ exports.embed_items = function (docs_json, render_items, app_path, absolute_url)
 /* main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-require(239    /* ./polyfill */);
-var version_1 = require(241    /* ./version */);
+require(241    /* ./polyfill */);
+var version_1 = require(245    /* ./version */);
 exports.version = version_1.version;
-var embed = require(46    /* ./embed */);
+var embed = require(47    /* ./embed */);
 exports.embed = embed;
-var logging_1 = require(12    /* ./core/logging */);
+var logging_1 = require(13    /* ./core/logging */);
 exports.logger = logging_1.logger;
 exports.set_log_level = logging_1.set_log_level;
-var settings_1 = require(17    /* ./core/settings */);
+var settings_1 = require(18    /* ./core/settings */);
 exports.settings = settings_1.settings;
 var base_1 = require(0    /* ./base */);
 exports.Models = base_1.Models;
 exports.index = base_1.index;
-var document_1 = require(45    /* ./document */);
+var document_1 = require(46    /* ./document */);
 exports.documents = document_1.documents;
-var safely_1 = require(240    /* ./safely */);
+var safely_1 = require(244    /* ./safely */);
 exports.safely = safely_1.safely;    
 },
 /* model */ function(require, module, exports) {
@@ -7439,11 +7470,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var has_props_1 = require(7    /* ./core/has_props */);
-var p = require(13    /* ./core/properties */);
-var types_1 = require(40    /* ./core/util/types */);
-var object_1 = require(28    /* ./core/util/object */);
-var logging_1 = require(12    /* ./core/logging */);
+var has_props_1 = require(8    /* ./core/has_props */);
+var p = require(14    /* ./core/properties */);
+var types_1 = require(41    /* ./core/util/types */);
+var object_1 = require(29    /* ./core/util/object */);
+var logging_1 = require(13    /* ./core/logging */);
 exports.Model = function (superClass) {
     extend(Model, superClass);
     function Model() {
@@ -7572,9 +7603,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var side_panel_1 = require(10    /* core/layout/side_panel */);
-var p = require(13    /* core/properties */);
-var renderer_1 = require(160    /* ../renderers/renderer */);
+var side_panel_1 = require(11    /* core/layout/side_panel */);
+var p = require(14    /* core/properties */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
 exports.AnnotationView = function (superClass) {
     extend(AnnotationView, superClass);
     function AnnotationView() {
@@ -7627,11 +7658,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var arrow_head_1 = require(51    /* ./arrow_head */);
-var column_data_source_1 = require(168    /* ../sources/column_data_source */);
-var p = require(13    /* core/properties */);
-var math_1 = require(27    /* core/util/math */);
+var annotation_1 = require(50    /* ./annotation */);
+var arrow_head_1 = require(52    /* ./arrow_head */);
+var column_data_source_1 = require(170    /* ../sources/column_data_source */);
+var p = require(14    /* core/properties */);
+var math_1 = require(28    /* core/util/math */);
 exports.ArrowView = function (superClass) {
     extend(ArrowView, superClass);
     function ArrowView() {
@@ -7815,9 +7846,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var visuals_1 = require(44    /* core/visuals */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var visuals_1 = require(45    /* core/visuals */);
+var p = require(14    /* core/properties */);
 exports.ArrowHead = function (superClass) {
     extend(ArrowHead, superClass);
     function ArrowHead() {
@@ -8005,9 +8036,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var column_data_source_1 = require(168    /* ../sources/column_data_source */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var column_data_source_1 = require(170    /* ../sources/column_data_source */);
+var p = require(14    /* core/properties */);
 exports.BandView = function (superClass) {
     extend(BandView, superClass);
     function BandView() {
@@ -8187,11 +8218,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var signaling_1 = require(18    /* core/signaling */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var annotation_1 = require(50    /* ./annotation */);
+var signaling_1 = require(19    /* core/signaling */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.BoxAnnotationView = function (superClass) {
     extend(BoxAnnotationView, superClass);
     function BoxAnnotationView() {
@@ -8396,18 +8427,18 @@ var LONG_DIM_MAX_SCALAR, LONG_DIM_MIN_SCALAR, SHORT_DIM, extend = function (chil
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var basic_ticker_1 = require(175    /* ../tickers/basic_ticker */);
-var basic_tick_formatter_1 = require(88    /* ../formatters/basic_tick_formatter */);
-var linear_color_mapper_1 = require(141    /* ../mappers/linear_color_mapper */);
-var linear_scale_1 = require(163    /* ../scales/linear_scale */);
-var log_scale_1 = require(164    /* ../scales/log_scale */);
-var range1d_1 = require(155    /* ../ranges/range1d */);
-var p = require(13    /* core/properties */);
-var text_util = require(38    /* core/util/text */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
+var annotation_1 = require(50    /* ./annotation */);
+var basic_ticker_1 = require(177    /* ../tickers/basic_ticker */);
+var basic_tick_formatter_1 = require(89    /* ../formatters/basic_tick_formatter */);
+var linear_color_mapper_1 = require(143    /* ../mappers/linear_color_mapper */);
+var linear_scale_1 = require(165    /* ../scales/linear_scale */);
+var log_scale_1 = require(166    /* ../scales/log_scale */);
+var range1d_1 = require(157    /* ../ranges/range1d */);
+var p = require(14    /* core/properties */);
+var text_util = require(39    /* core/util/text */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
 SHORT_DIM = 25;
 LONG_DIM_MIN_SCALAR = 0.3;
 LONG_DIM_MAX_SCALAR = 0.8;
@@ -9132,45 +9163,45 @@ exports.ColorBar = function (superClass) {
 /* models/annotations/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var annotation_1 = require(49    /* ./annotation */);
+var annotation_1 = require(50    /* ./annotation */);
 exports.Annotation = annotation_1.Annotation;
-var arrow_1 = require(50    /* ./arrow */);
+var arrow_1 = require(51    /* ./arrow */);
 exports.Arrow = arrow_1.Arrow;
-var arrow_head_1 = require(51    /* ./arrow_head */);
+var arrow_head_1 = require(52    /* ./arrow_head */);
 exports.ArrowHead = arrow_head_1.ArrowHead;
-var arrow_head_2 = require(51    /* ./arrow_head */);
+var arrow_head_2 = require(52    /* ./arrow_head */);
 exports.OpenHead = arrow_head_2.OpenHead;
-var arrow_head_3 = require(51    /* ./arrow_head */);
+var arrow_head_3 = require(52    /* ./arrow_head */);
 exports.NormalHead = arrow_head_3.NormalHead;
-var arrow_head_4 = require(51    /* ./arrow_head */);
+var arrow_head_4 = require(52    /* ./arrow_head */);
 exports.TeeHead = arrow_head_4.TeeHead;
-var arrow_head_5 = require(51    /* ./arrow_head */);
+var arrow_head_5 = require(52    /* ./arrow_head */);
 exports.VeeHead = arrow_head_5.VeeHead;
-var band_1 = require(52    /* ./band */);
+var band_1 = require(53    /* ./band */);
 exports.Band = band_1.Band;
-var box_annotation_1 = require(53    /* ./box_annotation */);
+var box_annotation_1 = require(54    /* ./box_annotation */);
 exports.BoxAnnotation = box_annotation_1.BoxAnnotation;
-var color_bar_1 = require(54    /* ./color_bar */);
+var color_bar_1 = require(55    /* ./color_bar */);
 exports.ColorBar = color_bar_1.ColorBar;
-var label_1 = require(56    /* ./label */);
+var label_1 = require(57    /* ./label */);
 exports.Label = label_1.Label;
-var label_set_1 = require(57    /* ./label_set */);
+var label_set_1 = require(58    /* ./label_set */);
 exports.LabelSet = label_set_1.LabelSet;
-var legend_1 = require(58    /* ./legend */);
+var legend_1 = require(59    /* ./legend */);
 exports.Legend = legend_1.Legend;
-var legend_item_1 = require(59    /* ./legend_item */);
+var legend_item_1 = require(60    /* ./legend_item */);
 exports.LegendItem = legend_item_1.LegendItem;
-var poly_annotation_1 = require(60    /* ./poly_annotation */);
+var poly_annotation_1 = require(61    /* ./poly_annotation */);
 exports.PolyAnnotation = poly_annotation_1.PolyAnnotation;
-var span_1 = require(61    /* ./span */);
+var span_1 = require(62    /* ./span */);
 exports.Span = span_1.Span;
-var text_annotation_1 = require(62    /* ./text_annotation */);
+var text_annotation_1 = require(63    /* ./text_annotation */);
 exports.TextAnnotation = text_annotation_1.TextAnnotation;
-var title_1 = require(63    /* ./title */);
+var title_1 = require(64    /* ./title */);
 exports.Title = title_1.Title;
-var tooltip_1 = require(64    /* ./tooltip */);
+var tooltip_1 = require(65    /* ./tooltip */);
 exports.Tooltip = tooltip_1.Tooltip;
-var whisker_1 = require(65    /* ./whisker */);
+var whisker_1 = require(66    /* ./whisker */);
 exports.Whisker = whisker_1.Whisker;    
 },
 /* models/annotations/label */ function(require, module, exports) {
@@ -9189,9 +9220,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var text_annotation_1 = require(62    /* ./text_annotation */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var text_annotation_1 = require(63    /* ./text_annotation */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.LabelView = function (superClass) {
     extend(LabelView, superClass);
     function LabelView() {
@@ -9329,11 +9360,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var text_annotation_1 = require(62    /* ./text_annotation */);
-var column_data_source_1 = require(168    /* ../sources/column_data_source */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var text_annotation_1 = require(63    /* ./text_annotation */);
+var column_data_source_1 = require(170    /* ../sources/column_data_source */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.LabelSetView = function (superClass) {
     extend(LabelSetView, superClass);
     function LabelSetView() {
@@ -9597,13 +9628,13 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var p = require(13    /* core/properties */);
-var text_1 = require(38    /* core/util/text */);
-var bbox_1 = require(21    /* core/util/bbox */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
+var annotation_1 = require(50    /* ./annotation */);
+var p = require(14    /* core/properties */);
+var text_1 = require(39    /* core/util/text */);
+var bbox_1 = require(22    /* core/util/bbox */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
 exports.LegendView = function (superClass) {
     extend(LegendView, superClass);
     function LegendView() {
@@ -9620,8 +9651,17 @@ exports.LegendView = function (superClass) {
             };
         }(this));
     };
+    LegendView.getters({
+        legend_padding: function () {
+            if (this.visuals.border_line.line_color.value() != null) {
+                return this.model.padding;
+            } else {
+                return 0;
+            }
+        }
+    });
     LegendView.prototype.compute_legend_bbox = function () {
-        var ctx, glyph_height, glyph_width, h_range, i, label_height, label_standoff, label_width, legend_height, legend_margin, legend_names, legend_padding, legend_spacing, legend_width, len, location, max_label_width, name, panel, ref, ref1, ref2, v_range, width, x, y;
+        var ctx, glyph_height, glyph_width, h_range, i, label_height, label_standoff, label_width, legend_height, legend_margin, legend_names, legend_padding, legend_spacing, legend_width, len, location, max_label_width, name, panel, ref, ref1, v_range, width, x, y;
         legend_names = this.model.get_legend_names();
         glyph_height = this.model.glyph_height;
         glyph_width = this.model.glyph_width;
@@ -9646,7 +9686,7 @@ exports.LegendView = function (superClass) {
         ctx.restore();
         max_label_width = array_1.max(object_1.values(this.text_widths));
         legend_margin = this.model.margin;
-        legend_padding = this.model.padding;
+        legend_padding = this.legend_padding;
         legend_spacing = this.model.spacing;
         label_standoff = this.model.label_standoff;
         if (this.model.orientation === 'vertical') {
@@ -9714,13 +9754,8 @@ exports.LegendView = function (superClass) {
             }
         } else if (types_1.isArray(location) && location.length === 2) {
             x = location[0], y = location[1];
-            if ((ref2 = panel.side) === 'left' || ref2 === 'right' || ref2 === 'above' || ref2 === 'below') {
-                x += h_range.start;
-                y += v_range.end;
-            } else {
-                x += h_range.start;
-                y += v_range.start;
-            }
+            x += h_range.start;
+            y += v_range.start + legend_height;
         }
         x = this.plot_view.canvas.vx_to_sx(x);
         y = this.plot_view.canvas.vy_to_sy(y);
@@ -9742,12 +9777,13 @@ exports.LegendView = function (superClass) {
         });
     };
     LegendView.prototype.on_hit = function (sx, sy) {
-        var bbox, field, glyph_height, glyph_width, h, i, item, j, k, l, label, label_standoff, labels, legend_bbox, legend_spacing, len, len1, len2, len3, r, ref, ref1, ref2, ref3, ref4, vertical, w, x1, x2, xoffset, y1, y2, yoffset;
+        var bbox, field, glyph_height, glyph_width, h, i, item, j, k, l, label, label_standoff, labels, legend_bbox, legend_padding, legend_spacing, len, len1, len2, len3, r, ref, ref1, ref2, ref3, ref4, vertical, w, x1, x2, xoffset, y1, y2, yoffset;
         glyph_height = this.model.glyph_height;
         glyph_width = this.model.glyph_width;
+        legend_padding = this.legend_padding;
         legend_spacing = this.model.spacing;
         label_standoff = this.model.label_standoff;
-        xoffset = yoffset = this.model.padding;
+        xoffset = yoffset = legend_padding;
         legend_bbox = this.compute_legend_bbox();
         vertical = this.model.orientation === 'vertical';
         ref = this.model.items;
@@ -9763,7 +9799,7 @@ exports.LegendView = function (superClass) {
                 y2 = y1 + glyph_height;
                 if (vertical) {
                     ref1 = [
-                        legend_bbox.width - 2 * this.model.padding,
+                        legend_bbox.width - 2 * legend_padding,
                         this.max_label_height
                     ], w = ref1[0], h = ref1[1];
                 } else {
@@ -9831,12 +9867,13 @@ exports.LegendView = function (superClass) {
         }
     };
     LegendView.prototype._draw_legend_items = function (ctx, bbox) {
-        var active, field, glyph_height, glyph_width, h, i, item, j, k, label, label_standoff, labels, legend_spacing, len, len1, len2, r, ref, ref1, ref2, ref3, vertical, view, w, x1, x2, xoffset, y1, y2, yoffset;
+        var active, field, glyph_height, glyph_width, h, i, item, j, k, label, label_standoff, labels, legend_padding, legend_spacing, len, len1, len2, r, ref, ref1, ref2, ref3, vertical, view, w, x1, x2, xoffset, y1, y2, yoffset;
         glyph_height = this.model.glyph_height;
         glyph_width = this.model.glyph_width;
+        legend_padding = this.legend_padding;
         legend_spacing = this.model.spacing;
         label_standoff = this.model.label_standoff;
-        xoffset = yoffset = this.model.padding;
+        xoffset = yoffset = legend_padding;
         vertical = this.model.orientation === 'vertical';
         ref = this.model.items;
         for (i = 0, len = ref.length; i < len; i++) {
@@ -9882,7 +9919,7 @@ exports.LegendView = function (superClass) {
                 if (!active) {
                     if (vertical) {
                         ref2 = [
-                            bbox.width - 2 * this.model.padding,
+                            bbox.width - 2 * legend_padding,
                             this.max_label_height
                         ], w = ref2[0], h = ref2[1];
                     } else {
@@ -9905,10 +9942,10 @@ exports.LegendView = function (superClass) {
         bbox = this.compute_legend_bbox();
         side = this.model.panel.side;
         if (side === 'above' || side === 'below') {
-            return bbox.height;
+            return bbox.height + 2 * this.model.margin;
         }
         if (side === 'left' || side === 'right') {
-            return bbox.width;
+            return bbox.width + 2 * this.model.margin;
         }
     };
     return LegendView;
@@ -10034,11 +10071,11 @@ var bind = function (fn, me) {
         }
         return -1;
     };
-var model_1 = require(48    /* ../../model */);
-var p = require(13    /* core/properties */);
-var logging_1 = require(12    /* core/logging */);
-var array_1 = require(20    /* core/util/array */);
-var column_data_source_1 = require(168    /* ../../models/sources/column_data_source */);
+var model_1 = require(49    /* ../../model */);
+var p = require(14    /* core/properties */);
+var logging_1 = require(13    /* core/logging */);
+var array_1 = require(21    /* core/util/array */);
+var column_data_source_1 = require(170    /* ../../models/sources/column_data_source */);
 exports.LegendItem = function (superClass) {
     extend(LegendItem, superClass);
     function LegendItem() {
@@ -10150,9 +10187,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var signaling_1 = require(18    /* core/signaling */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var signaling_1 = require(19    /* core/signaling */);
+var p = require(14    /* core/properties */);
 exports.PolyAnnotationView = function (superClass) {
     extend(PolyAnnotationView, superClass);
     function PolyAnnotationView() {
@@ -10289,9 +10326,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.SpanView = function (superClass) {
     extend(SpanView, superClass);
     function SpanView() {
@@ -10465,10 +10502,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var dom_1 = require(4    /* core/dom */);
-var types_1 = require(40    /* core/util/types */);
-var text_1 = require(38    /* core/util/text */);
+var annotation_1 = require(50    /* ./annotation */);
+var dom_1 = require(5    /* core/dom */);
+var types_1 = require(41    /* core/util/types */);
+var text_1 = require(39    /* core/util/text */);
 exports.TextAnnotationView = function (superClass) {
     extend(TextAnnotationView, superClass);
     function TextAnnotationView() {
@@ -10646,10 +10683,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var text_annotation_1 = require(62    /* ./text_annotation */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var Visuals = require(44    /* core/visuals */);
+var text_annotation_1 = require(63    /* ./text_annotation */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var Visuals = require(45    /* core/visuals */);
 exports.TitleView = function (superClass) {
     extend(TitleView, superClass);
     function TitleView() {
@@ -10819,9 +10856,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.TooltipView = function (superClass) {
     extend(TooltipView, superClass);
     function TooltipView() {
@@ -10994,10 +11031,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var annotation_1 = require(49    /* ./annotation */);
-var column_data_source_1 = require(168    /* ../sources/column_data_source */);
-var arrow_head_1 = require(51    /* ./arrow_head */);
-var p = require(13    /* core/properties */);
+var annotation_1 = require(50    /* ./annotation */);
+var column_data_source_1 = require(170    /* ../sources/column_data_source */);
+var arrow_head_1 = require(52    /* ./arrow_head */);
+var p = require(14    /* core/properties */);
 exports.WhiskerView = function (superClass) {
     extend(WhiskerView, superClass);
     function WhiskerView() {
@@ -11186,13 +11223,13 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var side_panel_1 = require(10    /* core/layout/side_panel */);
-var guide_renderer_1 = require(158    /* ../renderers/guide_renderer */);
-var renderer_1 = require(160    /* ../renderers/renderer */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var side_panel_1 = require(11    /* core/layout/side_panel */);
+var guide_renderer_1 = require(160    /* ../renderers/guide_renderer */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 exports.AxisView = function (superClass) {
     extend(AxisView, superClass);
     function AxisView() {
@@ -11275,20 +11312,34 @@ exports.AxisView = function (superClass) {
         this._draw_oriented_labels(ctx, labels, coords, orient, this.model.panel_side, standoff, visuals);
     };
     AxisView.prototype._draw_axis_label = function (ctx, extents, tick_coords) {
-        var coords, ref, standoff, visuals, x, xm, y, ym;
+        var coords, standoff, visuals, x, y;
         if (this.model.axis_label == null) {
             return;
         }
-        ref = this.model.rule_coords, x = ref[0], y = ref[1];
-        xm = (x[0] + x[x.length - 1]) / 2;
-        ym = (y[0] + y[y.length - 1]) / 2;
+        switch (this.model.panel.side) {
+        case 'above':
+            x = this.model.panel._hcenter.value;
+            y = this.model.panel._bottom.value;
+            break;
+        case 'below':
+            x = this.model.panel._hcenter.value;
+            y = this.model.panel._top.value;
+            break;
+        case 'left':
+            x = this.model.panel._right.value;
+            y = this.model.panel._vcenter._value;
+            break;
+        case 'right':
+            x = this.model.panel._left.value;
+            y = this.model.panel._vcenter._value;
+        }
         coords = [
-            [xm],
-            [ym]
+            [x],
+            [y]
         ];
         standoff = extents.tick + array_1.sum(extents.tick_label) + this.model.axis_label_standoff;
         visuals = this.visuals.axis_label_text;
-        this._draw_oriented_labels(ctx, [this.model.axis_label], coords, 'parallel', this.model.panel_side, standoff, visuals);
+        this._draw_oriented_labels(ctx, [this.model.axis_label], coords, 'parallel', this.model.panel_side, standoff, visuals, 'screen');
     };
     AxisView.prototype._draw_ticks = function (ctx, coords, tin, tout, visuals) {
         var i, k, nx, nxin, nxout, ny, nyin, nyout, ref, ref1, ref2, ref3, ref4, ref5, sx0, sx1, sxs, sy0, sy1, sys, x, xoff, y, yoff;
@@ -11319,15 +11370,26 @@ exports.AxisView = function (superClass) {
             ctx.stroke();
         }
     };
-    AxisView.prototype._draw_oriented_labels = function (ctx, labels, coords, orient, side, standoff, visuals) {
-        var angle, i, k, nx, nxd, ny, nyd, ref, ref1, ref2, ref3, sx, sxs, sy, sys, x, xoff, y, yoff;
+    AxisView.prototype._draw_oriented_labels = function (ctx, labels, coords, orient, side, standoff, visuals, units) {
+        var angle, dxs, dys, i, k, nx, nxd, ny, nyd, ref, ref1, ref2, ref3, ref4, sx, sxs, sy, sys, vxs, vys, xoff, yoff;
+        if (units == null) {
+            units = 'data';
+        }
         if (!visuals.doit || labels.length === 0) {
             return;
         }
-        x = coords[0], y = coords[1];
-        ref = this.plot_view.map_to_screen(x, y, this.model.x_range_name, this.model.y_range_name), sxs = ref[0], sys = ref[1];
-        ref1 = this.model.normals, nx = ref1[0], ny = ref1[1];
-        ref2 = this.model.offsets, xoff = ref2[0], yoff = ref2[1];
+        if (units === 'screen') {
+            vxs = coords[0], vys = coords[1];
+            ref = [
+                this.plot_view.canvas.v_vx_to_sx(vxs),
+                this.plot_view.canvas.v_vy_to_sy(vys)
+            ], sxs = ref[0], sys = ref[1];
+        } else {
+            dxs = coords[0], dys = coords[1];
+            ref1 = this.plot_view.map_to_screen(dxs, dys, this.model.x_range_name, this.model.y_range_name), sxs = ref1[0], sys = ref1[1];
+        }
+        ref2 = this.model.normals, nx = ref2[0], ny = ref2[1];
+        ref3 = this.model.offsets, xoff = ref3[0], yoff = ref3[1];
         nxd = nx * (xoff + standoff);
         nyd = ny * (yoff + standoff);
         visuals.set_value(ctx);
@@ -11337,7 +11399,7 @@ exports.AxisView = function (superClass) {
         } else {
             angle = -orient;
         }
-        for (i = k = 0, ref3 = sxs.length; 0 <= ref3 ? k < ref3 : k > ref3; i = 0 <= ref3 ? ++k : --k) {
+        for (i = k = 0, ref4 = sxs.length; 0 <= ref4 ? k < ref4 : k > ref4; i = 0 <= ref4 ? ++k : --k) {
             sx = Math.round(sxs[i] + nxd);
             sy = Math.round(sys[i] + nyd);
             ctx.translate(sx, sy);
@@ -11713,9 +11775,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var axis_1 = require(66    /* ./axis */);
-var categorical_tick_formatter_1 = require(89    /* ../formatters/categorical_tick_formatter */);
-var categorical_ticker_1 = require(176    /* ../tickers/categorical_ticker */);
+var axis_1 = require(67    /* ./axis */);
+var categorical_tick_formatter_1 = require(90    /* ../formatters/categorical_tick_formatter */);
+var categorical_ticker_1 = require(178    /* ../tickers/categorical_ticker */);
 exports.CategoricalAxisView = function (superClass) {
     extend(CategoricalAxisView, superClass);
     function CategoricalAxisView() {
@@ -11974,7 +12036,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var axis_1 = require(66    /* ./axis */);
+var axis_1 = require(67    /* ./axis */);
 exports.ContinuousAxis = function (superClass) {
     extend(ContinuousAxis, superClass);
     function ContinuousAxis() {
@@ -12000,9 +12062,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var linear_axis_1 = require(71    /* ./linear_axis */);
-var datetime_tick_formatter_1 = require(90    /* ../formatters/datetime_tick_formatter */);
-var datetime_ticker_1 = require(179    /* ../tickers/datetime_ticker */);
+var linear_axis_1 = require(72    /* ./linear_axis */);
+var datetime_tick_formatter_1 = require(91    /* ../formatters/datetime_tick_formatter */);
+var datetime_ticker_1 = require(181    /* ../tickers/datetime_ticker */);
 exports.DatetimeAxisView = function (superClass) {
     extend(DatetimeAxisView, superClass);
     function DatetimeAxisView() {
@@ -12031,17 +12093,17 @@ exports.DatetimeAxis = function (superClass) {
 /* models/axes/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var axis_1 = require(66    /* ./axis */);
+var axis_1 = require(67    /* ./axis */);
 exports.Axis = axis_1.Axis;
-var categorical_axis_1 = require(67    /* ./categorical_axis */);
+var categorical_axis_1 = require(68    /* ./categorical_axis */);
 exports.CategoricalAxis = categorical_axis_1.CategoricalAxis;
-var continuous_axis_1 = require(68    /* ./continuous_axis */);
+var continuous_axis_1 = require(69    /* ./continuous_axis */);
 exports.ContinuousAxis = continuous_axis_1.ContinuousAxis;
-var datetime_axis_1 = require(69    /* ./datetime_axis */);
+var datetime_axis_1 = require(70    /* ./datetime_axis */);
 exports.DatetimeAxis = datetime_axis_1.DatetimeAxis;
-var linear_axis_1 = require(71    /* ./linear_axis */);
+var linear_axis_1 = require(72    /* ./linear_axis */);
 exports.LinearAxis = linear_axis_1.LinearAxis;
-var log_axis_1 = require(72    /* ./log_axis */);
+var log_axis_1 = require(73    /* ./log_axis */);
 exports.LogAxis = log_axis_1.LogAxis;    
 },
 /* models/axes/linear_axis */ function(require, module, exports) {
@@ -12060,10 +12122,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var axis_1 = require(66    /* ./axis */);
-var continuous_axis_1 = require(68    /* ./continuous_axis */);
-var basic_tick_formatter_1 = require(88    /* ../formatters/basic_tick_formatter */);
-var basic_ticker_1 = require(175    /* ../tickers/basic_ticker */);
+var axis_1 = require(67    /* ./axis */);
+var continuous_axis_1 = require(69    /* ./continuous_axis */);
+var basic_tick_formatter_1 = require(89    /* ../formatters/basic_tick_formatter */);
+var basic_ticker_1 = require(177    /* ../tickers/basic_ticker */);
 exports.LinearAxisView = function (superClass) {
     extend(LinearAxisView, superClass);
     function LinearAxisView() {
@@ -12105,10 +12167,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var axis_1 = require(66    /* ./axis */);
-var continuous_axis_1 = require(68    /* ./continuous_axis */);
-var log_tick_formatter_1 = require(93    /* ../formatters/log_tick_formatter */);
-var log_ticker_1 = require(183    /* ../tickers/log_ticker */);
+var axis_1 = require(67    /* ./axis */);
+var continuous_axis_1 = require(69    /* ./continuous_axis */);
+var log_tick_formatter_1 = require(94    /* ../formatters/log_tick_formatter */);
+var log_ticker_1 = require(185    /* ../tickers/log_ticker */);
 exports.LogAxisView = function (superClass) {
     extend(LogAxisView, superClass);
     function LogAxisView() {
@@ -12150,9 +12212,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
-var model_1 = require(48    /* ../../model */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
+var model_1 = require(49    /* ../../model */);
 exports.CustomJS = function (superClass) {
     extend(CustomJS, superClass);
     function CustomJS() {
@@ -12197,9 +12259,9 @@ exports.CustomJS = function (superClass) {
 /* models/callbacks/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var customjs_1 = require(73    /* ./customjs */);
+var customjs_1 = require(74    /* ./customjs */);
 exports.CustomJS = customjs_1.CustomJS;
-var open_url_1 = require(75    /* ./open_url */);
+var open_url_1 = require(76    /* ./open_url */);
 exports.OpenURL = open_url_1.OpenURL;    
 },
 /* models/callbacks/open_url */ function(require, module, exports) {
@@ -12218,10 +12280,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var p = require(13    /* core/properties */);
-var selection_1 = require(32    /* core/util/selection */);
-var templating_1 = require(37    /* core/util/templating */);
+var model_1 = require(49    /* ../../model */);
+var p = require(14    /* core/properties */);
+var selection_1 = require(33    /* core/util/selection */);
+var templating_1 = require(38    /* core/util/templating */);
 exports.OpenURL = function (superClass) {
     extend(OpenURL, superClass);
     function OpenURL() {
@@ -12263,14 +12325,14 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var layout_canvas_1 = require(9    /* core/layout/layout_canvas */);
-var dom_view_1 = require(5    /* core/dom_view */);
-var solver_1 = require(11    /* core/layout/solver */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var canvas_1 = require(23    /* core/util/canvas */);
-var canvas2svg = require(242    /* canvas2svg */);
+var layout_canvas_1 = require(10    /* core/layout/layout_canvas */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var solver_1 = require(12    /* core/layout/solver */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var canvas_1 = require(24    /* core/util/canvas */);
+var canvas2svg = require(246    /* canvas2svg */);
 if (window.CanvasPixelArray != null) {
     CanvasPixelArray.prototype.set = function (arr) {
         var i, j, ref, results;
@@ -12434,15 +12496,15 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var categorical_scale_1 = require(161    /* ../scales/categorical_scale */);
-var linear_scale_1 = require(163    /* ../scales/linear_scale */);
-var log_scale_1 = require(164    /* ../scales/log_scale */);
-var range1d_1 = require(155    /* ../ranges/range1d */);
-var data_range1d_1 = require(151    /* ../ranges/data_range1d */);
-var factor_range_1 = require(152    /* ../ranges/factor_range */);
-var layout_canvas_1 = require(9    /* core/layout/layout_canvas */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var categorical_scale_1 = require(163    /* ../scales/categorical_scale */);
+var linear_scale_1 = require(165    /* ../scales/linear_scale */);
+var log_scale_1 = require(166    /* ../scales/log_scale */);
+var range1d_1 = require(157    /* ../ranges/range1d */);
+var data_range1d_1 = require(153    /* ../ranges/data_range1d */);
+var factor_range_1 = require(154    /* ../ranges/factor_range */);
+var layout_canvas_1 = require(10    /* core/layout/layout_canvas */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.CartesianFrame = function (superClass) {
     extend(CartesianFrame, superClass);
     function CartesianFrame() {
@@ -12459,6 +12521,12 @@ exports.CartesianFrame = function (superClass) {
             };
         }(this));
         return null;
+    };
+    CartesianFrame.prototype.get_editables = function () {
+        return CartesianFrame.__super__.get_editables.call(this).concat([
+            this._width,
+            this._height
+        ]);
     };
     CartesianFrame.prototype.contains = function (vx, vy) {
         return vx >= this._left.value && vx <= this._right.value && vy >= this._bottom.value && vy <= this._top.value;
@@ -12602,9 +12670,9 @@ exports.CartesianFrame = function (superClass) {
 /* models/canvas/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var canvas_1 = require(76    /* ./canvas */);
+var canvas_1 = require(77    /* ./canvas */);
 exports.Canvas = canvas_1.Canvas;
-var cartesian_frame_1 = require(77    /* ./cartesian_frame */);
+var cartesian_frame_1 = require(78    /* ./cartesian_frame */);
 exports.CartesianFrame = cartesian_frame_1.CartesianFrame;    
 },
 /* models/expressions/expression */ function(require, module, exports) {
@@ -12623,7 +12691,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
+var model_1 = require(49    /* ../../model */);
 exports.Expression = function (superClass) {
     extend(Expression, superClass);
     function Expression() {
@@ -12653,9 +12721,9 @@ exports.Expression = function (superClass) {
 /* models/expressions/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var expression_1 = require(79    /* ./expression */);
+var expression_1 = require(80    /* ./expression */);
 exports.Expression = expression_1.Expression;
-var stack_1 = require(81    /* ./stack */);
+var stack_1 = require(82    /* ./stack */);
 exports.Stack = stack_1.Stack;    
 },
 /* models/expressions/stack */ function(require, module, exports) {
@@ -12674,8 +12742,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var expression_1 = require(79    /* ./expression */);
-var p = require(13    /* core/properties */);
+var expression_1 = require(80    /* ./expression */);
+var p = require(14    /* core/properties */);
 exports.Stack = function (superClass) {
     extend(Stack, superClass);
     function Stack() {
@@ -12720,11 +12788,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var filter_1 = require(84    /* ./filter */);
-var p = require(13    /* core/properties */);
-var logging_1 = require(12    /* core/logging */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var filter_1 = require(85    /* ./filter */);
+var p = require(14    /* core/properties */);
+var logging_1 = require(13    /* core/logging */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 exports.BooleanFilter = function (superClass) {
     extend(BooleanFilter, superClass);
     function BooleanFilter() {
@@ -12788,9 +12856,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var filter_1 = require(84    /* ./filter */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
+var filter_1 = require(85    /* ./filter */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
 exports.CustomJSFilter = function (superClass) {
     extend(CustomJSFilter, superClass);
     function CustomJSFilter() {
@@ -12849,11 +12917,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
-var array_1 = require(20    /* core/util/array */);
-var logging_1 = require(12    /* core/logging */);
+var model_1 = require(49    /* ../../model */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
+var array_1 = require(21    /* core/util/array */);
+var logging_1 = require(13    /* core/logging */);
 exports.Filter = function (superClass) {
     extend(Filter, superClass);
     function Filter() {
@@ -12915,9 +12983,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var filter_1 = require(84    /* ./filter */);
-var p = require(13    /* core/properties */);
-var logging_1 = require(12    /* core/logging */);
+var filter_1 = require(85    /* ./filter */);
+var p = require(14    /* core/properties */);
+var logging_1 = require(13    /* core/logging */);
 exports.GroupFilter = function (superClass) {
     extend(GroupFilter, superClass);
     function GroupFilter() {
@@ -12957,15 +13025,15 @@ exports.GroupFilter = function (superClass) {
 /* models/filters/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var boolean_filter_1 = require(82    /* ./boolean_filter */);
+var boolean_filter_1 = require(83    /* ./boolean_filter */);
 exports.BooleanFilter = boolean_filter_1.BooleanFilter;
-var customjs_filter_1 = require(83    /* ./customjs_filter */);
+var customjs_filter_1 = require(84    /* ./customjs_filter */);
 exports.CustomJSFilter = customjs_filter_1.CustomJSFilter;
-var filter_1 = require(84    /* ./filter */);
+var filter_1 = require(85    /* ./filter */);
 exports.Filter = filter_1.Filter;
-var group_filter_1 = require(85    /* ./group_filter */);
+var group_filter_1 = require(86    /* ./group_filter */);
 exports.GroupFilter = group_filter_1.GroupFilter;
-var index_filter_1 = require(87    /* ./index_filter */);
+var index_filter_1 = require(88    /* ./index_filter */);
 exports.IndexFilter = index_filter_1.IndexFilter;    
 },
 /* models/filters/index_filter */ function(require, module, exports) {
@@ -12984,11 +13052,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var filter_1 = require(84    /* ./filter */);
-var p = require(13    /* core/properties */);
-var logging_1 = require(12    /* core/logging */);
-var types_1 = require(40    /* core/util/types */);
-var array_1 = require(20    /* core/util/array */);
+var filter_1 = require(85    /* ./filter */);
+var p = require(14    /* core/properties */);
+var logging_1 = require(13    /* core/logging */);
+var types_1 = require(41    /* core/util/types */);
+var array_1 = require(21    /* core/util/array */);
 exports.IndexFilter = function (superClass) {
     extend(IndexFilter, superClass);
     function IndexFilter() {
@@ -13034,9 +13102,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.BasicTickFormatter = function (superClass) {
     extend(BasicTickFormatter, superClass);
     function BasicTickFormatter() {
@@ -13164,7 +13232,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
 exports.CategoricalTickFormatter = function (superClass) {
     extend(CategoricalTickFormatter, superClass);
     function CategoricalTickFormatter() {
@@ -13193,13 +13261,13 @@ var _array, _strftime, _us, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var sprintf_js_1 = require(355    /* sprintf-js */);
-var tz = require(356    /* timezone */);
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
+var tz = require(360    /* timezone */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 _us = function (t) {
     return Math.round(t / 1000 % 1 * 1000000);
 };
@@ -13477,9 +13545,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
 exports.FuncTickFormatter = function (superClass) {
     extend(FuncTickFormatter, superClass);
     function FuncTickFormatter() {
@@ -13523,23 +13591,23 @@ exports.FuncTickFormatter = function (superClass) {
 /* models/formatters/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var basic_tick_formatter_1 = require(88    /* ./basic_tick_formatter */);
+var basic_tick_formatter_1 = require(89    /* ./basic_tick_formatter */);
 exports.BasicTickFormatter = basic_tick_formatter_1.BasicTickFormatter;
-var categorical_tick_formatter_1 = require(89    /* ./categorical_tick_formatter */);
+var categorical_tick_formatter_1 = require(90    /* ./categorical_tick_formatter */);
 exports.CategoricalTickFormatter = categorical_tick_formatter_1.CategoricalTickFormatter;
-var datetime_tick_formatter_1 = require(90    /* ./datetime_tick_formatter */);
+var datetime_tick_formatter_1 = require(91    /* ./datetime_tick_formatter */);
 exports.DatetimeTickFormatter = datetime_tick_formatter_1.DatetimeTickFormatter;
-var func_tick_formatter_1 = require(91    /* ./func_tick_formatter */);
+var func_tick_formatter_1 = require(92    /* ./func_tick_formatter */);
 exports.FuncTickFormatter = func_tick_formatter_1.FuncTickFormatter;
-var log_tick_formatter_1 = require(93    /* ./log_tick_formatter */);
+var log_tick_formatter_1 = require(94    /* ./log_tick_formatter */);
 exports.LogTickFormatter = log_tick_formatter_1.LogTickFormatter;
-var mercator_tick_formatter_1 = require(94    /* ./mercator_tick_formatter */);
+var mercator_tick_formatter_1 = require(95    /* ./mercator_tick_formatter */);
 exports.MercatorTickFormatter = mercator_tick_formatter_1.MercatorTickFormatter;
-var numeral_tick_formatter_1 = require(95    /* ./numeral_tick_formatter */);
+var numeral_tick_formatter_1 = require(96    /* ./numeral_tick_formatter */);
 exports.NumeralTickFormatter = numeral_tick_formatter_1.NumeralTickFormatter;
-var printf_tick_formatter_1 = require(96    /* ./printf_tick_formatter */);
+var printf_tick_formatter_1 = require(97    /* ./printf_tick_formatter */);
 exports.PrintfTickFormatter = printf_tick_formatter_1.PrintfTickFormatter;
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
 exports.TickFormatter = tick_formatter_1.TickFormatter;    
 },
 /* models/formatters/log_tick_formatter */ function(require, module, exports) {
@@ -13558,10 +13626,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var basic_tick_formatter_1 = require(88    /* ./basic_tick_formatter */);
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var basic_tick_formatter_1 = require(89    /* ./basic_tick_formatter */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.LogTickFormatter = function (superClass) {
     extend(LogTickFormatter, superClass);
     function LogTickFormatter() {
@@ -13624,9 +13692,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var basic_tick_formatter_1 = require(88    /* ./basic_tick_formatter */);
-var p = require(13    /* core/properties */);
-var proj4_1 = require(29    /* core/util/proj4 */);
+var basic_tick_formatter_1 = require(89    /* ./basic_tick_formatter */);
+var p = require(14    /* core/properties */);
+var proj4_1 = require(30    /* core/util/proj4 */);
 exports.MercatorTickFormatter = function (superClass) {
     extend(MercatorTickFormatter, superClass);
     function MercatorTickFormatter() {
@@ -13681,9 +13749,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var Numbro = require(325    /* numbro */);
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var p = require(13    /* core/properties */);
+var Numbro = require(329    /* numbro */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var p = require(14    /* core/properties */);
 exports.NumeralTickFormatter = function (superClass) {
     extend(NumeralTickFormatter, superClass);
     function NumeralTickFormatter() {
@@ -13751,9 +13819,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var sprintf_js_1 = require(355    /* sprintf-js */);
-var tick_formatter_1 = require(97    /* ./tick_formatter */);
-var p = require(13    /* core/properties */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
+var tick_formatter_1 = require(98    /* ./tick_formatter */);
+var p = require(14    /* core/properties */);
 exports.PrintfTickFormatter = function (superClass) {
     extend(PrintfTickFormatter, superClass);
     function PrintfTickFormatter() {
@@ -13799,7 +13867,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
+var model_1 = require(49    /* ../../model */);
 exports.TickFormatter = function (superClass) {
     extend(TickFormatter, superClass);
     function TickFormatter() {
@@ -13827,10 +13895,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
-var math_1 = require(27    /* core/util/math */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
+var math_1 = require(28    /* core/util/math */);
 exports.AnnularWedgeView = function (superClass) {
     extend(AnnularWedgeView, superClass);
     function AnnularWedgeView() {
@@ -14017,9 +14085,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
 exports.AnnulusView = function (superClass) {
     extend(AnnulusView, superClass);
     function AnnulusView() {
@@ -14174,8 +14242,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
 exports.ArcView = function (superClass) {
     extend(ArcView, superClass);
     function ArcView() {
@@ -14248,8 +14316,8 @@ var _cbb, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
 _cbb = function (x0, y0, x1, y1, x2, y2, x3, y3) {
     var a, b, b2ac, bounds, c, i, j, jlen, k, mt, sqrtb2ac, t, t1, t2, tvalues, x, y;
     tvalues = [];
@@ -14388,6 +14456,140 @@ exports.Bezier = function (superClass) {
     return Bezier;
 }(glyph_1.Glyph);    
 },
+/* models/glyphs/box */ function(require, module, exports) {
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+var extend = function (child, parent) {
+        for (var key in parent) {
+            if (hasProp.call(parent, key))
+                child[key] = parent[key];
+        }
+        function ctor() {
+            this.constructor = child;
+        }
+        ctor.prototype = parent.prototype;
+        child.prototype = new ctor();
+        child.__super__ = parent.prototype;
+        return child;
+    }, hasProp = {}.hasOwnProperty;
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
+var hittest = require(9    /* core/hittest */);
+exports.BoxView = function (superClass) {
+    extend(BoxView, superClass);
+    function BoxView() {
+        return BoxView.__super__.constructor.apply(this, arguments);
+    }
+    BoxView.prototype._index_box = function (len) {
+        var b, i, j, l, points, r, ref, ref1, t;
+        points = [];
+        for (i = j = 0, ref = len; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
+            ref1 = this._lrtb(i), l = ref1[0], r = ref1[1], t = ref1[2], b = ref1[3];
+            if (isNaN(l + r + t + b) || !isFinite(l + r + t + b)) {
+                continue;
+            }
+            points.push({
+                minX: l,
+                minY: b,
+                maxX: r,
+                maxY: t,
+                i: i
+            });
+        }
+        return new spatial_1.RBush(points);
+    };
+    BoxView.prototype._render = function (ctx, indices, arg) {
+        var i, j, len1, results, sbottom, sleft, sright, stop;
+        sleft = arg.sleft, sright = arg.sright, stop = arg.stop, sbottom = arg.sbottom;
+        results = [];
+        for (j = 0, len1 = indices.length; j < len1; j++) {
+            i = indices[j];
+            if (isNaN(sleft[i] + stop[i] + sright[i] + sbottom[i])) {
+                continue;
+            }
+            if (this.visuals.fill.doit) {
+                this.visuals.fill.set_vectorize(ctx, i);
+                ctx.fillRect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
+            }
+            if (this.visuals.line.doit) {
+                ctx.beginPath();
+                ctx.rect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
+                this.visuals.line.set_vectorize(ctx, i);
+                results.push(ctx.stroke());
+            } else {
+                results.push(void 0);
+            }
+        }
+        return results;
+    };
+    BoxView.prototype._hit_point = function (geometry) {
+        var hits, ref, result, vx, vy, x, y;
+        ref = [
+            geometry.vx,
+            geometry.vy
+        ], vx = ref[0], vy = ref[1];
+        x = this.renderer.xscale.invert(vx);
+        y = this.renderer.yscale.invert(vy);
+        hits = this.index.indices({
+            minX: x,
+            minY: y,
+            maxX: x,
+            maxY: y
+        });
+        result = hittest.create_hit_test_result();
+        result['1d'].indices = hits;
+        return result;
+    };
+    BoxView.prototype._hit_span = function (geometry) {
+        var hits, hr, maxX, maxY, minX, minY, ref, result, vr, vx, vy, x, y;
+        ref = [
+            geometry.vx,
+            geometry.vy
+        ], vx = ref[0], vy = ref[1];
+        if (geometry.direction === 'v') {
+            y = this.renderer.yscale.invert(vy);
+            hr = this.renderer.plot_view.frame.h_range;
+            minX = this.renderer.xscale.invert(hr.min);
+            maxX = this.renderer.xscale.invert(hr.max);
+            hits = this.index.indices({
+                minX: minX,
+                minY: y,
+                maxX: maxX,
+                maxY: y
+            });
+        } else {
+            x = this.renderer.xscale.invert(vx);
+            vr = this.renderer.plot_view.frame.v_range;
+            minY = this.renderer.yscale.invert(vr.min);
+            maxY = this.renderer.yscale.invert(vr.max);
+            hits = this.index.indices({
+                minX: x,
+                minY: minY,
+                maxX: x,
+                maxY: maxY
+            });
+        }
+        result = hittest.create_hit_test_result();
+        result['1d'].indices = hits;
+        return result;
+    };
+    BoxView.prototype.draw_legend_for_index = function (ctx, x0, x1, y0, y1, index) {
+        return this._generic_area_legend(ctx, x0, x1, y0, y1, index);
+    };
+    return BoxView;
+}(glyph_1.GlyphView);
+exports.Box = function (superClass) {
+    extend(Box, superClass);
+    function Box() {
+        return Box.__super__.constructor.apply(this, arguments);
+    }
+    Box.mixins([
+        'line',
+        'fill'
+    ]);
+    return Box;
+}(glyph_1.Glyph);    
+},
 /* models/glyphs/circle */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -14404,9 +14606,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
 exports.CircleView = function (superClass) {
     extend(CircleView, superClass);
     function CircleView() {
@@ -14758,8 +14960,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
 exports.EllipseView = function (superClass) {
     extend(EllipseView, superClass);
     function EllipseView() {
@@ -14880,16 +15082,16 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var bbox = require(21    /* core/util/bbox */);
-var proj = require(30    /* core/util/projections */);
-var view_1 = require(43    /* core/view */);
-var model_1 = require(48    /* ../../model */);
-var visuals_1 = require(44    /* core/visuals */);
-var logging_1 = require(12    /* core/logging */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
-var line_1 = require(110    /* ./line */);
+var p = require(14    /* core/properties */);
+var bbox = require(22    /* core/util/bbox */);
+var proj = require(31    /* core/util/projections */);
+var view_1 = require(44    /* core/view */);
+var model_1 = require(49    /* ../../model */);
+var visuals_1 = require(45    /* core/visuals */);
+var logging_1 = require(13    /* core/logging */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
+var line_1 = require(112    /* ./line */);
 exports.GlyphView = function (superClass) {
     extend1(GlyphView, superClass);
     function GlyphView() {
@@ -14904,7 +15106,7 @@ exports.GlyphView = function (superClass) {
         ctx = this.renderer.plot_view.canvas_view.ctx;
         if (ctx.glcanvas != null) {
             try {
-                glglyphs = require(418    /* ./webgl/index */);
+                glglyphs = require(422    /* ./webgl/index */);
             } catch (error) {
                 e = error;
                 if (e.code === 'MODULE_NOT_FOUND') {
@@ -15273,15 +15475,32 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
+var box_1 = require(103    /* ./box */);
+var p = require(14    /* core/properties */);
 exports.HBarView = function (superClass) {
     extend(HBarView, superClass);
     function HBarView() {
         return HBarView.__super__.constructor.apply(this, arguments);
     }
+    HBarView.prototype.scx = function (i) {
+        return (this.sleft[i] + this.sright[i]) / 2;
+    };
+    HBarView.prototype._index_data = function () {
+        return this._index_box(this._y.length);
+    };
+    HBarView.prototype._lrtb = function (i) {
+        var b, l, r, t;
+        l = Math.min(this._left[i], this._right[i]);
+        r = Math.max(this._left[i], this._right[i]);
+        t = this._y[i] + 0.5 * this._height[i];
+        b = this._y[i] - 0.5 * this._height[i];
+        return [
+            l,
+            r,
+            t,
+            b
+        ];
+    };
     HBarView.prototype._map_data = function () {
         var i, j, ref, vleft, vright, vy;
         vy = this.renderer.yscale.v_compute(this._y);
@@ -15299,77 +15518,8 @@ exports.HBarView = function (superClass) {
         }
         return null;
     };
-    HBarView.prototype._index_data = function () {
-        var b, i, j, l, points, r, ref, t;
-        points = [];
-        for (i = j = 0, ref = this._y.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-            l = Math.min(this._left[i], this._right[i]);
-            r = Math.max(this._left[i], this._right[i]);
-            t = this._y[i] + 0.5 * this._height[i];
-            b = this._y[i] - 0.5 * this._height[i];
-            if (isNaN(l + r + t + b) || !isFinite(l + r + t + b)) {
-                continue;
-            }
-            points.push({
-                minX: l,
-                minY: b,
-                maxX: r,
-                maxY: t,
-                i: i
-            });
-        }
-        return new spatial_1.RBush(points);
-    };
-    HBarView.prototype._render = function (ctx, indices, arg) {
-        var i, j, len, results, sbottom, sleft, sright, stop;
-        sleft = arg.sleft, sright = arg.sright, stop = arg.stop, sbottom = arg.sbottom;
-        results = [];
-        for (j = 0, len = indices.length; j < len; j++) {
-            i = indices[j];
-            if (isNaN(sleft[i] + stop[i] + sright[i] + sbottom[i])) {
-                continue;
-            }
-            if (this.visuals.fill.doit) {
-                this.visuals.fill.set_vectorize(ctx, i);
-                ctx.fillRect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-            }
-            if (this.visuals.line.doit) {
-                ctx.beginPath();
-                ctx.rect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-                this.visuals.line.set_vectorize(ctx, i);
-                results.push(ctx.stroke());
-            } else {
-                results.push(void 0);
-            }
-        }
-        return results;
-    };
-    HBarView.prototype._hit_point = function (geometry) {
-        var hits, ref, result, vx, vy, x, y;
-        ref = [
-            geometry.vx,
-            geometry.vy
-        ], vx = ref[0], vy = ref[1];
-        x = this.renderer.xscale.invert(vx);
-        y = this.renderer.yscale.invert(vy);
-        hits = this.index.indices({
-            minX: x,
-            minY: y,
-            maxX: x,
-            maxY: y
-        });
-        result = hittest.create_hit_test_result();
-        result['1d'].indices = hits;
-        return result;
-    };
-    HBarView.prototype.scx = function (i) {
-        return (this.sleft[i] + this.sright[i]) / 2;
-    };
-    HBarView.prototype.draw_legend_for_index = function (ctx, x0, x1, y0, y1, index) {
-        return this._generic_area_legend(ctx, x0, x1, y0, y1, index);
-    };
     return HBarView;
-}(glyph_1.GlyphView);
+}(box_1.BoxView);
 exports.HBar = function (superClass) {
     extend(HBar, superClass);
     function HBar() {
@@ -15378,20 +15528,16 @@ exports.HBar = function (superClass) {
     HBar.prototype.default_view = exports.HBarView;
     HBar.prototype.type = 'HBar';
     HBar.coords([[
-            'y',
-            'left'
+            'left',
+            'y'
         ]]);
-    HBar.mixins([
-        'line',
-        'fill'
-    ]);
     HBar.define({
         height: [p.DistanceSpec],
         right: [p.NumberSpec]
     });
     HBar.override({ left: 0 });
     return HBar;
-}(glyph_1.Glyph);    
+}(box_1.Box);    
 },
 /* models/glyphs/image */ function(require, module, exports) {
 'use strict';
@@ -15409,10 +15555,10 @@ var Greys9, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var linear_color_mapper_1 = require(141    /* ../mappers/linear_color_mapper */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var linear_color_mapper_1 = require(143    /* ../mappers/linear_color_mapper */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.ImageView = function (superClass) {
     extend(ImageView, superClass);
     function ImageView() {
@@ -15586,9 +15732,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.ImageRGBAView = function (superClass) {
     extend(ImageRGBAView, superClass);
     function ImageRGBAView() {
@@ -15734,9 +15880,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var glyph_1 = require(104    /* ./glyph */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var glyph_1 = require(106    /* ./glyph */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.ImageURLView = function (superClass) {
     extend(ImageURLView, superClass);
     function ImageURLView() {
@@ -16005,55 +16151,55 @@ exports.ImageURL = function (superClass) {
 /* models/glyphs/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var annular_wedge_1 = require(98    /* ./annular_wedge */);
+var annular_wedge_1 = require(99    /* ./annular_wedge */);
 exports.AnnularWedge = annular_wedge_1.AnnularWedge;
-var annulus_1 = require(99    /* ./annulus */);
+var annulus_1 = require(100    /* ./annulus */);
 exports.Annulus = annulus_1.Annulus;
-var arc_1 = require(100    /* ./arc */);
+var arc_1 = require(101    /* ./arc */);
 exports.Arc = arc_1.Arc;
-var bezier_1 = require(101    /* ./bezier */);
+var bezier_1 = require(102    /* ./bezier */);
 exports.Bezier = bezier_1.Bezier;
-var circle_1 = require(102    /* ./circle */);
+var circle_1 = require(104    /* ./circle */);
 exports.Circle = circle_1.Circle;
-var ellipse_1 = require(103    /* ./ellipse */);
+var ellipse_1 = require(105    /* ./ellipse */);
 exports.Ellipse = ellipse_1.Ellipse;
-var glyph_1 = require(104    /* ./glyph */);
+var glyph_1 = require(106    /* ./glyph */);
 exports.Glyph = glyph_1.Glyph;
-var hbar_1 = require(105    /* ./hbar */);
+var hbar_1 = require(107    /* ./hbar */);
 exports.HBar = hbar_1.HBar;
-var image_1 = require(106    /* ./image */);
+var image_1 = require(108    /* ./image */);
 exports.Image = image_1.Image;
-var image_rgba_1 = require(107    /* ./image_rgba */);
+var image_rgba_1 = require(109    /* ./image_rgba */);
 exports.ImageRGBA = image_rgba_1.ImageRGBA;
-var image_url_1 = require(108    /* ./image_url */);
+var image_url_1 = require(110    /* ./image_url */);
 exports.ImageURL = image_url_1.ImageURL;
-var line_1 = require(110    /* ./line */);
+var line_1 = require(112    /* ./line */);
 exports.Line = line_1.Line;
-var multi_line_1 = require(111    /* ./multi_line */);
+var multi_line_1 = require(113    /* ./multi_line */);
 exports.MultiLine = multi_line_1.MultiLine;
-var oval_1 = require(112    /* ./oval */);
+var oval_1 = require(114    /* ./oval */);
 exports.Oval = oval_1.Oval;
-var patch_1 = require(113    /* ./patch */);
+var patch_1 = require(115    /* ./patch */);
 exports.Patch = patch_1.Patch;
-var patches_1 = require(114    /* ./patches */);
+var patches_1 = require(116    /* ./patches */);
 exports.Patches = patches_1.Patches;
-var quad_1 = require(115    /* ./quad */);
+var quad_1 = require(117    /* ./quad */);
 exports.Quad = quad_1.Quad;
-var quadratic_1 = require(116    /* ./quadratic */);
+var quadratic_1 = require(118    /* ./quadratic */);
 exports.Quadratic = quadratic_1.Quadratic;
-var ray_1 = require(117    /* ./ray */);
+var ray_1 = require(119    /* ./ray */);
 exports.Ray = ray_1.Ray;
-var rect_1 = require(118    /* ./rect */);
+var rect_1 = require(120    /* ./rect */);
 exports.Rect = rect_1.Rect;
-var segment_1 = require(119    /* ./segment */);
+var segment_1 = require(121    /* ./segment */);
 exports.Segment = segment_1.Segment;
-var text_1 = require(120    /* ./text */);
+var text_1 = require(122    /* ./text */);
 exports.Text = text_1.Text;
-var vbar_1 = require(121    /* ./vbar */);
+var vbar_1 = require(123    /* ./vbar */);
 exports.VBar = vbar_1.VBar;
-var wedge_1 = require(122    /* ./wedge */);
+var wedge_1 = require(124    /* ./wedge */);
 exports.Wedge = wedge_1.Wedge;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
 exports.XYGlyph = xy_glyph_1.XYGlyph;    
 },
 /* models/glyphs/line */ function(require, module, exports) {
@@ -16072,8 +16218,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
 exports.LineView = function (superClass) {
     extend(LineView, superClass);
     function LineView() {
@@ -16264,11 +16410,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var hittest = require(8    /* core/hittest */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
-var glyph_1 = require(104    /* ./glyph */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var hittest = require(9    /* core/hittest */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
+var glyph_1 = require(106    /* ./glyph */);
 exports.MultiLineView = function (superClass) {
     extend(MultiLineView, superClass);
     function MultiLineView() {
@@ -16512,8 +16658,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
 exports.OvalView = function (superClass) {
     extend(OvalView, superClass);
     function OvalView() {
@@ -16639,7 +16785,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
 exports.PatchView = function (superClass) {
     extend(PatchView, superClass);
     function PatchView() {
@@ -16724,11 +16870,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
-var hittest = require(8    /* core/hittest */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
+var hittest = require(9    /* core/hittest */);
 exports.PatchesView = function (superClass) {
     extend(PatchesView, superClass);
     function PatchesView() {
@@ -16973,77 +17119,12 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
-var hittest = require(8    /* core/hittest */);
+var box_1 = require(103    /* ./box */);
 exports.QuadView = function (superClass) {
     extend(QuadView, superClass);
     function QuadView() {
         return QuadView.__super__.constructor.apply(this, arguments);
     }
-    QuadView.prototype._index_data = function () {
-        var b, i, j, l, points, r, ref, t;
-        points = [];
-        for (i = j = 0, ref = this._left.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-            l = this._left[i];
-            r = this._right[i];
-            t = this._top[i];
-            b = this._bottom[i];
-            if (isNaN(l + r + t + b) || !isFinite(l + r + t + b)) {
-                continue;
-            }
-            points.push({
-                minX: l,
-                minY: b,
-                maxX: r,
-                maxY: t,
-                i: i
-            });
-        }
-        return new spatial_1.RBush(points);
-    };
-    QuadView.prototype._render = function (ctx, indices, arg) {
-        var i, j, len, results, sbottom, sleft, sright, stop;
-        sleft = arg.sleft, sright = arg.sright, stop = arg.stop, sbottom = arg.sbottom;
-        results = [];
-        for (j = 0, len = indices.length; j < len; j++) {
-            i = indices[j];
-            if (isNaN(sleft[i] + stop[i] + sright[i] + sbottom[i])) {
-                continue;
-            }
-            if (this.visuals.fill.doit) {
-                this.visuals.fill.set_vectorize(ctx, i);
-                ctx.fillRect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-            }
-            if (this.visuals.line.doit) {
-                ctx.beginPath();
-                ctx.rect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-                this.visuals.line.set_vectorize(ctx, i);
-                results.push(ctx.stroke());
-            } else {
-                results.push(void 0);
-            }
-        }
-        return results;
-    };
-    QuadView.prototype._hit_point = function (geometry) {
-        var hits, ref, result, vx, vy, x, y;
-        ref = [
-            geometry.vx,
-            geometry.vy
-        ], vx = ref[0], vy = ref[1];
-        x = this.renderer.xscale.invert(vx);
-        y = this.renderer.yscale.invert(vy);
-        hits = this.index.indices({
-            minX: x,
-            minY: y,
-            maxX: x,
-            maxY: y
-        });
-        result = hittest.create_hit_test_result();
-        result['1d'].indices = hits;
-        return result;
-    };
     QuadView.prototype.get_anchor_point = function (anchor, i, spt) {
         var bottom, left, right, top;
         left = Math.min(this.sleft[i], this.sright[i]);
@@ -17104,11 +17185,24 @@ exports.QuadView = function (superClass) {
     QuadView.prototype.scy = function (i) {
         return (this.stop[i] + this.sbottom[i]) / 2;
     };
-    QuadView.prototype.draw_legend_for_index = function (ctx, x0, x1, y0, y1, index) {
-        return this._generic_area_legend(ctx, x0, x1, y0, y1, index);
+    QuadView.prototype._index_data = function () {
+        return this._index_box(this._right.length);
+    };
+    QuadView.prototype._lrtb = function (i) {
+        var b, l, r, t;
+        l = this._left[i];
+        r = this._right[i];
+        t = this._top[i];
+        b = this._bottom[i];
+        return [
+            l,
+            r,
+            t,
+            b
+        ];
     };
     return QuadView;
-}(glyph_1.GlyphView);
+}(box_1.BoxView);
 exports.Quad = function (superClass) {
     extend(Quad, superClass);
     function Quad() {
@@ -17126,12 +17220,8 @@ exports.Quad = function (superClass) {
             'top'
         ]
     ]);
-    Quad.mixins([
-        'line',
-        'fill'
-    ]);
     return Quad;
-}(glyph_1.Glyph);    
+}(box_1.Box);    
 },
 /* models/glyphs/quadratic */ function(require, module, exports) {
 'use strict';
@@ -17149,8 +17239,8 @@ var _qbb, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
 _qbb = function (u, v, w) {
     var bd, t;
     if (v === (u + w) / 2) {
@@ -17256,8 +17346,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
 exports.RayView = function (superClass) {
     extend(RayView, superClass);
     function RayView() {
@@ -17333,10 +17423,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.RectView = function (superClass) {
     extend(RectView, superClass);
     function RectView() {
@@ -17648,9 +17738,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var hittest = require(8    /* core/hittest */);
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
+var hittest = require(9    /* core/hittest */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
 exports.SegmentView = function (superClass) {
     extend(SegmentView, superClass);
     function SegmentView() {
@@ -17818,15 +17908,16 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var p = require(14    /* core/properties */);
+var text_1 = require(39    /* core/util/text */);
 exports.TextView = function (superClass) {
     extend(TextView, superClass);
     function TextView() {
         return TextView.__super__.constructor.apply(this, arguments);
     }
     TextView.prototype._render = function (ctx, indices, arg) {
-        var _angle, _text, _x_offset, _y_offset, i, j, len, results, sx, sy;
+        var _angle, _text, _x_offset, _y_offset, baseline, block_height, font, height, i, j, k, len, len1, line, line_height, lines, results, sx, sy, text, y;
         sx = arg.sx, sy = arg.sy, _x_offset = arg._x_offset, _y_offset = arg._y_offset, _angle = arg._angle, _text = arg._text;
         results = [];
         for (j = 0, len = indices.length; j < len; j++) {
@@ -17835,11 +17926,40 @@ exports.TextView = function (superClass) {
                 continue;
             }
             if (this.visuals.text.doit) {
+                text = '' + _text[i];
                 ctx.save();
                 ctx.translate(sx[i] + _x_offset[i], sy[i] + _y_offset[i]);
                 ctx.rotate(_angle[i]);
                 this.visuals.text.set_vectorize(ctx, i);
-                ctx.fillText(_text[i], 0, 0);
+                if (text.indexOf('\n') === -1) {
+                    ctx.fillText(text, 0, 0);
+                } else {
+                    lines = text.split('\n');
+                    font = this.visuals.text.cache_select('font', i);
+                    height = text_1.get_text_height(font).height;
+                    line_height = this.visuals.text.text_line_height.value() * height;
+                    block_height = line_height * lines.length;
+                    baseline = this.visuals.text.cache_select('text_baseline', i);
+                    switch (baseline) {
+                    case 'top':
+                        y = 0;
+                        break;
+                    case 'middle':
+                        y = -block_height / 2 + line_height / 2;
+                        break;
+                    case 'bottom':
+                        y = -block_height + line_height;
+                        break;
+                    default:
+                        y = 0;
+                        console.warn('\'' + baseline + '\' baseline not supported with multi line text');
+                    }
+                    for (k = 0, len1 = lines.length; k < len1; k++) {
+                        line = lines[k];
+                        ctx.fillText(line, 0, y);
+                        y += line_height;
+                    }
+                }
                 results.push(ctx.restore());
             } else {
                 results.push(void 0);
@@ -17904,18 +18024,36 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
+var box_1 = require(103    /* ./box */);
+var p = require(14    /* core/properties */);
 exports.VBarView = function (superClass) {
     extend(VBarView, superClass);
     function VBarView() {
         return VBarView.__super__.constructor.apply(this, arguments);
     }
+    VBarView.prototype.scy = function (i) {
+        return (this.stop[i] + this.sbottom[i]) / 2;
+    };
+    VBarView.prototype._index_data = function () {
+        return this._index_box(this._x.length);
+    };
+    VBarView.prototype._lrtb = function (i) {
+        var b, l, r, t;
+        l = this._x[i] - this._width[i] / 2;
+        r = this._x[i] + this._width[i] / 2;
+        t = Math.max(this._top[i], this._bottom[i]);
+        b = Math.min(this._top[i], this._bottom[i]);
+        return [
+            l,
+            r,
+            t,
+            b
+        ];
+    };
     VBarView.prototype._map_data = function () {
-        var i, j, ref, vbottom, vtop;
-        this.sx = this.renderer.xscale.v_compute(this._x);
+        var i, j, ref, vbottom, vtop, vx;
+        vx = this.renderer.xscale.v_compute(this._x);
+        this.sx = this.renderer.plot_view.canvas.v_vx_to_sx(vx);
         vtop = this.renderer.yscale.v_compute(this._top);
         this.stop = this.renderer.plot_view.canvas.v_vy_to_sy(vtop);
         vbottom = this.renderer.yscale.v_compute(this._bottom);
@@ -17929,77 +18067,8 @@ exports.VBarView = function (superClass) {
         }
         return null;
     };
-    VBarView.prototype._index_data = function () {
-        var b, i, j, l, points, r, ref, t;
-        points = [];
-        for (i = j = 0, ref = this._x.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-            l = this._x[i] - this._width[i] / 2;
-            r = this._x[i] + this._width[i] / 2;
-            t = Math.max(this._top[i], this._bottom[i]);
-            b = Math.min(this._top[i], this._bottom[i]);
-            if (isNaN(l + r + t + b) || !isFinite(l + r + t + b)) {
-                continue;
-            }
-            points.push({
-                minX: l,
-                minY: b,
-                maxX: r,
-                maxY: t,
-                i: i
-            });
-        }
-        return new spatial_1.RBush(points);
-    };
-    VBarView.prototype._render = function (ctx, indices, arg) {
-        var i, j, len, results, sbottom, sleft, sright, stop;
-        sleft = arg.sleft, sright = arg.sright, stop = arg.stop, sbottom = arg.sbottom;
-        results = [];
-        for (j = 0, len = indices.length; j < len; j++) {
-            i = indices[j];
-            if (isNaN(sleft[i] + stop[i] + sright[i] + sbottom[i])) {
-                continue;
-            }
-            if (this.visuals.fill.doit) {
-                this.visuals.fill.set_vectorize(ctx, i);
-                ctx.fillRect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-            }
-            if (this.visuals.line.doit) {
-                ctx.beginPath();
-                ctx.rect(sleft[i], stop[i], sright[i] - sleft[i], sbottom[i] - stop[i]);
-                this.visuals.line.set_vectorize(ctx, i);
-                results.push(ctx.stroke());
-            } else {
-                results.push(void 0);
-            }
-        }
-        return results;
-    };
-    VBarView.prototype._hit_point = function (geometry) {
-        var hits, ref, result, vx, vy, x, y;
-        ref = [
-            geometry.vx,
-            geometry.vy
-        ], vx = ref[0], vy = ref[1];
-        x = this.renderer.xscale.invert(vx);
-        y = this.renderer.yscale.invert(vy);
-        hits = this.index.indices({
-            minX: x,
-            minY: y,
-            maxX: x,
-            maxY: y
-        });
-        result = hittest.create_hit_test_result();
-        result['1d'].indices = hits;
-        return result;
-    };
-    VBarView.prototype.scy = function (i) {
-        return (this.stop[i] + this.sbottom[i]) / 2;
-    };
-    VBarView.prototype.draw_legend_for_index = function (ctx, x0, x1, y0, y1, index) {
-        return this._generic_area_legend(ctx, x0, x1, y0, y1, index);
-    };
     return VBarView;
-}(glyph_1.GlyphView);
+}(box_1.BoxView);
 exports.VBar = function (superClass) {
     extend(VBar, superClass);
     function VBar() {
@@ -18011,17 +18080,13 @@ exports.VBar = function (superClass) {
             'x',
             'bottom'
         ]]);
-    VBar.mixins([
-        'line',
-        'fill'
-    ]);
     VBar.define({
         width: [p.DistanceSpec],
         top: [p.NumberSpec]
     });
     VBar.override({ bottom: 0 });
     return VBar;
-}(glyph_1.Glyph);    
+}(box_1.Box);    
 },
 /* models/glyphs/wedge */ function(require, module, exports) {
 'use strict';
@@ -18039,10 +18104,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ./xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
-var math_1 = require(27    /* core/util/math */);
+var xy_glyph_1 = require(125    /* ./xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
+var math_1 = require(28    /* core/util/math */);
 exports.WedgeView = function (superClass) {
     extend(WedgeView, superClass);
     function WedgeView() {
@@ -18193,8 +18258,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var spatial_1 = require(34    /* core/util/spatial */);
-var glyph_1 = require(104    /* ./glyph */);
+var spatial_1 = require(35    /* core/util/spatial */);
+var glyph_1 = require(106    /* ./glyph */);
 exports.XYGlyphView = function (superClass) {
     extend(XYGlyphView, superClass);
     function XYGlyphView() {
@@ -18251,9 +18316,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var array_1 = require(20    /* core/util/array */);
-var hittest_1 = require(8    /* core/hittest */);
+var model_1 = require(49    /* ../../model */);
+var array_1 = require(21    /* core/util/array */);
+var hittest_1 = require(9    /* core/hittest */);
 exports.GraphHitTestPolicy = function (superClass) {
     extend(GraphHitTestPolicy, superClass);
     function GraphHitTestPolicy() {
@@ -18448,10 +18513,10 @@ exports.EdgesAndLinkedNodes = function (superClass) {
 /* models/graphs/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(124    /* ./graph_hit_test_policy */), exports);
-tslib_1.__exportStar(require(126    /* ./layout_provider */), exports);
-tslib_1.__exportStar(require(127    /* ./static_layout_provider */), exports);    
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(126    /* ./graph_hit_test_policy */), exports);
+tslib_1.__exportStar(require(128    /* ./layout_provider */), exports);
+tslib_1.__exportStar(require(129    /* ./static_layout_provider */), exports);    
 },
 /* models/graphs/layout_provider */ function(require, module, exports) {
 'use strict';
@@ -18469,7 +18534,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
+var model_1 = require(49    /* ../../model */);
 exports.LayoutProvider = function (superClass) {
     extend(LayoutProvider, superClass);
     function LayoutProvider() {
@@ -18506,8 +18571,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var layout_provider_1 = require(126    /* ./layout_provider */);
-var p = require(13    /* ../../core/properties */);
+var layout_provider_1 = require(128    /* ./layout_provider */);
+var p = require(14    /* ../../core/properties */);
 exports.StaticLayoutProvider = function (superClass) {
     extend(StaticLayoutProvider, superClass);
     function StaticLayoutProvider() {
@@ -18534,39 +18599,46 @@ exports.StaticLayoutProvider = function (superClass) {
         ];
     };
     StaticLayoutProvider.prototype.get_edge_coordinates = function (edge_source) {
-        var end, ends, i, j, ref, ref1, ref2, ref3, start, starts, xs, ys;
+        var end, ends, has_paths, i, in_layout, j, ref, ref1, ref2, ref3, start, starts, xs, ys;
         ref = [
             [],
             []
         ], xs = ref[0], ys = ref[1];
         starts = edge_source.data.start;
         ends = edge_source.data.end;
+        has_paths = edge_source.data.xs != null && edge_source.data.ys != null;
         for (i = j = 0, ref1 = starts.length; 0 <= ref1 ? j < ref1 : j > ref1; i = 0 <= ref1 ? ++j : --j) {
-            if (this.graph_layout[starts[i]] != null && this.graph_layout[ends[i]] != null) {
-                ref2 = [
-                    this.graph_layout[starts[i]],
-                    this.graph_layout[ends[i]]
-                ], start = ref2[0], end = ref2[1];
+            in_layout = this.graph_layout[starts[i]] != null && this.graph_layout[ends[i]] != null;
+            if (has_paths && in_layout) {
+                xs.push(edge_source.data.xs[i]);
+                ys.push(edge_source.data.ys[i]);
             } else {
-                ref3 = [
-                    [
-                        0 / 0,
-                        0 / 0
-                    ],
-                    [
-                        0 / 0,
-                        0 / 0
-                    ]
-                ], start = ref3[0], end = ref3[1];
+                if (in_layout) {
+                    ref2 = [
+                        this.graph_layout[starts[i]],
+                        this.graph_layout[ends[i]]
+                    ], start = ref2[0], end = ref2[1];
+                } else {
+                    ref3 = [
+                        [
+                            0 / 0,
+                            0 / 0
+                        ],
+                        [
+                            0 / 0,
+                            0 / 0
+                        ]
+                    ], start = ref3[0], end = ref3[1];
+                }
+                xs.push([
+                    start[0],
+                    end[0]
+                ]);
+                ys.push([
+                    start[1],
+                    end[1]
+                ]);
             }
-            xs.push([
-                start[0],
-                end[0]
-            ]);
-            ys.push([
-                start[1],
-                end[1]
-            ]);
         }
         return [
             xs,
@@ -18598,10 +18670,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var guide_renderer_1 = require(158    /* ../renderers/guide_renderer */);
-var renderer_1 = require(160    /* ../renderers/renderer */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var guide_renderer_1 = require(160    /* ../renderers/guide_renderer */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.GridView = function (superClass) {
     extend(GridView, superClass);
     function GridView() {
@@ -18802,35 +18874,35 @@ exports.Grid = function (superClass) {
 /* models/grids/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var grid_1 = require(128    /* ./grid */);
+var grid_1 = require(130    /* ./grid */);
 exports.Grid = grid_1.Grid;    
 },
 /* models/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(55    /* ./annotations */), exports);
-tslib_1.__exportStar(require(70    /* ./axes */), exports);
-tslib_1.__exportStar(require(74    /* ./callbacks */), exports);
-tslib_1.__exportStar(require(78    /* ./canvas */), exports);
-tslib_1.__exportStar(require(80    /* ./expressions */), exports);
-tslib_1.__exportStar(require(86    /* ./filters */), exports);
-tslib_1.__exportStar(require(92    /* ./formatters */), exports);
-tslib_1.__exportStar(require(109    /* ./glyphs */), exports);
-tslib_1.__exportStar(require(125    /* ./graphs */), exports);
-tslib_1.__exportStar(require(129    /* ./grids */), exports);
-tslib_1.__exportStar(require(133    /* ./layouts */), exports);
-tslib_1.__exportStar(require(140    /* ./mappers */), exports);
-tslib_1.__exportStar(require(233    /* ./transforms */), exports);
-tslib_1.__exportStar(require(143    /* ./markers */), exports);
-tslib_1.__exportStar(require(147    /* ./plots */), exports);
-tslib_1.__exportStar(require(153    /* ./ranges */), exports);
-tslib_1.__exportStar(require(159    /* ./renderers */), exports);
-tslib_1.__exportStar(require(162    /* ./scales */), exports);
-tslib_1.__exportStar(require(172    /* ./sources */), exports);
-tslib_1.__exportStar(require(182    /* ./tickers */), exports);
-tslib_1.__exportStar(require(194    /* ./tiles */), exports);
-tslib_1.__exportStar(require(221    /* ./tools */), exports);    
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(56    /* ./annotations */), exports);
+tslib_1.__exportStar(require(71    /* ./axes */), exports);
+tslib_1.__exportStar(require(75    /* ./callbacks */), exports);
+tslib_1.__exportStar(require(79    /* ./canvas */), exports);
+tslib_1.__exportStar(require(81    /* ./expressions */), exports);
+tslib_1.__exportStar(require(87    /* ./filters */), exports);
+tslib_1.__exportStar(require(93    /* ./formatters */), exports);
+tslib_1.__exportStar(require(111    /* ./glyphs */), exports);
+tslib_1.__exportStar(require(127    /* ./graphs */), exports);
+tslib_1.__exportStar(require(131    /* ./grids */), exports);
+tslib_1.__exportStar(require(135    /* ./layouts */), exports);
+tslib_1.__exportStar(require(142    /* ./mappers */), exports);
+tslib_1.__exportStar(require(235    /* ./transforms */), exports);
+tslib_1.__exportStar(require(145    /* ./markers */), exports);
+tslib_1.__exportStar(require(149    /* ./plots */), exports);
+tslib_1.__exportStar(require(155    /* ./ranges */), exports);
+tslib_1.__exportStar(require(161    /* ./renderers */), exports);
+tslib_1.__exportStar(require(164    /* ./scales */), exports);
+tslib_1.__exportStar(require(174    /* ./sources */), exports);
+tslib_1.__exportStar(require(184    /* ./tickers */), exports);
+tslib_1.__exportStar(require(196    /* ./tiles */), exports);
+tslib_1.__exportStar(require(223    /* ./tools */), exports);    
 },
 /* models/layouts/box */ function(require, module, exports) {
 'use strict';
@@ -18854,11 +18926,11 @@ var extend1 = function (child, parent) {
         }
         return -1;
     };
-var solver_1 = require(11    /* core/layout/solver */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
-var layout_dom_1 = require(134    /* ./layout_dom */);
+var solver_1 = require(12    /* core/layout/solver */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
+var layout_dom_1 = require(136    /* ./layout_dom */);
 exports.BoxView = function (superClass) {
     extend1(BoxView, superClass);
     function BoxView() {
@@ -19296,7 +19368,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var box_1 = require(131    /* ./box */);
+var box_1 = require(133    /* ./box */);
 exports.ColumnView = function (superClass) {
     extend(ColumnView, superClass);
     function ColumnView() {
@@ -19319,17 +19391,17 @@ exports.Column = function (superClass) {
 /* models/layouts/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var box_1 = require(131    /* ./box */);
+var box_1 = require(133    /* ./box */);
 exports.Box = box_1.Box;
-var column_1 = require(132    /* ./column */);
+var column_1 = require(134    /* ./column */);
 exports.Column = column_1.Column;
-var layout_dom_1 = require(134    /* ./layout_dom */);
+var layout_dom_1 = require(136    /* ./layout_dom */);
 exports.LayoutDOM = layout_dom_1.LayoutDOM;
-var row_1 = require(135    /* ./row */);
+var row_1 = require(137    /* ./row */);
 exports.Row = row_1.Row;
-var spacer_1 = require(136    /* ./spacer */);
+var spacer_1 = require(138    /* ./spacer */);
 exports.Spacer = spacer_1.Spacer;
-var widget_box_1 = require(137    /* ./widget_box */);
+var widget_box_1 = require(139    /* ./widget_box */);
 exports.WidgetBox = widget_box_1.WidgetBox;    
 },
 /* models/layouts/layout_dom */ function(require, module, exports) {
@@ -19348,14 +19420,14 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var layout_canvas_1 = require(9    /* core/layout/layout_canvas */);
-var solver_1 = require(11    /* core/layout/solver */);
-var build_views_1 = require(3    /* core/build_views */);
-var dom_view_1 = require(5    /* core/dom_view */);
-var logging_1 = require(12    /* core/logging */);
+var model_1 = require(49    /* ../../model */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var layout_canvas_1 = require(10    /* core/layout/layout_canvas */);
+var solver_1 = require(12    /* core/layout/solver */);
+var build_views_1 = require(4    /* core/build_views */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var logging_1 = require(13    /* core/logging */);
 exports.LayoutDOMView = function (superClass) {
     extend1(LayoutDOMView, superClass);
     function LayoutDOMView() {
@@ -19674,15 +19746,17 @@ exports.LayoutDOM = function (superClass) {
         }
     });
     LayoutDOM.prototype.dump_layout = function () {
-        var child, i, len, ref, results;
-        console.log(this.toString(), this.layout_bbox);
-        ref = this.get_layoutable_children();
-        results = [];
-        for (i = 0, len = ref.length; i < len; i++) {
-            child = ref[i];
-            results.push(child.dump_layout());
+        var layoutables, obj, pending;
+        layoutables = {};
+        pending = [this];
+        while (pending.length > 0) {
+            obj = pending.shift();
+            if (obj instanceof LayoutDOM) {
+                pending.push.apply(pending, obj.get_layoutable_children());
+            }
+            layoutables[obj.toString()] = obj.layout_bbox;
         }
-        return results;
+        return console.table(layoutables);
     };
     LayoutDOM.prototype.get_all_constraints = function () {
         var child, constraints, i, len, ref;
@@ -19809,7 +19883,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var box_1 = require(131    /* ./box */);
+var box_1 = require(133    /* ./box */);
 exports.RowView = function (superClass) {
     extend(RowView, superClass);
     function RowView() {
@@ -19845,8 +19919,8 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var layout_dom_1 = require(134    /* ./layout_dom */);
-var object_1 = require(28    /* core/util/object */);
+var layout_dom_1 = require(136    /* ./layout_dom */);
+var object_1 = require(29    /* core/util/object */);
 exports.SpacerView = function (superClass) {
     extend1(SpacerView, superClass);
     function SpacerView() {
@@ -19907,10 +19981,10 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
 exports.WidgetBoxView = function (superClass) {
     extend1(WidgetBoxView, superClass);
     function WidgetBoxView() {
@@ -20054,10 +20128,10 @@ var _equals, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var color_mapper_1 = require(139    /* ./color_mapper */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var color_mapper_1 = require(141    /* ./color_mapper */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 _equals = function (a, b) {
     var i, j, ref;
     if (a.length !== b.length) {
@@ -20137,9 +20211,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var transform_1 = require(238    /* ../transforms/transform */);
-var types_1 = require(40    /* core/util/types */);
+var p = require(14    /* core/properties */);
+var transform_1 = require(240    /* ../transforms/transform */);
+var types_1 = require(41    /* core/util/types */);
 exports.ColorMapper = function (superClass) {
     extend(ColorMapper, superClass);
     function ColorMapper() {
@@ -20237,13 +20311,13 @@ exports.ColorMapper = function (superClass) {
 /* models/mappers/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var categorical_color_mapper_1 = require(138    /* ./categorical_color_mapper */);
+var categorical_color_mapper_1 = require(140    /* ./categorical_color_mapper */);
 exports.CategoricalColorMapper = categorical_color_mapper_1.CategoricalColorMapper;
-var color_mapper_1 = require(139    /* ./color_mapper */);
+var color_mapper_1 = require(141    /* ./color_mapper */);
 exports.ColorMapper = color_mapper_1.ColorMapper;
-var linear_color_mapper_1 = require(141    /* ./linear_color_mapper */);
+var linear_color_mapper_1 = require(143    /* ./linear_color_mapper */);
 exports.LinearColorMapper = linear_color_mapper_1.LinearColorMapper;
-var log_color_mapper_1 = require(142    /* ./log_color_mapper */);
+var log_color_mapper_1 = require(144    /* ./log_color_mapper */);
 exports.LogColorMapper = log_color_mapper_1.LogColorMapper;    
 },
 /* models/mappers/linear_color_mapper */ function(require, module, exports) {
@@ -20262,10 +20336,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var color_1 = require(24    /* core/util/color */);
-var array_1 = require(20    /* core/util/array */);
-var color_mapper_1 = require(139    /* ./color_mapper */);
+var p = require(14    /* core/properties */);
+var color_1 = require(25    /* core/util/color */);
+var array_1 = require(21    /* core/util/array */);
+var color_mapper_1 = require(141    /* ./color_mapper */);
 exports.LinearColorMapper = function (superClass) {
     extend(LinearColorMapper, superClass);
     function LinearColorMapper() {
@@ -20347,10 +20421,10 @@ var log1p, ref, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var color_1 = require(24    /* core/util/color */);
-var array_1 = require(20    /* core/util/array */);
-var color_mapper_1 = require(139    /* ./color_mapper */);
+var p = require(14    /* core/properties */);
+var color_1 = require(25    /* core/util/color */);
+var array_1 = require(21    /* core/util/array */);
+var color_mapper_1 = require(141    /* ./color_mapper */);
 log1p = (ref = Math.log1p) != null ? ref : function (x) {
     return Math.log(1 + x);
 };
@@ -20440,7 +20514,7 @@ var SQ3, _mk_model, _one_cross, _one_diamond, _one_tri, _one_x, asterisk, circle
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var marker_1 = require(144    /* ./marker */);
+var marker_1 = require(146    /* ./marker */);
 SQ3 = Math.sqrt(3);
 _one_x = function (ctx, r) {
     ctx.moveTo(-r, r);
@@ -20656,9 +20730,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var xy_glyph_1 = require(123    /* ../glyphs/xy_glyph */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
+var xy_glyph_1 = require(125    /* ../glyphs/xy_glyph */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
 exports.MarkerView = function (superClass) {
     extend(MarkerView, superClass);
     function MarkerView() {
@@ -20903,11 +20977,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var logging_1 = require(12    /* core/logging */);
-var gmap_plot_canvas_1 = require(146    /* ./gmap_plot_canvas */);
-var plot_1 = require(148    /* ./plot */);
-var p = require(13    /* core/properties */);
-var model_1 = require(48    /* ../../model */);
+var logging_1 = require(13    /* core/logging */);
+var gmap_plot_canvas_1 = require(148    /* ./gmap_plot_canvas */);
+var plot_1 = require(150    /* ./plot */);
+var p = require(14    /* core/properties */);
+var model_1 = require(49    /* ../../model */);
 exports.MapOptions = function (superClass) {
     extend(MapOptions, superClass);
     function MapOptions() {
@@ -20993,9 +21067,9 @@ var gmaps_ready, load_google_api, bind = function (fn, me) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var proj4_1 = require(29    /* core/util/proj4 */);
-var plot_canvas_1 = require(149    /* ./plot_canvas */);
-var signaling_1 = require(18    /* core/signaling */);
+var proj4_1 = require(30    /* core/util/proj4 */);
+var plot_canvas_1 = require(151    /* ./plot_canvas */);
+var signaling_1 = require(19    /* core/signaling */);
 gmaps_ready = new signaling_1.Signal(this, 'gmaps_ready');
 load_google_api = function (api_key) {
     var script;
@@ -21284,17 +21358,17 @@ exports.GMapPlotCanvas = function (superClass) {
 /* models/plots/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var gmap_plot_1 = require(145    /* ./gmap_plot */);
+var gmap_plot_1 = require(147    /* ./gmap_plot */);
 exports.MapOptions = gmap_plot_1.MapOptions;
-var gmap_plot_2 = require(145    /* ./gmap_plot */);
+var gmap_plot_2 = require(147    /* ./gmap_plot */);
 exports.GMapOptions = gmap_plot_2.GMapOptions;
-var gmap_plot_3 = require(145    /* ./gmap_plot */);
+var gmap_plot_3 = require(147    /* ./gmap_plot */);
 exports.GMapPlot = gmap_plot_3.GMapPlot;
-var gmap_plot_canvas_1 = require(146    /* ./gmap_plot_canvas */);
+var gmap_plot_canvas_1 = require(148    /* ./gmap_plot_canvas */);
 exports.GMapPlotCanvas = gmap_plot_canvas_1.GMapPlotCanvas;
-var plot_1 = require(148    /* ./plot */);
+var plot_1 = require(150    /* ./plot */);
 exports.Plot = plot_1.Plot;
-var plot_canvas_1 = require(149    /* ./plot_canvas */);
+var plot_canvas_1 = require(151    /* ./plot_canvas */);
 exports.PlotCanvas = plot_canvas_1.PlotCanvas;    
 },
 /* models/plots/plot */ function(require, module, exports) {
@@ -21313,19 +21387,19 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var solver_1 = require(11    /* core/layout/solver */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
-var title_1 = require(63    /* ../annotations/title */);
-var linear_scale_1 = require(163    /* ../scales/linear_scale */);
-var toolbar_1 = require(228    /* ../tools/toolbar */);
-var plot_canvas_1 = require(149    /* ./plot_canvas */);
-var column_data_source_1 = require(168    /* ../sources/column_data_source */);
-var glyph_renderer_1 = require(156    /* ../renderers/glyph_renderer */);
-var bokeh_events_1 = require(2    /* core/bokeh_events */);
+var solver_1 = require(12    /* core/layout/solver */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
+var title_1 = require(64    /* ../annotations/title */);
+var linear_scale_1 = require(165    /* ../scales/linear_scale */);
+var toolbar_1 = require(230    /* ../tools/toolbar */);
+var plot_canvas_1 = require(151    /* ./plot_canvas */);
+var column_data_source_1 = require(170    /* ../sources/column_data_source */);
+var glyph_renderer_1 = require(158    /* ../renderers/glyph_renderer */);
+var bokeh_events_1 = require(3    /* core/bokeh_events */);
 exports.PlotView = function (superClass) {
     extend1(PlotView, superClass);
     function PlotView() {
@@ -21918,28 +21992,28 @@ var AbovePanel, BelowPanel, LeftPanel, RightPanel, global_glcanvas, extend1 = fu
                 return i;
         }
         return -1;
-    };
-var canvas_1 = require(76    /* ../canvas/canvas */);
-var cartesian_frame_1 = require(77    /* ../canvas/cartesian_frame */);
-var data_range1d_1 = require(151    /* ../ranges/data_range1d */);
-var glyph_renderer_1 = require(156    /* ../renderers/glyph_renderer */);
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
-var signaling_1 = require(18    /* core/signaling */);
-var build_views_1 = require(3    /* core/build_views */);
-var ui_events_1 = require(19    /* core/ui_events */);
-var bokeh_events_1 = require(2    /* core/bokeh_events */);
-var layout_canvas_1 = require(9    /* core/layout/layout_canvas */);
-var visuals_1 = require(44    /* core/visuals */);
-var dom_view_1 = require(5    /* core/dom_view */);
-var solver_1 = require(11    /* core/layout/solver */);
-var logging_1 = require(12    /* core/logging */);
-var enums = require(6    /* core/enums */);
-var p = require(13    /* core/properties */);
-var throttle_1 = require(39    /* core/util/throttle */);
-var types_1 = require(40    /* core/util/types */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
-var side_panel_1 = require(10    /* core/layout/side_panel */);
+    }, slice = [].slice;
+var canvas_1 = require(77    /* ../canvas/canvas */);
+var cartesian_frame_1 = require(78    /* ../canvas/cartesian_frame */);
+var data_range1d_1 = require(153    /* ../ranges/data_range1d */);
+var glyph_renderer_1 = require(158    /* ../renderers/glyph_renderer */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
+var signaling_1 = require(19    /* core/signaling */);
+var build_views_1 = require(4    /* core/build_views */);
+var ui_events_1 = require(20    /* core/ui_events */);
+var bokeh_events_1 = require(3    /* core/bokeh_events */);
+var layout_canvas_1 = require(10    /* core/layout/layout_canvas */);
+var visuals_1 = require(45    /* core/visuals */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var solver_1 = require(12    /* core/layout/solver */);
+var logging_1 = require(13    /* core/logging */);
+var enums = require(7    /* core/enums */);
+var p = require(14    /* core/properties */);
+var throttle_1 = require(40    /* core/util/throttle */);
+var types_1 = require(41    /* core/util/types */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
+var side_panel_1 = require(11    /* core/layout/side_panel */);
 global_glcanvas = null;
 exports.PlotCanvasView = function (superClass) {
     extend1(PlotCanvasView, superClass);
@@ -22131,25 +22205,27 @@ exports.PlotCanvasView = function (superClass) {
             r = 1 / this.model.plot.aspect_scale * (this.frame._width.value / this.frame._height.value);
             for (k in bounds) {
                 v = bounds[k];
-                width = v.maxX - v.minX;
-                if (width <= 0) {
-                    width = 1;
+                if (isFinite(v.maxX) && isFinite(v.minX) && isFinite(v.maxY) && isFinite(v.minY)) {
+                    width = v.maxX - v.minX;
+                    if (width <= 0) {
+                        width = 1;
+                    }
+                    height = v.maxY - v.minY;
+                    if (height <= 0) {
+                        height = 1;
+                    }
+                    xcenter = 0.5 * (v.maxX + v.minX);
+                    ycenter = 0.5 * (v.maxY + v.minY);
+                    if (width < r * height) {
+                        width = r * height;
+                    } else {
+                        height = width / r;
+                    }
+                    bounds[k].maxX = xcenter + 0.5 * width;
+                    bounds[k].minX = xcenter - 0.5 * width;
+                    bounds[k].maxY = ycenter + 0.5 * height;
+                    bounds[k].minY = ycenter - 0.5 * height;
                 }
-                height = v.maxY - v.minY;
-                if (height <= 0) {
-                    height = 1;
-                }
-                xcenter = 0.5 * (v.maxX + v.minX);
-                ycenter = 0.5 * (v.maxY + v.minY);
-                if (width < r * height) {
-                    width = r * height;
-                } else {
-                    height = width / r;
-                }
-                bounds[k].maxX = xcenter + 0.5 * width;
-                bounds[k].minX = xcenter - 0.5 * width;
-                bounds[k].maxY = ycenter + 0.5 * height;
-                bounds[k].minY = ycenter - 0.5 * height;
             }
         }
         ref4 = object_1.values(frame.x_ranges);
@@ -22250,24 +22326,8 @@ exports.PlotCanvasView = function (superClass) {
             this.update_range(info.range);
         }
         if (info.selection != null) {
-            this.update_selection(info.selection);
+            return this.update_selection(info.selection);
         }
-        if (info.dimensions != null) {
-            return this.canvas_view.set_dims([
-                info.dimensions.width,
-                info.dimensions.height
-            ]);
-        }
-    };
-    PlotCanvasView.prototype.reset_dimensions = function () {
-        return this.update_dimensions(this.canvas.initial_width, this.canvas.initial_height);
-    };
-    PlotCanvasView.prototype.update_dimensions = function (width, height) {
-        this.pause();
-        this.model.plot.width = width;
-        this.model.plot.height = height;
-        this.parent.layout();
-        return this.unpause();
     };
     PlotCanvasView.prototype.get_selection = function () {
         var j, len, ref, renderer, selected, selection;
@@ -22933,13 +22993,37 @@ exports.PlotCanvas = function (superClass) {
                 -1,
                 this.frame._top
             ]),
-            solver_1.EQ(this.below_panel._bottom, [
+            solver_1.EQ(this.above_panel._left, [
                 -1,
-                this.canvas._bottom
+                this.left_panel._right
+            ]),
+            solver_1.EQ(this.above_panel._right, [
+                -1,
+                this.right_panel._left
             ]),
             solver_1.EQ(this.below_panel._top, [
                 -1,
                 this.frame._bottom
+            ]),
+            solver_1.EQ(this.below_panel._bottom, [
+                -1,
+                this.canvas._bottom
+            ]),
+            solver_1.EQ(this.below_panel._left, [
+                -1,
+                this.left_panel._right
+            ]),
+            solver_1.EQ(this.below_panel._right, [
+                -1,
+                this.right_panel._left
+            ]),
+            solver_1.EQ(this.left_panel._top, [
+                -1,
+                this.above_panel._bottom
+            ]),
+            solver_1.EQ(this.left_panel._bottom, [
+                -1,
+                this.below_panel._top
             ]),
             solver_1.EQ(this.left_panel._left, [
                 -1,
@@ -22949,102 +23033,171 @@ exports.PlotCanvas = function (superClass) {
                 -1,
                 this.frame._left
             ]),
-            solver_1.EQ(this.right_panel._right, [
+            solver_1.EQ(this.right_panel._top, [
                 -1,
-                this.canvas._right
+                this.above_panel._bottom
+            ]),
+            solver_1.EQ(this.right_panel._bottom, [
+                -1,
+                this.below_panel._top
             ]),
             solver_1.EQ(this.right_panel._left, [
                 -1,
                 this.frame._right
             ]),
-            solver_1.EQ(this.above_panel._height, [
-                -1,
-                this._top
-            ]),
-            solver_1.EQ(this.above_panel._height, [
-                -1,
-                this.canvas._top
-            ], this.frame._top),
-            solver_1.EQ(this.below_panel._height, [
-                -1,
-                this._height
-            ], this._bottom),
-            solver_1.EQ(this.below_panel._height, [
-                -1,
-                this.frame._bottom
-            ]),
-            solver_1.EQ(this.left_panel._width, [
-                -1,
-                this._left
-            ]),
-            solver_1.EQ(this.left_panel._width, [
-                -1,
-                this.frame._left
-            ]),
-            solver_1.EQ(this.right_panel._width, [
-                -1,
-                this._width
-            ], this._right),
-            solver_1.EQ(this.right_panel._width, [
+            solver_1.EQ(this.right_panel._right, [
                 -1,
                 this.canvas._right
-            ], this.frame._right)
+            ]),
+            solver_1.EQ(this._top, [
+                -1,
+                this.above_panel._height
+            ]),
+            solver_1.EQ(this._left, [
+                -1,
+                this.left_panel._width
+            ]),
+            solver_1.EQ(this._height, [
+                -1,
+                this._bottom
+            ], [
+                -1,
+                this.below_panel._height
+            ]),
+            solver_1.EQ(this._width, [
+                -1,
+                this._right
+            ], [
+                -1,
+                this.right_panel._width
+            ])
         ];
     };
     PlotCanvas.prototype._get_side_constraints = function () {
-        var above, below, cabove, cbelow, cleft, constraints, cright, left, right;
-        above = [this.frame].concat(this.plot.above);
-        below = [this.frame].concat(this.plot.below);
-        left = [this.frame].concat(this.plot.left);
-        right = [this.frame].concat(this.plot.right);
-        cabove = array_1.pairwise(above, function (prev, next) {
-            return solver_1.EQ(prev.panel._top, [
+        var above, add, below, constraints, head, j, l, left, len, len1, len2, len3, m, n, obj, right, tail;
+        constraints = [];
+        add = function () {
+            var new_constraints;
+            new_constraints = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+            return constraints.push.apply(constraints, new_constraints);
+        };
+        above = this.plot.above;
+        below = this.plot.below;
+        left = this.plot.left;
+        right = this.plot.right;
+        head = function (arr) {
+            return arr[0];
+        };
+        tail = function (arr) {
+            return arr[arr.length - 1];
+        };
+        if (above.length > 0) {
+            add(solver_1.EQ(head(above).panel._bottom, [
                 -1,
-                next.panel._bottom
-            ]);
-        });
-        cbelow = array_1.pairwise(below, function (prev, next) {
-            return solver_1.EQ(prev.panel._bottom, [
-                -1,
-                next.panel._top
-            ]);
-        });
-        cleft = array_1.pairwise(left, function (prev, next) {
-            return solver_1.EQ(prev.panel._left, [
-                -1,
-                next.panel._right
-            ]);
-        });
-        cright = array_1.pairwise(right, function (prev, next) {
-            return solver_1.EQ(prev.panel._right, [
-                -1,
-                next.panel._left
-            ]);
-        });
-        constraints = [].concat(cabove, cbelow, cleft, cright);
-        if (this.plot.above.length > 0) {
-            constraints.push(solver_1.EQ(array_1.last(this.plot.above).panel._top, [
+                this.above_panel._bottom
+            ]));
+            add(solver_1.LE(tail(above).panel._top, [
                 -1,
                 this.above_panel._top
             ]));
+            add.apply(null, array_1.pairwise(above, function (prev, next) {
+                return solver_1.EQ(prev.panel._top, [
+                    -1,
+                    next.panel._bottom
+                ]);
+            }));
+            for (j = 0, len = above.length; j < len; j++) {
+                obj = above[j];
+                add(solver_1.EQ(obj.panel._left, [
+                    -1,
+                    this.above_panel._left
+                ]));
+                add(solver_1.EQ(obj.panel._right, [
+                    -1,
+                    this.above_panel._right
+                ]));
+            }
         }
-        if (this.plot.below.length > 0) {
-            constraints.push(solver_1.EQ(array_1.last(this.plot.below).panel._bottom, [
+        if (below.length > 0) {
+            add(solver_1.EQ(head(below).panel._top, [
+                -1,
+                this.below_panel._top
+            ]));
+            add(solver_1.GE(tail(below).panel._bottom, [
                 -1,
                 this.below_panel._bottom
             ]));
+            add.apply(null, array_1.pairwise(below, function (prev, next) {
+                return solver_1.EQ(prev.panel._bottom, [
+                    -1,
+                    next.panel._top
+                ]);
+            }));
+            for (l = 0, len1 = below.length; l < len1; l++) {
+                obj = below[l];
+                add(solver_1.EQ(obj.panel._left, [
+                    -1,
+                    this.below_panel._left
+                ]));
+                add(solver_1.EQ(obj.panel._right, [
+                    -1,
+                    this.below_panel._right
+                ]));
+            }
         }
-        if (this.plot.left.length > 0) {
-            constraints.push(solver_1.EQ(array_1.last(this.plot.left).panel._left, [
+        if (left.length > 0) {
+            add(solver_1.EQ(head(left).panel._right, [
+                -1,
+                this.left_panel._right
+            ]));
+            add(solver_1.GE(tail(left).panel._left, [
                 -1,
                 this.left_panel._left
             ]));
+            add.apply(null, array_1.pairwise(left, function (prev, next) {
+                return solver_1.EQ(prev.panel._left, [
+                    -1,
+                    next.panel._right
+                ]);
+            }));
+            for (m = 0, len2 = left.length; m < len2; m++) {
+                obj = left[m];
+                add(solver_1.EQ(obj.panel._top, [
+                    -1,
+                    this.left_panel._top
+                ]));
+                add(solver_1.EQ(obj.panel._bottom, [
+                    -1,
+                    this.left_panel._bottom
+                ]));
+            }
         }
-        if (this.plot.right.length > 0) {
-            constraints.push(solver_1.EQ(array_1.last(this.plot.right).panel._right, [
+        if (right.length > 0) {
+            add(solver_1.EQ(head(right).panel._left, [
+                -1,
+                this.right_panel._left
+            ]));
+            add(solver_1.LE(tail(right).panel._right, [
                 -1,
                 this.right_panel._right
             ]));
+            add.apply(null, array_1.pairwise(right, function (prev, next) {
+                return solver_1.EQ(prev.panel._right, [
+                    -1,
+                    next.panel._left
+                ]);
+            }));
+            for (n = 0, len3 = right.length; n < len3; n++) {
+                obj = right[n];
+                add(solver_1.EQ(obj.panel._top, [
+                    -1,
+                    this.right_panel._top
+                ]));
+                add(solver_1.EQ(obj.panel._bottom, [
+                    -1,
+                    this.right_panel._bottom
+                ]));
+            }
         }
         return constraints;
     };
@@ -23067,8 +23220,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var range_1 = require(154    /* ./range */);
-var p = require(13    /* core/properties */);
+var range_1 = require(156    /* ./range */);
+var p = require(14    /* core/properties */);
 exports.DataRange = function (superClass) {
     extend(DataRange, superClass);
     function DataRange() {
@@ -23104,11 +23257,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var data_range_1 = require(150    /* ./data_range */);
-var glyph_renderer_1 = require(156    /* ../renderers/glyph_renderer */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var bbox = require(21    /* core/util/bbox */);
+var data_range_1 = require(152    /* ./data_range */);
+var glyph_renderer_1 = require(158    /* ../renderers/glyph_renderer */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var bbox = require(22    /* core/util/bbox */);
 exports.DataRange1d = function (superClass) {
     extend(DataRange1d, superClass);
     function DataRange1d() {
@@ -23400,10 +23553,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var range_1 = require(154    /* ./range */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var range_1 = require(156    /* ./range */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 exports.map_one_level = function (factors, padding, offset) {
     var f, i, j, len, mapping;
     if (offset == null) {
@@ -23685,15 +23838,15 @@ exports.FactorRange = function (superClass) {
 /* models/ranges/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var data_range_1 = require(150    /* ./data_range */);
+var data_range_1 = require(152    /* ./data_range */);
 exports.DataRange = data_range_1.DataRange;
-var data_range1d_1 = require(151    /* ./data_range1d */);
+var data_range1d_1 = require(153    /* ./data_range1d */);
 exports.DataRange1d = data_range1d_1.DataRange1d;
-var factor_range_1 = require(152    /* ./factor_range */);
+var factor_range_1 = require(154    /* ./factor_range */);
 exports.FactorRange = factor_range_1.FactorRange;
-var range_1 = require(154    /* ./range */);
+var range_1 = require(156    /* ./range */);
 exports.Range = range_1.Range;
-var range1d_1 = require(155    /* ./range1d */);
+var range1d_1 = require(157    /* ./range1d */);
 exports.Range1d = range1d_1.Range1d;    
 },
 /* models/ranges/range */ function(require, module, exports) {
@@ -23712,8 +23865,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var p = require(13    /* core/properties */);
+var model_1 = require(49    /* ../../model */);
+var p = require(14    /* core/properties */);
 exports.Range = function (superClass) {
     extend(Range, superClass);
     function Range() {
@@ -23757,8 +23910,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var range_1 = require(154    /* ./range */);
-var p = require(13    /* core/properties */);
+var range_1 = require(156    /* ./range */);
+var p = require(14    /* core/properties */);
 exports.Range1d = function (superClass) {
     extend(Range1d, superClass);
     Range1d.prototype.type = 'Range1d';
@@ -23850,14 +24003,14 @@ var extend1 = function (child, parent) {
         }
         return -1;
     };
-var renderer_1 = require(160    /* ./renderer */);
-var line_1 = require(110    /* ../glyphs/line */);
-var remote_data_source_1 = require(173    /* ../sources/remote_data_source */);
-var cds_view_1 = require(167    /* ../sources/cds_view */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
+var renderer_1 = require(162    /* ./renderer */);
+var line_1 = require(112    /* ../glyphs/line */);
+var remote_data_source_1 = require(175    /* ../sources/remote_data_source */);
+var cds_view_1 = require(169    /* ../sources/cds_view */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
 exports.GlyphRendererView = function (superClass) {
     extend1(GlyphRendererView, superClass);
     function GlyphRendererView() {
@@ -24303,10 +24456,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var renderer_1 = require(160    /* ../renderers/renderer */);
-var graph_hit_test_policy_1 = require(124    /* ../graphs/graph_hit_test_policy */);
-var p = require(13    /* core/properties */);
-var build_views_1 = require(3    /* core/build_views */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
+var graph_hit_test_policy_1 = require(126    /* ../graphs/graph_hit_test_policy */);
+var p = require(14    /* core/properties */);
+var build_views_1 = require(4    /* core/build_views */);
 exports.GraphRendererView = function (superClass) {
     extend(GraphRendererView, superClass);
     function GraphRendererView() {
@@ -24440,8 +24593,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var renderer_1 = require(160    /* ./renderer */);
-var p = require(13    /* core/properties */);
+var renderer_1 = require(162    /* ./renderer */);
+var p = require(14    /* core/properties */);
 exports.GuideRenderer = function (superClass) {
     extend(GuideRenderer, superClass);
     function GuideRenderer() {
@@ -24456,13 +24609,13 @@ exports.GuideRenderer = function (superClass) {
 /* models/renderers/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var glyph_renderer_1 = require(156    /* ./glyph_renderer */);
+var glyph_renderer_1 = require(158    /* ./glyph_renderer */);
 exports.GlyphRenderer = glyph_renderer_1.GlyphRenderer;
-var graph_renderer_1 = require(157    /* ./graph_renderer */);
+var graph_renderer_1 = require(159    /* ./graph_renderer */);
 exports.GraphRenderer = graph_renderer_1.GraphRenderer;
-var guide_renderer_1 = require(158    /* ./guide_renderer */);
+var guide_renderer_1 = require(160    /* ./guide_renderer */);
 exports.GuideRenderer = guide_renderer_1.GuideRenderer;
-var renderer_1 = require(160    /* ./renderer */);
+var renderer_1 = require(162    /* ./renderer */);
 exports.Renderer = renderer_1.Renderer;    
 },
 /* models/renderers/renderer */ function(require, module, exports) {
@@ -24481,12 +24634,12 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_view_1 = require(5    /* core/dom_view */);
-var visuals_1 = require(44    /* core/visuals */);
-var p = require(13    /* core/properties */);
-var proj = require(30    /* core/util/projections */);
-var object_1 = require(28    /* core/util/object */);
-var model_1 = require(48    /* ../../model */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var visuals_1 = require(45    /* core/visuals */);
+var p = require(14    /* core/properties */);
+var proj = require(31    /* core/util/projections */);
+var object_1 = require(29    /* core/util/object */);
+var model_1 = require(49    /* ../../model */);
 exports.RendererView = function (superClass) {
     extend1(RendererView, superClass);
     function RendererView() {
@@ -24559,7 +24712,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var linear_scale_1 = require(163    /* ./linear_scale */);
+var linear_scale_1 = require(165    /* ./linear_scale */);
 exports.CategoricalScale = function (superClass) {
     extend(CategoricalScale, superClass);
     function CategoricalScale() {
@@ -24578,13 +24731,13 @@ exports.CategoricalScale = function (superClass) {
 /* models/scales/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var categorical_scale_1 = require(161    /* ./categorical_scale */);
+var categorical_scale_1 = require(163    /* ./categorical_scale */);
 exports.CategoricalScale = categorical_scale_1.CategoricalScale;
-var linear_scale_1 = require(163    /* ./linear_scale */);
+var linear_scale_1 = require(165    /* ./linear_scale */);
 exports.LinearScale = linear_scale_1.LinearScale;
-var log_scale_1 = require(164    /* ./log_scale */);
+var log_scale_1 = require(166    /* ./log_scale */);
 exports.LogScale = log_scale_1.LogScale;
-var scale_1 = require(165    /* ./scale */);
+var scale_1 = require(167    /* ./scale */);
 exports.Scale = scale_1.Scale;    
 },
 /* models/scales/linear_scale */ function(require, module, exports) {
@@ -24603,7 +24756,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var scale_1 = require(165    /* ./scale */);
+var scale_1 = require(167    /* ./scale */);
 exports.LinearScale = function (superClass) {
     extend(LinearScale, superClass);
     function LinearScale() {
@@ -24672,7 +24825,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var scale_1 = require(165    /* ./scale */);
+var scale_1 = require(167    /* ./scale */);
 exports.LogScale = function (superClass) {
     extend(LogScale, superClass);
     function LogScale() {
@@ -24807,8 +24960,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var transforms_1 = require(233    /* ../transforms */);
-var p = require(13    /* core/properties */);
+var transforms_1 = require(235    /* ../transforms */);
+var p = require(14    /* core/properties */);
 exports.Scale = function (superClass) {
     extend(Scale, superClass);
     function Scale() {
@@ -24853,9 +25006,9 @@ var bind = function (fn, me) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var remote_data_source_1 = require(173    /* ./remote_data_source */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var remote_data_source_1 = require(175    /* ./remote_data_source */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.AjaxDataSource = function (superClass) {
     extend(AjaxDataSource, superClass);
     function AjaxDataSource() {
@@ -24966,10 +25119,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var columnar_data_source_1 = require(169    /* ./columnar_data_source */);
+var model_1 = require(49    /* ../../model */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var columnar_data_source_1 = require(171    /* ./columnar_data_source */);
 exports.CDSView = function (superClass) {
     extend(CDSView, superClass);
     function CDSView() {
@@ -25122,12 +25275,12 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var columnar_data_source_1 = require(169    /* ./columnar_data_source */);
-var has_props_1 = require(7    /* core/has_props */);
-var p = require(13    /* core/properties */);
-var data_structures_1 = require(25    /* core/util/data_structures */);
-var serialization = require(33    /* core/util/serialization */);
-var types_1 = require(40    /* core/util/types */);
+var columnar_data_source_1 = require(171    /* ./columnar_data_source */);
+var has_props_1 = require(8    /* core/has_props */);
+var p = require(14    /* core/properties */);
+var data_structures_1 = require(26    /* core/util/data_structures */);
+var serialization = require(34    /* core/util/serialization */);
+var types_1 = require(41    /* core/util/types */);
 exports.concat_typed_arrays = function (a, b) {
     var c;
     c = new a.constructor(a.length + b.length);
@@ -25322,12 +25475,12 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var data_source_1 = require(170    /* ./data_source */);
-var signaling_1 = require(18    /* core/signaling */);
-var logging_1 = require(12    /* core/logging */);
-var selection_manager_1 = require(15    /* core/selection_manager */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var data_source_1 = require(172    /* ./data_source */);
+var signaling_1 = require(19    /* core/signaling */);
+var logging_1 = require(13    /* core/logging */);
+var selection_manager_1 = require(16    /* core/selection_manager */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.ColumnarDataSource = function (superClass) {
     extend(ColumnarDataSource, superClass);
     function ColumnarDataSource() {
@@ -25430,10 +25583,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var hittest = require(8    /* core/hittest */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var model_1 = require(49    /* ../../model */);
+var hittest = require(9    /* core/hittest */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.DataSource = function (superClass) {
     extend(DataSource, superClass);
     function DataSource() {
@@ -25482,9 +25635,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var columnar_data_source_1 = require(169    /* ./columnar_data_source */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var columnar_data_source_1 = require(171    /* ./columnar_data_source */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.GeoJSONDataSource = function (superClass) {
     extend(GeoJSONDataSource, superClass);
     function GeoJSONDataSource() {
@@ -25695,19 +25848,19 @@ exports.GeoJSONDataSource = function (superClass) {
 /* models/sources/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var ajax_data_source_1 = require(166    /* ./ajax_data_source */);
+var ajax_data_source_1 = require(168    /* ./ajax_data_source */);
 exports.AjaxDataSource = ajax_data_source_1.AjaxDataSource;
-var column_data_source_1 = require(168    /* ./column_data_source */);
+var column_data_source_1 = require(170    /* ./column_data_source */);
 exports.ColumnDataSource = column_data_source_1.ColumnDataSource;
-var columnar_data_source_1 = require(169    /* ./columnar_data_source */);
+var columnar_data_source_1 = require(171    /* ./columnar_data_source */);
 exports.ColumnarDataSource = columnar_data_source_1.ColumnarDataSource;
-var cds_view_1 = require(167    /* ./cds_view */);
+var cds_view_1 = require(169    /* ./cds_view */);
 exports.CDSView = cds_view_1.CDSView;
-var data_source_1 = require(170    /* ./data_source */);
+var data_source_1 = require(172    /* ./data_source */);
 exports.DataSource = data_source_1.DataSource;
-var geojson_data_source_1 = require(171    /* ./geojson_data_source */);
+var geojson_data_source_1 = require(173    /* ./geojson_data_source */);
 exports.GeoJSONDataSource = geojson_data_source_1.GeoJSONDataSource;
-var remote_data_source_1 = require(173    /* ./remote_data_source */);
+var remote_data_source_1 = require(175    /* ./remote_data_source */);
 exports.RemoteDataSource = remote_data_source_1.RemoteDataSource;    
 },
 /* models/sources/remote_data_source */ function(require, module, exports) {
@@ -25726,8 +25879,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var column_data_source_1 = require(168    /* ./column_data_source */);
-var p = require(13    /* core/properties */);
+var column_data_source_1 = require(170    /* ./column_data_source */);
+var p = require(14    /* core/properties */);
 exports.RemoteDataSource = function (superClass) {
     extend(RemoteDataSource, superClass);
     function RemoteDataSource() {
@@ -25757,9 +25910,9 @@ var clamp, log, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var continuous_ticker_1 = require(178    /* ./continuous_ticker */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var continuous_ticker_1 = require(180    /* ./continuous_ticker */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 clamp = function (x, min_val, max_val) {
     return Math.max(min_val, Math.min(max_val, x));
 };
@@ -25836,7 +25989,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var adaptive_ticker_1 = require(174    /* ./adaptive_ticker */);
+var adaptive_ticker_1 = require(176    /* ./adaptive_ticker */);
 exports.BasicTicker = function (superClass) {
     extend(BasicTicker, superClass);
     function BasicTicker() {
@@ -25862,7 +26015,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var ticker_1 = require(187    /* ./ticker */);
+var ticker_1 = require(189    /* ./ticker */);
 exports.CategoricalTicker = function (superClass) {
     extend(CategoricalTicker, superClass);
     function CategoricalTicker() {
@@ -25913,10 +26066,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var continuous_ticker_1 = require(178    /* ./continuous_ticker */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var object_1 = require(28    /* core/util/object */);
+var continuous_ticker_1 = require(180    /* ./continuous_ticker */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var object_1 = require(29    /* core/util/object */);
 exports.CompositeTicker = function (superClass) {
     extend(CompositeTicker, superClass);
     function CompositeTicker() {
@@ -26013,8 +26166,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var ticker_1 = require(187    /* ./ticker */);
-var p = require(13    /* core/properties */);
+var ticker_1 = require(189    /* ./ticker */);
+var p = require(14    /* core/properties */);
 exports.ContinuousTicker = function (superClass) {
     extend(ContinuousTicker, superClass);
     function ContinuousTicker() {
@@ -26063,13 +26216,13 @@ var ONE_HOUR, ONE_MILLI, ONE_MINUTE, ONE_MONTH, ONE_SECOND, extend = function (c
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var array_1 = require(20    /* core/util/array */);
-var adaptive_ticker_1 = require(174    /* ./adaptive_ticker */);
-var composite_ticker_1 = require(177    /* ./composite_ticker */);
-var days_ticker_1 = require(180    /* ./days_ticker */);
-var months_ticker_1 = require(185    /* ./months_ticker */);
-var years_ticker_1 = require(189    /* ./years_ticker */);
-var util = require(188    /* ./util */);
+var array_1 = require(21    /* core/util/array */);
+var adaptive_ticker_1 = require(176    /* ./adaptive_ticker */);
+var composite_ticker_1 = require(179    /* ./composite_ticker */);
+var days_ticker_1 = require(182    /* ./days_ticker */);
+var months_ticker_1 = require(187    /* ./months_ticker */);
+var years_ticker_1 = require(191    /* ./years_ticker */);
+var util = require(190    /* ./util */);
 ONE_MILLI = util.ONE_MILLI;
 ONE_SECOND = util.ONE_SECOND;
 ONE_MINUTE = util.ONE_MINUTE;
@@ -26168,10 +26321,10 @@ var ONE_DAY, copy_date, date_range_by_month, last_month_no_later_than, extend = 
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var single_interval_ticker_1 = require(186    /* ./single_interval_ticker */);
-var util = require(188    /* ./util */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var single_interval_ticker_1 = require(188    /* ./single_interval_ticker */);
+var util = require(190    /* ./util */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 copy_date = util.copy_date;
 last_month_no_later_than = util.last_month_no_later_than;
 ONE_DAY = util.ONE_DAY;
@@ -26278,8 +26431,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var continuous_ticker_1 = require(178    /* ./continuous_ticker */);
-var p = require(13    /* core/properties */);
+var continuous_ticker_1 = require(180    /* ./continuous_ticker */);
+var p = require(14    /* core/properties */);
 exports.FixedTicker = function (superClass) {
     extend(FixedTicker, superClass);
     function FixedTicker() {
@@ -26304,33 +26457,33 @@ exports.FixedTicker = function (superClass) {
 /* models/tickers/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var adaptive_ticker_1 = require(174    /* ./adaptive_ticker */);
+var adaptive_ticker_1 = require(176    /* ./adaptive_ticker */);
 exports.AdaptiveTicker = adaptive_ticker_1.AdaptiveTicker;
-var basic_ticker_1 = require(175    /* ./basic_ticker */);
+var basic_ticker_1 = require(177    /* ./basic_ticker */);
 exports.BasicTicker = basic_ticker_1.BasicTicker;
-var categorical_ticker_1 = require(176    /* ./categorical_ticker */);
+var categorical_ticker_1 = require(178    /* ./categorical_ticker */);
 exports.CategoricalTicker = categorical_ticker_1.CategoricalTicker;
-var composite_ticker_1 = require(177    /* ./composite_ticker */);
+var composite_ticker_1 = require(179    /* ./composite_ticker */);
 exports.CompositeTicker = composite_ticker_1.CompositeTicker;
-var continuous_ticker_1 = require(178    /* ./continuous_ticker */);
+var continuous_ticker_1 = require(180    /* ./continuous_ticker */);
 exports.ContinuousTicker = continuous_ticker_1.ContinuousTicker;
-var datetime_ticker_1 = require(179    /* ./datetime_ticker */);
+var datetime_ticker_1 = require(181    /* ./datetime_ticker */);
 exports.DatetimeTicker = datetime_ticker_1.DatetimeTicker;
-var days_ticker_1 = require(180    /* ./days_ticker */);
+var days_ticker_1 = require(182    /* ./days_ticker */);
 exports.DaysTicker = days_ticker_1.DaysTicker;
-var fixed_ticker_1 = require(181    /* ./fixed_ticker */);
+var fixed_ticker_1 = require(183    /* ./fixed_ticker */);
 exports.FixedTicker = fixed_ticker_1.FixedTicker;
-var log_ticker_1 = require(183    /* ./log_ticker */);
+var log_ticker_1 = require(185    /* ./log_ticker */);
 exports.LogTicker = log_ticker_1.LogTicker;
-var mercator_ticker_1 = require(184    /* ./mercator_ticker */);
+var mercator_ticker_1 = require(186    /* ./mercator_ticker */);
 exports.MercatorTicker = mercator_ticker_1.MercatorTicker;
-var months_ticker_1 = require(185    /* ./months_ticker */);
+var months_ticker_1 = require(187    /* ./months_ticker */);
 exports.MonthsTicker = months_ticker_1.MonthsTicker;
-var single_interval_ticker_1 = require(186    /* ./single_interval_ticker */);
+var single_interval_ticker_1 = require(188    /* ./single_interval_ticker */);
 exports.SingleIntervalTicker = single_interval_ticker_1.SingleIntervalTicker;
-var ticker_1 = require(187    /* ./ticker */);
+var ticker_1 = require(189    /* ./ticker */);
 exports.Ticker = ticker_1.Ticker;
-var years_ticker_1 = require(189    /* ./years_ticker */);
+var years_ticker_1 = require(191    /* ./years_ticker */);
 exports.YearsTicker = years_ticker_1.YearsTicker;    
 },
 /* models/tickers/log_ticker */ function(require, module, exports) {
@@ -26349,8 +26502,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var array_1 = require(20    /* core/util/array */);
-var adaptive_ticker_1 = require(174    /* ./adaptive_ticker */);
+var array_1 = require(21    /* core/util/array */);
+var adaptive_ticker_1 = require(176    /* ./adaptive_ticker */);
 exports.LogTicker = function (superClass) {
     extend(LogTicker, superClass);
     function LogTicker() {
@@ -26474,9 +26627,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var basic_ticker_1 = require(175    /* ./basic_ticker */);
-var p = require(13    /* core/properties */);
-var proj4_1 = require(29    /* core/util/proj4 */);
+var basic_ticker_1 = require(177    /* ./basic_ticker */);
+var p = require(14    /* core/properties */);
+var proj4_1 = require(30    /* core/util/proj4 */);
 exports.MercatorTicker = function (superClass) {
     extend(MercatorTicker, superClass);
     function MercatorTicker() {
@@ -26573,10 +26726,10 @@ var ONE_MONTH, copy_date, date_range_by_year, last_year_no_later_than, extend = 
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var single_interval_ticker_1 = require(186    /* ./single_interval_ticker */);
-var util = require(188    /* ./util */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var single_interval_ticker_1 = require(188    /* ./single_interval_ticker */);
+var util = require(190    /* ./util */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 copy_date = util.copy_date;
 last_year_no_later_than = util.last_year_no_later_than;
 ONE_MONTH = util.ONE_MONTH;
@@ -26672,8 +26825,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var continuous_ticker_1 = require(178    /* ./continuous_ticker */);
-var p = require(13    /* core/properties */);
+var continuous_ticker_1 = require(180    /* ./continuous_ticker */);
+var p = require(14    /* core/properties */);
 exports.SingleIntervalTicker = function (superClass) {
     extend(SingleIntervalTicker, superClass);
     function SingleIntervalTicker() {
@@ -26711,9 +26864,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
-var array_1 = require(20    /* core/util/array */);
-var types_1 = require(40    /* core/util/types */);
+var model_1 = require(49    /* ../../model */);
+var array_1 = require(21    /* core/util/array */);
+var types_1 = require(41    /* core/util/types */);
 exports.Ticker = function (superClass) {
     extend(Ticker, superClass);
     function Ticker() {
@@ -26824,9 +26977,9 @@ var ONE_YEAR, last_year_no_later_than, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var basic_ticker_1 = require(175    /* ./basic_ticker */);
-var single_interval_ticker_1 = require(186    /* ./single_interval_ticker */);
-var util = require(188    /* ./util */);
+var basic_ticker_1 = require(177    /* ./basic_ticker */);
+var single_interval_ticker_1 = require(188    /* ./single_interval_ticker */);
+var util = require(190    /* ./util */);
 last_year_no_later_than = util.last_year_no_later_than;
 ONE_YEAR = util.ONE_YEAR;
 exports.YearsTicker = function (superClass) {
@@ -26881,8 +27034,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var mercator_tile_source_1 = require(195    /* ./mercator_tile_source */);
-var p = require(13    /* core/properties */);
+var mercator_tile_source_1 = require(197    /* ./mercator_tile_source */);
+var p = require(14    /* core/properties */);
 exports.BBoxTileSource = function (superClass) {
     extend(BBoxTileSource, superClass);
     function BBoxTileSource() {
@@ -26928,9 +27081,9 @@ var bind = function (fn, me) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var renderer_1 = require(160    /* ../renderers/renderer */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
 exports.DynamicImageView = function (superClass) {
     extend(DynamicImageView, superClass);
     function DynamicImageView() {
@@ -27122,8 +27275,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var model_1 = require(48    /* ../../model */);
+var p = require(14    /* core/properties */);
+var model_1 = require(49    /* ../../model */);
 exports.ImageSource = function (superClass) {
     extend(ImageSource, superClass);
     ImageSource.prototype.type = 'ImageSource';
@@ -27183,23 +27336,23 @@ exports.ImageSource = function (superClass) {
 /* models/tiles/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var bbox_tile_source_1 = require(190    /* ./bbox_tile_source */);
+var bbox_tile_source_1 = require(192    /* ./bbox_tile_source */);
 exports.BBoxTileSource = bbox_tile_source_1.BBoxTileSource;
-var dynamic_image_renderer_1 = require(191    /* ./dynamic_image_renderer */);
+var dynamic_image_renderer_1 = require(193    /* ./dynamic_image_renderer */);
 exports.DynamicImageRenderer = dynamic_image_renderer_1.DynamicImageRenderer;
-var image_source_1 = require(193    /* ./image_source */);
+var image_source_1 = require(195    /* ./image_source */);
 exports.ImageSource = image_source_1.ImageSource;
-var mercator_tile_source_1 = require(195    /* ./mercator_tile_source */);
+var mercator_tile_source_1 = require(197    /* ./mercator_tile_source */);
 exports.MercatorTileSource = mercator_tile_source_1.MercatorTileSource;
-var quadkey_tile_source_1 = require(196    /* ./quadkey_tile_source */);
+var quadkey_tile_source_1 = require(198    /* ./quadkey_tile_source */);
 exports.QUADKEYTileSource = quadkey_tile_source_1.QUADKEYTileSource;
-var tile_renderer_1 = require(197    /* ./tile_renderer */);
+var tile_renderer_1 = require(199    /* ./tile_renderer */);
 exports.TileRenderer = tile_renderer_1.TileRenderer;
-var tile_source_1 = require(198    /* ./tile_source */);
+var tile_source_1 = require(200    /* ./tile_source */);
 exports.TileSource = tile_source_1.TileSource;
-var tms_tile_source_1 = require(200    /* ./tms_tile_source */);
+var tms_tile_source_1 = require(202    /* ./tms_tile_source */);
 exports.TMSTileSource = tms_tile_source_1.TMSTileSource;
-var wmts_tile_source_1 = require(201    /* ./wmts_tile_source */);
+var wmts_tile_source_1 = require(203    /* ./wmts_tile_source */);
 exports.WMTSTileSource = wmts_tile_source_1.WMTSTileSource;    
 },
 /* models/tiles/mercator_tile_source */ function(require, module, exports) {
@@ -27224,8 +27377,8 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var tile_source_1 = require(198    /* ./tile_source */);
-var p = require(13    /* core/properties */);
+var tile_source_1 = require(200    /* ./tile_source */);
+var p = require(14    /* core/properties */);
 exports.MercatorTileSource = function (superClass) {
     extend(MercatorTileSource, superClass);
     function MercatorTileSource() {
@@ -27691,7 +27844,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var mercator_tile_source_1 = require(195    /* ./mercator_tile_source */);
+var mercator_tile_source_1 = require(197    /* ./mercator_tile_source */);
 exports.QUADKEYTileSource = function (superClass) {
     extend(QUADKEYTileSource, superClass);
     function QUADKEYTileSource() {
@@ -27734,12 +27887,12 @@ var bind = function (fn, me) {
         }
         return -1;
     };
-var image_pool_1 = require(192    /* ./image_pool */);
-var wmts_tile_source_1 = require(201    /* ./wmts_tile_source */);
-var renderer_1 = require(160    /* ../renderers/renderer */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var image_pool_1 = require(194    /* ./image_pool */);
+var wmts_tile_source_1 = require(203    /* ./wmts_tile_source */);
+var renderer_1 = require(162    /* ../renderers/renderer */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.TileRendererView = function (superClass) {
     extend(TileRendererView, superClass);
     function TileRendererView() {
@@ -27782,21 +27935,21 @@ exports.TileRendererView = function (superClass) {
         return this._last_width = void 0;
     };
     TileRendererView.prototype._add_attribution = function () {
-        var attribution, border_width, bottom_offset, max_width, overlays, right_offset;
+        var attribution, bottom, max_width, overlays, right;
         attribution = this.model.tile_source.attribution;
         if (types_1.isString(attribution) && attribution.length > 0) {
             if (this.attributionEl == null) {
-                border_width = this.map_plot.outline_line_width;
-                bottom_offset = this.map_plot.min_border_bottom + border_width;
-                right_offset = this.map_frame._right.value - this.map_frame._width.value;
-                max_width = this.map_frame._width.value - border_width;
+                right = this.plot_model.canvas._right.value - this.plot_model.frame._right.value;
+                bottom = this.plot_model.frame._bottom.value;
+                max_width = this.map_frame._width.value;
                 this.attributionEl = dom_1.div({
                     'class': 'bk-tile-attribution',
                     style: {
                         position: 'absolute',
-                        bottom: bottom_offset + 'px',
-                        right: right_offset + 'px',
+                        bottom: bottom + 'px',
+                        right: right + 'px',
                         'max-width': max_width + 'px',
+                        padding: '2px',
                         'background-color': 'rgba(255,255,255,0.8)',
                         'font-size': '9pt',
                         'font-family': 'sans-serif'
@@ -28148,11 +28301,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var image_pool_1 = require(192    /* ./image_pool */);
-var tile_utils_1 = require(199    /* ./tile_utils */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var model_1 = require(48    /* ../../model */);
+var image_pool_1 = require(194    /* ./image_pool */);
+var tile_utils_1 = require(201    /* ./tile_utils */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var model_1 = require(49    /* ../../model */);
 exports.TileSource = function (superClass) {
     extend(TileSource, superClass);
     TileSource.prototype.type = 'TileSource';
@@ -28323,7 +28476,7 @@ exports.TileSource = function (superClass) {
 /* models/tiles/tile_utils */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var proj4_1 = require(29    /* core/util/proj4 */);
+var proj4_1 = require(30    /* core/util/proj4 */);
 exports.ProjectionUtils = function () {
     function ProjectionUtils() {
         this.origin_shift = 2 * Math.PI * 6378137 / 2;
@@ -28383,7 +28536,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var mercator_tile_source_1 = require(195    /* ./mercator_tile_source */);
+var mercator_tile_source_1 = require(197    /* ./mercator_tile_source */);
 exports.TMSTileSource = function (superClass) {
     extend(TMSTileSource, superClass);
     function TMSTileSource() {
@@ -28414,7 +28567,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var mercator_tile_source_1 = require(195    /* ./mercator_tile_source */);
+var mercator_tile_source_1 = require(197    /* ./mercator_tile_source */);
 exports.WMTSTileSource = function (superClass) {
     extend(WMTSTileSource, superClass);
     function WMTSTileSource() {
@@ -28446,8 +28599,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var button_tool_1 = require(210    /* ../button_tool */);
-var signaling_1 = require(18    /* core/signaling */);
+var button_tool_1 = require(212    /* ../button_tool */);
+var signaling_1 = require(19    /* core/signaling */);
 exports.ActionToolButtonView = function (superClass) {
     extend(ActionToolButtonView, superClass);
     function ActionToolButtonView() {
@@ -28499,8 +28652,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
-var p = require(13    /* core/properties */);
+var action_tool_1 = require(204    /* ./action_tool */);
+var p = require(14    /* core/properties */);
 exports.HelpToolView = function (superClass) {
     extend(HelpToolView, superClass);
     function HelpToolView() {
@@ -28554,7 +28707,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
+var action_tool_1 = require(204    /* ./action_tool */);
 exports.RedoToolView = function (superClass) {
     extend(RedoToolView, superClass);
     function RedoToolView() {
@@ -28602,8 +28755,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
-var p = require(13    /* core/properties */);
+var action_tool_1 = require(204    /* ./action_tool */);
+var bokeh_events_1 = require(3    /* core/bokeh_events */);
+var p = require(14    /* core/properties */);
 exports.ResetToolView = function (superClass) {
     extend(ResetToolView, superClass);
     function ResetToolView() {
@@ -28613,9 +28767,7 @@ exports.ResetToolView = function (superClass) {
         this.plot_view.clear_state();
         this.plot_view.reset_range();
         this.plot_view.reset_selection();
-        if (this.model.reset_size) {
-            return this.plot_view.reset_dimensions();
-        }
+        return this.plot_model.plot.trigger_event(new bokeh_events_1.Reset());
     };
     return ResetToolView;
 }(action_tool_1.ActionToolView);
@@ -28653,7 +28805,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
+var action_tool_1 = require(204    /* ./action_tool */);
 exports.SaveToolView = function (superClass) {
     extend(SaveToolView, superClass);
     function SaveToolView() {
@@ -28692,7 +28844,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
+var action_tool_1 = require(204    /* ./action_tool */);
 exports.UndoToolView = function (superClass) {
     extend(UndoToolView, superClass);
     function UndoToolView() {
@@ -28740,9 +28892,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
-var zoom_1 = require(42    /* core/util/zoom */);
-var p = require(13    /* core/properties */);
+var action_tool_1 = require(204    /* ./action_tool */);
+var zoom_1 = require(43    /* core/util/zoom */);
+var p = require(14    /* core/properties */);
 exports.ZoomInToolView = function (superClass) {
     extend(ZoomInToolView, superClass);
     function ZoomInToolView() {
@@ -28805,9 +28957,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var action_tool_1 = require(202    /* ./action_tool */);
-var zoom_1 = require(42    /* core/util/zoom */);
-var p = require(13    /* core/properties */);
+var action_tool_1 = require(204    /* ./action_tool */);
+var zoom_1 = require(43    /* core/util/zoom */);
+var p = require(14    /* core/properties */);
 exports.ZoomOutToolView = function (superClass) {
     extend(ZoomOutToolView, superClass);
     function ZoomOutToolView() {
@@ -28870,10 +29022,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_view_1 = require(5    /* core/dom_view */);
-var tool_1 = require(226    /* ./tool */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var dom_view_1 = require(6    /* core/dom_view */);
+var tool_1 = require(228    /* ./tool */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.ButtonToolButtonView = function (superClass) {
     extend(ButtonToolButtonView, superClass);
     function ButtonToolButtonView() {
@@ -28955,9 +29107,9 @@ var DEFAULT_BOX_OVERLAY, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var select_tool_1 = require(217    /* ./select_tool */);
-var box_annotation_1 = require(53    /* ../../annotations/box_annotation */);
-var p = require(13    /* core/properties */);
+var select_tool_1 = require(219    /* ./select_tool */);
+var box_annotation_1 = require(54    /* ../../annotations/box_annotation */);
+var p = require(14    /* core/properties */);
 exports.BoxSelectToolView = function (superClass) {
     extend(BoxSelectToolView, superClass);
     function BoxSelectToolView() {
@@ -29122,9 +29274,9 @@ var DEFAULT_BOX_OVERLAY, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var gesture_tool_1 = require(213    /* ./gesture_tool */);
-var box_annotation_1 = require(53    /* ../../annotations/box_annotation */);
-var p = require(13    /* core/properties */);
+var gesture_tool_1 = require(215    /* ./gesture_tool */);
+var box_annotation_1 = require(54    /* ../../annotations/box_annotation */);
+var p = require(14    /* core/properties */);
 exports.BoxZoomToolView = function (superClass) {
     extend(BoxZoomToolView, superClass);
     function BoxZoomToolView() {
@@ -29360,7 +29512,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var button_tool_1 = require(210    /* ../button_tool */);
+var button_tool_1 = require(212    /* ../button_tool */);
 exports.GestureToolView = function (superClass) {
     extend(GestureToolView, superClass);
     function GestureToolView() {
@@ -29394,9 +29546,9 @@ var DEFAULT_POLY_OVERLAY, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var select_tool_1 = require(217    /* ./select_tool */);
-var poly_annotation_1 = require(60    /* ../../annotations/poly_annotation */);
-var p = require(13    /* core/properties */);
+var select_tool_1 = require(219    /* ./select_tool */);
+var poly_annotation_1 = require(61    /* ../../annotations/poly_annotation */);
+var p = require(14    /* core/properties */);
 exports.LassoSelectToolView = function (superClass) {
     extend(LassoSelectToolView, superClass);
     function LassoSelectToolView() {
@@ -29557,8 +29709,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var gesture_tool_1 = require(213    /* ./gesture_tool */);
-var p = require(13    /* core/properties */);
+var gesture_tool_1 = require(215    /* ./gesture_tool */);
+var p = require(14    /* core/properties */);
 exports.PanToolView = function (superClass) {
     extend(PanToolView, superClass);
     function PanToolView() {
@@ -29718,10 +29870,10 @@ var DEFAULT_POLY_OVERLAY, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var select_tool_1 = require(217    /* ./select_tool */);
-var poly_annotation_1 = require(60    /* ../../annotations/poly_annotation */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var select_tool_1 = require(219    /* ./select_tool */);
+var poly_annotation_1 = require(61    /* ../../annotations/poly_annotation */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.PolySelectToolView = function (superClass) {
     extend(PolySelectToolView, superClass);
     function PolySelectToolView() {
@@ -29855,13 +30007,13 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var gesture_tool_1 = require(213    /* ./gesture_tool */);
-var glyph_renderer_1 = require(156    /* ../../renderers/glyph_renderer */);
-var graph_renderer_1 = require(157    /* ../../renderers/graph_renderer */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
-var bokeh_events_1 = require(2    /* core/bokeh_events */);
+var gesture_tool_1 = require(215    /* ./gesture_tool */);
+var glyph_renderer_1 = require(158    /* ../../renderers/glyph_renderer */);
+var graph_renderer_1 = require(159    /* ../../renderers/graph_renderer */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
+var bokeh_events_1 = require(3    /* core/bokeh_events */);
 exports.SelectToolView = function (superClass) {
     extend(SelectToolView, superClass);
     function SelectToolView() {
@@ -30035,9 +30187,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var select_tool_1 = require(217    /* ./select_tool */);
-var p = require(13    /* core/properties */);
-var types_1 = require(40    /* core/util/types */);
+var select_tool_1 = require(219    /* ./select_tool */);
+var p = require(14    /* core/properties */);
+var types_1 = require(41    /* core/util/types */);
 exports.TapToolView = function (superClass) {
     extend(TapToolView, superClass);
     function TapToolView() {
@@ -30143,8 +30295,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var gesture_tool_1 = require(213    /* ./gesture_tool */);
-var p = require(13    /* core/properties */);
+var gesture_tool_1 = require(215    /* ./gesture_tool */);
+var p = require(14    /* core/properties */);
 exports.WheelPanToolView = function (superClass) {
     extend(WheelPanToolView, superClass);
     function WheelPanToolView() {
@@ -30273,9 +30425,9 @@ var document, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var gesture_tool_1 = require(213    /* ./gesture_tool */);
-var zoom_1 = require(42    /* core/util/zoom */);
-var p = require(13    /* core/properties */);
+var gesture_tool_1 = require(215    /* ./gesture_tool */);
+var zoom_1 = require(43    /* core/util/zoom */);
+var p = require(14    /* core/properties */);
 if (typeof document === 'undefined' || document === null) {
     document = {};
 }
@@ -30350,61 +30502,61 @@ exports.WheelZoomTool = function (superClass) {
 /* models/tools/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var action_tool_1 = require(202    /* ./actions/action_tool */);
+var action_tool_1 = require(204    /* ./actions/action_tool */);
 exports.ActionTool = action_tool_1.ActionTool;
-var help_tool_1 = require(203    /* ./actions/help_tool */);
+var help_tool_1 = require(205    /* ./actions/help_tool */);
 exports.HelpTool = help_tool_1.HelpTool;
-var redo_tool_1 = require(204    /* ./actions/redo_tool */);
+var redo_tool_1 = require(206    /* ./actions/redo_tool */);
 exports.RedoTool = redo_tool_1.RedoTool;
-var reset_tool_1 = require(205    /* ./actions/reset_tool */);
+var reset_tool_1 = require(207    /* ./actions/reset_tool */);
 exports.ResetTool = reset_tool_1.ResetTool;
-var save_tool_1 = require(206    /* ./actions/save_tool */);
+var save_tool_1 = require(208    /* ./actions/save_tool */);
 exports.SaveTool = save_tool_1.SaveTool;
-var undo_tool_1 = require(207    /* ./actions/undo_tool */);
+var undo_tool_1 = require(209    /* ./actions/undo_tool */);
 exports.UndoTool = undo_tool_1.UndoTool;
-var zoom_in_tool_1 = require(208    /* ./actions/zoom_in_tool */);
+var zoom_in_tool_1 = require(210    /* ./actions/zoom_in_tool */);
 exports.ZoomInTool = zoom_in_tool_1.ZoomInTool;
-var zoom_out_tool_1 = require(209    /* ./actions/zoom_out_tool */);
+var zoom_out_tool_1 = require(211    /* ./actions/zoom_out_tool */);
 exports.ZoomOutTool = zoom_out_tool_1.ZoomOutTool;
-var button_tool_1 = require(210    /* ./button_tool */);
+var button_tool_1 = require(212    /* ./button_tool */);
 exports.ButtonTool = button_tool_1.ButtonTool;
-var box_select_tool_1 = require(211    /* ./gestures/box_select_tool */);
+var box_select_tool_1 = require(213    /* ./gestures/box_select_tool */);
 exports.BoxSelectTool = box_select_tool_1.BoxSelectTool;
-var box_zoom_tool_1 = require(212    /* ./gestures/box_zoom_tool */);
+var box_zoom_tool_1 = require(214    /* ./gestures/box_zoom_tool */);
 exports.BoxZoomTool = box_zoom_tool_1.BoxZoomTool;
-var gesture_tool_1 = require(213    /* ./gestures/gesture_tool */);
+var gesture_tool_1 = require(215    /* ./gestures/gesture_tool */);
 exports.GestureTool = gesture_tool_1.GestureTool;
-var lasso_select_tool_1 = require(214    /* ./gestures/lasso_select_tool */);
+var lasso_select_tool_1 = require(216    /* ./gestures/lasso_select_tool */);
 exports.LassoSelectTool = lasso_select_tool_1.LassoSelectTool;
-var pan_tool_1 = require(215    /* ./gestures/pan_tool */);
+var pan_tool_1 = require(217    /* ./gestures/pan_tool */);
 exports.PanTool = pan_tool_1.PanTool;
-var poly_select_tool_1 = require(216    /* ./gestures/poly_select_tool */);
+var poly_select_tool_1 = require(218    /* ./gestures/poly_select_tool */);
 exports.PolySelectTool = poly_select_tool_1.PolySelectTool;
-var select_tool_1 = require(217    /* ./gestures/select_tool */);
+var select_tool_1 = require(219    /* ./gestures/select_tool */);
 exports.SelectTool = select_tool_1.SelectTool;
-var tap_tool_1 = require(218    /* ./gestures/tap_tool */);
+var tap_tool_1 = require(220    /* ./gestures/tap_tool */);
 exports.TapTool = tap_tool_1.TapTool;
-var wheel_pan_tool_1 = require(219    /* ./gestures/wheel_pan_tool */);
+var wheel_pan_tool_1 = require(221    /* ./gestures/wheel_pan_tool */);
 exports.WheelPanTool = wheel_pan_tool_1.WheelPanTool;
-var wheel_zoom_tool_1 = require(220    /* ./gestures/wheel_zoom_tool */);
+var wheel_zoom_tool_1 = require(222    /* ./gestures/wheel_zoom_tool */);
 exports.WheelZoomTool = wheel_zoom_tool_1.WheelZoomTool;
-var crosshair_tool_1 = require(222    /* ./inspectors/crosshair_tool */);
+var crosshair_tool_1 = require(224    /* ./inspectors/crosshair_tool */);
 exports.CrosshairTool = crosshair_tool_1.CrosshairTool;
-var hover_tool_1 = require(223    /* ./inspectors/hover_tool */);
+var hover_tool_1 = require(225    /* ./inspectors/hover_tool */);
 exports.HoverTool = hover_tool_1.HoverTool;
-var inspect_tool_1 = require(224    /* ./inspectors/inspect_tool */);
+var inspect_tool_1 = require(226    /* ./inspectors/inspect_tool */);
 exports.InspectTool = inspect_tool_1.InspectTool;
-var tool_1 = require(226    /* ./tool */);
+var tool_1 = require(228    /* ./tool */);
 exports.Tool = tool_1.Tool;
-var tool_proxy_1 = require(227    /* ./tool_proxy */);
+var tool_proxy_1 = require(229    /* ./tool_proxy */);
 exports.ToolProxy = tool_proxy_1.ToolProxy;
-var toolbar_1 = require(228    /* ./toolbar */);
+var toolbar_1 = require(230    /* ./toolbar */);
 exports.Toolbar = toolbar_1.Toolbar;
-var toolbar_base_1 = require(229    /* ./toolbar_base */);
+var toolbar_base_1 = require(231    /* ./toolbar_base */);
 exports.ToolbarBase = toolbar_base_1.ToolbarBase;
-var toolbar_box_1 = require(230    /* ./toolbar_box */);
+var toolbar_box_1 = require(232    /* ./toolbar_box */);
 exports.ToolbarBoxToolbar = toolbar_box_1.ToolbarBoxToolbar;
-var toolbar_box_2 = require(230    /* ./toolbar_box */);
+var toolbar_box_2 = require(232    /* ./toolbar_box */);
 exports.ToolbarBox = toolbar_box_2.ToolbarBox;    
 },
 /* models/tools/inspectors/crosshair_tool */ function(require, module, exports) {
@@ -30423,10 +30575,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var inspect_tool_1 = require(224    /* ./inspect_tool */);
-var span_1 = require(61    /* ../../annotations/span */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
+var inspect_tool_1 = require(226    /* ./inspect_tool */);
+var span_1 = require(62    /* ../../annotations/span */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
 exports.CrosshairToolView = function (superClass) {
     extend(CrosshairToolView, superClass);
     function CrosshairToolView() {
@@ -30549,17 +30701,17 @@ var _color_to_hex, extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var inspect_tool_1 = require(224    /* ./inspect_tool */);
-var tooltip_1 = require(64    /* ../../annotations/tooltip */);
-var glyph_renderer_1 = require(156    /* ../../renderers/glyph_renderer */);
-var graph_renderer_1 = require(157    /* ../../renderers/graph_renderer */);
-var hittest = require(8    /* core/hittest */);
-var templating_1 = require(37    /* core/util/templating */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
-var types_1 = require(40    /* core/util/types */);
-var build_views_1 = require(3    /* core/build_views */);
+var inspect_tool_1 = require(226    /* ./inspect_tool */);
+var tooltip_1 = require(65    /* ../../annotations/tooltip */);
+var glyph_renderer_1 = require(158    /* ../../renderers/glyph_renderer */);
+var graph_renderer_1 = require(159    /* ../../renderers/graph_renderer */);
+var hittest = require(9    /* core/hittest */);
+var templating_1 = require(38    /* core/util/templating */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
+var types_1 = require(41    /* core/util/types */);
+var build_views_1 = require(4    /* core/build_views */);
 _color_to_hex = function (color) {
     var blue, digits, green, red, rgb;
     if (color.substr(0, 1) === '#') {
@@ -31120,8 +31272,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var button_tool_1 = require(210    /* ../button_tool */);
+var p = require(14    /* core/properties */);
+var button_tool_1 = require(212    /* ../button_tool */);
 exports.InspectToolView = function (superClass) {
     extend(InspectToolView, superClass);
     function InspectToolView() {
@@ -31161,7 +31313,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var button_tool_1 = require(210    /* ./button_tool */);
+var button_tool_1 = require(212    /* ./button_tool */);
 exports.OnOffButtonView = function (superClass) {
     extend(OnOffButtonView, superClass);
     function OnOffButtonView() {
@@ -31199,10 +31351,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var view_1 = require(43    /* core/view */);
-var array_1 = require(20    /* core/util/array */);
-var model_1 = require(48    /* ../../model */);
+var p = require(14    /* core/properties */);
+var view_1 = require(44    /* core/view */);
+var array_1 = require(21    /* core/util/array */);
+var model_1 = require(49    /* ../../model */);
 exports.ToolView = function (superClass) {
     extend(ToolView, superClass);
     function ToolView() {
@@ -31345,9 +31497,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var signaling_1 = require(18    /* core/signaling */);
-var model_1 = require(48    /* ../../model */);
+var p = require(14    /* core/properties */);
+var signaling_1 = require(19    /* core/signaling */);
+var model_1 = require(49    /* ../../model */);
 exports.ToolProxy = function (superClass) {
     extend(ToolProxy, superClass);
     function ToolProxy() {
@@ -31429,13 +31581,13 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var action_tool_1 = require(202    /* ./actions/action_tool */);
-var help_tool_1 = require(203    /* ./actions/help_tool */);
-var gesture_tool_1 = require(213    /* ./gestures/gesture_tool */);
-var inspect_tool_1 = require(224    /* ./inspectors/inspect_tool */);
-var toolbar_base_1 = require(229    /* ./toolbar_base */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var action_tool_1 = require(204    /* ./actions/action_tool */);
+var help_tool_1 = require(205    /* ./actions/help_tool */);
+var gesture_tool_1 = require(215    /* ./gestures/gesture_tool */);
+var inspect_tool_1 = require(226    /* ./inspectors/inspect_tool */);
+var toolbar_base_1 = require(231    /* ./toolbar_base */);
 exports.Toolbar = function (superClass) {
     extend(Toolbar, superClass);
     function Toolbar() {
@@ -31598,13 +31750,13 @@ var extend = function (child, parent) {
             return fn.apply(me, arguments);
         };
     };
-var logging_1 = require(12    /* core/logging */);
-var solver_1 = require(11    /* core/layout/solver */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
-var action_tool_1 = require(202    /* ./actions/action_tool */);
-var on_off_button_1 = require(225    /* ./on_off_button */);
+var logging_1 = require(13    /* core/logging */);
+var solver_1 = require(12    /* core/layout/solver */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
+var action_tool_1 = require(204    /* ./actions/action_tool */);
+var on_off_button_1 = require(227    /* ./on_off_button */);
 exports.ToolbarBaseView = function (superClass) {
     extend(ToolbarBaseView, superClass);
     function ToolbarBaseView() {
@@ -31848,15 +32000,15 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
-var action_tool_1 = require(202    /* ./actions/action_tool */);
-var help_tool_1 = require(203    /* ./actions/help_tool */);
-var gesture_tool_1 = require(213    /* ./gestures/gesture_tool */);
-var inspect_tool_1 = require(224    /* ./inspectors/inspect_tool */);
-var toolbar_base_1 = require(229    /* ./toolbar_base */);
-var tool_proxy_1 = require(227    /* ./tool_proxy */);
-var box_1 = require(131    /* ../layouts/box */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
+var action_tool_1 = require(204    /* ./actions/action_tool */);
+var help_tool_1 = require(205    /* ./actions/help_tool */);
+var gesture_tool_1 = require(215    /* ./gestures/gesture_tool */);
+var inspect_tool_1 = require(226    /* ./inspectors/inspect_tool */);
+var toolbar_base_1 = require(231    /* ./toolbar_base */);
+var tool_proxy_1 = require(229    /* ./tool_proxy */);
+var box_1 = require(133    /* ../layouts/box */);
 exports.ToolbarBoxToolbar = function (superClass) {
     extend(ToolbarBoxToolbar, superClass);
     function ToolbarBoxToolbar() {
@@ -32111,9 +32263,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var transform_1 = require(238    /* ./transform */);
-var p = require(13    /* core/properties */);
-var object_1 = require(28    /* core/util/object */);
+var transform_1 = require(240    /* ./transform */);
+var p = require(14    /* core/properties */);
+var object_1 = require(29    /* core/util/object */);
 exports.CustomJSTransform = function (superClass) {
     extend(CustomJSTransform, superClass);
     function CustomJSTransform() {
@@ -32181,8 +32333,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var transform_1 = require(238    /* ./transform */);
-var p = require(13    /* core/properties */);
+var transform_1 = require(240    /* ./transform */);
+var p = require(14    /* core/properties */);
 exports.Dodge = function (superClass) {
     extend(Dodge, superClass);
     function Dodge() {
@@ -32211,19 +32363,19 @@ exports.Dodge = function (superClass) {
 /* models/transforms/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var customjs_transform_1 = require(231    /* ./customjs_transform */);
+var customjs_transform_1 = require(233    /* ./customjs_transform */);
 exports.CustomJSTransform = customjs_transform_1.CustomJSTransform;
-var dodge_1 = require(232    /* ./dodge */);
+var dodge_1 = require(234    /* ./dodge */);
 exports.Dodge = dodge_1.Dodge;
-var interpolator_1 = require(234    /* ./interpolator */);
+var interpolator_1 = require(236    /* ./interpolator */);
 exports.Interpolator = interpolator_1.Interpolator;
-var jitter_1 = require(235    /* ./jitter */);
+var jitter_1 = require(237    /* ./jitter */);
 exports.Jitter = jitter_1.Jitter;
-var linear_interpolator_1 = require(236    /* ./linear_interpolator */);
+var linear_interpolator_1 = require(238    /* ./linear_interpolator */);
 exports.LinearInterpolator = linear_interpolator_1.LinearInterpolator;
-var step_interpolator_1 = require(237    /* ./step_interpolator */);
+var step_interpolator_1 = require(239    /* ./step_interpolator */);
 exports.StepInterpolator = step_interpolator_1.StepInterpolator;
-var transform_1 = require(238    /* ./transform */);
+var transform_1 = require(240    /* ./transform */);
 exports.Transform = transform_1.Transform;    
 },
 /* models/transforms/interpolator */ function(require, module, exports) {
@@ -32248,8 +32400,8 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var transform_1 = require(238    /* ./transform */);
-var p = require(13    /* core/properties */);
+var transform_1 = require(240    /* ./transform */);
+var p = require(14    /* core/properties */);
 exports.Interpolator = function (superClass) {
     extend(Interpolator, superClass);
     function Interpolator() {
@@ -32356,9 +32508,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var transform_1 = require(238    /* ./transform */);
-var p = require(13    /* core/properties */);
-var bokeh_math = require(27    /* core/util/math */);
+var transform_1 = require(240    /* ./transform */);
+var p = require(14    /* core/properties */);
+var bokeh_math = require(28    /* core/util/math */);
 exports.Jitter = function (superClass) {
     extend(Jitter, superClass);
     function Jitter() {
@@ -32413,8 +32565,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var array_1 = require(20    /* core/util/array */);
-var interpolator_1 = require(234    /* ./interpolator */);
+var array_1 = require(21    /* core/util/array */);
+var interpolator_1 = require(236    /* ./interpolator */);
 exports.LinearInterpolator = function (superClass) {
     extend(LinearInterpolator, superClass);
     function LinearInterpolator() {
@@ -32476,9 +32628,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var interpolator_1 = require(234    /* ./interpolator */);
-var p = require(13    /* core/properties */);
-var array_1 = require(20    /* core/util/array */);
+var interpolator_1 = require(236    /* ./interpolator */);
+var p = require(14    /* core/properties */);
+var array_1 = require(21    /* core/util/array */);
 exports.StepInterpolator = function (superClass) {
     extend(StepInterpolator, superClass);
     function StepInterpolator() {
@@ -32567,7 +32719,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var model_1 = require(48    /* ../../model */);
+var model_1 = require(49    /* ../../model */);
 exports.Transform = function (superClass) {
     extend(Transform, superClass);
     function Transform() {
@@ -32591,10 +32743,10 @@ exports.Transform = function (superClass) {
 /* polyfill */ function(require, module, exports) {
 'use strict';
 if (typeof WeakMap !== 'function') {
-    require(306    /* es6-weak-map/implement */);
+    require(310    /* es6-weak-map/implement */);
 }
 if (typeof Set !== 'function') {
-    require(296    /* es6-set/implement */);
+    require(300    /* es6-set/implement */);
 }
 var proto = String.prototype;
 if (!proto.repeat) {
@@ -32639,6 +32791,165 @@ if (!proto.repeat) {
         return rpt;
     };
 }    
+},
+/* protocol/message */ function(require, module, exports) {
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+var string_1 = require(36    /* core/util/string */);
+exports.Message = function () {
+    function Message(header1, metadata1, content1) {
+        this.header = header1;
+        this.metadata = metadata1;
+        this.content = content1;
+        this.buffers = [];
+    }
+    Message.assemble = function (header_json, metadata_json, content_json) {
+        var content, header, metadata;
+        header = JSON.parse(header_json);
+        metadata = JSON.parse(metadata_json);
+        content = JSON.parse(content_json);
+        return new Message(header, metadata, content);
+    };
+    Message.prototype.assemble_buffer = function (buf_header, buf_payload) {
+        var nb;
+        nb = this.header.num_buffers != null ? this.header.num_buffers : 0;
+        if (nb <= this.buffers.length) {
+            throw new Error('too many buffers received, expecting ' + nb);
+        }
+        return this.buffers.push([
+            buf_header,
+            buf_payload
+        ]);
+    };
+    Message.create = function (msgtype, metadata, content) {
+        var header;
+        if (content == null) {
+            content = {};
+        }
+        header = Message.create_header(msgtype);
+        return new Message(header, metadata, content);
+    };
+    Message.create_header = function (msgtype) {
+        return {
+            'msgid': string_1.uniqueId(),
+            'msgtype': msgtype
+        };
+    };
+    Message.prototype.complete = function () {
+        if (this.header != null && this.metadata != null && this.content != null) {
+            if ('num_buffers' in this.header) {
+                return this.buffers.length === this.header['num_buffers'];
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
+    };
+    Message.prototype.send = function (socket) {
+        var content_json, header_json, metadata_json, nb;
+        nb = this.header.num_buffers != null ? this.header.num_buffers : 0;
+        if (nb > 0) {
+            throw new Error('BokehJS only supports receiving buffers, not sending');
+        }
+        header_json = JSON.stringify(this.header);
+        metadata_json = JSON.stringify(this.metadata);
+        content_json = JSON.stringify(this.content);
+        socket.send(header_json);
+        socket.send(metadata_json);
+        return socket.send(content_json);
+    };
+    Message.prototype.msgid = function () {
+        return this.header['msgid'];
+    };
+    Message.prototype.msgtype = function () {
+        return this.header['msgtype'];
+    };
+    Message.prototype.reqid = function () {
+        return this.header['reqid'];
+    };
+    Message.prototype.problem = function () {
+        if (!('msgid' in this.header)) {
+            return 'No msgid in header';
+        } else if (!('msgtype' in this.header)) {
+            return 'No msgtype in header';
+        } else {
+            return null;
+        }
+    };
+    return Message;
+}();    
+},
+/* protocol/receiver */ function(require, module, exports) {
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
+var message_1 = require(242    /* protocol/message */);
+exports.Receiver = function () {
+    function Receiver() {
+        this.message = null;
+        this._current_consumer = this._HEADER;
+    }
+    Receiver.prototype.consume = function (fragment) {
+        this._current_consumer(fragment);
+        return null;
+    };
+    Receiver.prototype._HEADER = function (fragment) {
+        this._assume_text(fragment);
+        this.message = null;
+        this._partial = null;
+        this._fragments = [fragment];
+        this._buf_header = null;
+        this._current_consumer = this._METADATA;
+        return null;
+    };
+    Receiver.prototype._METADATA = function (fragment) {
+        this._assume_text(fragment);
+        this._fragments.push(fragment);
+        this._current_consumer = this._CONTENT;
+        return null;
+    };
+    Receiver.prototype._CONTENT = function (fragment) {
+        var content_json, header_json, metadata_json, ref;
+        this._assume_text(fragment);
+        this._fragments.push(fragment);
+        ref = this._fragments.slice(0, 3), header_json = ref[0], metadata_json = ref[1], content_json = ref[2];
+        this._partial = message_1.Message.assemble(header_json, metadata_json, content_json);
+        this._check_complete();
+        return null;
+    };
+    Receiver.prototype._BUFFER_HEADER = function (fragment) {
+        this._assume_text(fragment);
+        this._buf_header = fragment;
+        this._current_consumer = this._BUFFER_PAYLOAD;
+        return null;
+    };
+    Receiver.prototype._BUFFER_PAYLOAD = function (fragment) {
+        this._assume_binary(fragment);
+        this._partial.assemble_buffer(this._buf_header, fragment);
+        this._check_complete();
+        return null;
+    };
+    Receiver.prototype._assume_text = function (fragment) {
+        if (fragment instanceof ArrayBuffer) {
+            throw new Error('Expected text fragment but received binary fragment');
+        }
+    };
+    Receiver.prototype._assume_binary = function (fragment) {
+        if (!(fragment instanceof ArrayBuffer)) {
+            throw new Error('Expected binary fragment but received text fragment');
+        }
+    };
+    Receiver.prototype._check_complete = function () {
+        if (this._partial.complete()) {
+            this.message = this._partial;
+            this._current_consumer = this._HEADER;
+        } else {
+            this._current_consumer = this._BUFFER_HEADER;
+        }
+        return null;
+    };
+    return Receiver;
+}();    
 },
 /* safely */ function(require, module, exports) {
 'use strict';
@@ -32710,7 +33021,7 @@ exports.safely = safely;
 /* version */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.version = '0.12.7';    
+exports.version = '0.12.9';    
 },
 /* canvas2svg/canvas2svg */ function(require, module, exports) {
 /*!!
@@ -33881,7 +34192,7 @@ exports.version = '0.12.7';
 }());},
 /* d/auto-bind */ function(require, module, exports) {
 'use strict';
-var copy = require(266    /* es5-ext/object/copy */), normalizeOptions = require(276    /* es5-ext/object/normalize-options */), ensureCallable = require(280    /* es5-ext/object/valid-callable */), map = require(275    /* es5-ext/object/map */), callable = require(280    /* es5-ext/object/valid-callable */), validValue = require(282    /* es5-ext/object/valid-value */), bind = Function.prototype.bind, defineProperty = Object.defineProperty, hasOwnProperty = Object.prototype.hasOwnProperty, define;
+var copy = require(270    /* es5-ext/object/copy */), normalizeOptions = require(280    /* es5-ext/object/normalize-options */), ensureCallable = require(284    /* es5-ext/object/valid-callable */), map = require(279    /* es5-ext/object/map */), callable = require(284    /* es5-ext/object/valid-callable */), validValue = require(286    /* es5-ext/object/valid-value */), bind = Function.prototype.bind, defineProperty = Object.defineProperty, hasOwnProperty = Object.prototype.hasOwnProperty, define;
 define = function (name, desc, options) {
     var value = validValue(desc) && callable(desc.value), dgs;
     dgs = copy(desc);
@@ -33906,7 +34217,7 @@ module.exports = function (props) {
 };},
 /* d/index */ function(require, module, exports) {
 'use strict';
-var assign = require(263    /* es5-ext/object/assign */), normalizeOpts = require(276    /* es5-ext/object/normalize-options */), isCallable = require(269    /* es5-ext/object/is-callable */), contains = require(283    /* es5-ext/string/#/contains */), d;
+var assign = require(267    /* es5-ext/object/assign */), normalizeOpts = require(280    /* es5-ext/object/normalize-options */), isCallable = require(273    /* es5-ext/object/is-callable */), contains = require(287    /* es5-ext/string/#/contains */), d;
 d = module.exports = function (dscr, value) {
     var c, e, w, options, desc;
     if (arguments.length < 2 || typeof dscr !== 'string') {
@@ -33973,14 +34284,14 @@ d.gs = function (dscr, get, set) {
 // http://closure-library.googlecode.com/svn/docs/
 // closure_goog_array_array.js.html#goog.array.clear
 'use strict';
-var value = require(282    /* ../../object/valid-value */);
+var value = require(286    /* ../../object/valid-value */);
 module.exports = function () {
     value(this).length = 0;
     return this;
 };},
 /* es5-ext/array/#/e-index-of */ function(require, module, exports) {
 'use strict';
-var numberIsNaN = require(257    /* ../../number/is-nan */), toPosInt = require(261    /* ../../number/to-pos-integer */), value = require(282    /* ../../object/valid-value */), indexOf = Array.prototype.indexOf, objHasOwnProperty = Object.prototype.hasOwnProperty, abs = Math.abs, floor = Math.floor;
+var numberIsNaN = require(261    /* ../../number/is-nan */), toPosInt = require(265    /* ../../number/to-pos-integer */), value = require(286    /* ../../object/valid-value */), indexOf = Array.prototype.indexOf, objHasOwnProperty = Object.prototype.hasOwnProperty, abs = Math.abs, floor = Math.floor;
 module.exports = function (searchElement) {
     var i, length, fromIndex, val;
     if (!numberIsNaN(searchElement))
@@ -34004,7 +34315,7 @@ module.exports = function (searchElement) {
 };},
 /* es5-ext/array/from/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(248    /* ./is-implemented */)() ? Array.from : require(249    /* ./shim */);},
+module.exports = require(252    /* ./is-implemented */)() ? Array.from : require(253    /* ./shim */);},
 /* es5-ext/array/from/is-implemented */ function(require, module, exports) {
 'use strict';
 module.exports = function () {
@@ -34020,7 +34331,7 @@ module.exports = function () {
 };},
 /* es5-ext/array/from/shim */ function(require, module, exports) {
 'use strict';
-var iteratorSymbol = require(301    /* es6-symbol */).iterator, isArguments = require(250    /* ../../function/is-arguments */), isFunction = require(251    /* ../../function/is-function */), toPosInt = require(261    /* ../../number/to-pos-integer */), callable = require(280    /* ../../object/valid-callable */), validValue = require(282    /* ../../object/valid-value */), isValue = require(271    /* ../../object/is-value */), isString = require(286    /* ../../string/is-string */), isArray = Array.isArray, call = Function.prototype.call, desc = {
+var iteratorSymbol = require(305    /* es6-symbol */).iterator, isArguments = require(254    /* ../../function/is-arguments */), isFunction = require(255    /* ../../function/is-function */), toPosInt = require(265    /* ../../number/to-pos-integer */), callable = require(284    /* ../../object/valid-callable */), validValue = require(286    /* ../../object/valid-value */), isValue = require(275    /* ../../object/is-value */), isString = require(290    /* ../../string/is-string */), isArray = Array.isArray, call = Function.prototype.call, desc = {
         configurable: true,
         enumerable: true,
         writable: true,
@@ -34133,7 +34444,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/function/is-function */ function(require, module, exports) {
 'use strict';
-var objToString = Object.prototype.toString, id = objToString.call(require(252    /* ./noop */));
+var objToString = Object.prototype.toString, id = objToString.call(require(256    /* ./noop */));
 module.exports = function (value) {
     return typeof value === 'function' && objToString.call(value) === id;
 };},
@@ -34149,7 +34460,7 @@ module.exports = function () {
 }();},
 /* es5-ext/math/sign/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(255    /* ./is-implemented */)() ? Math.sign : require(256    /* ./shim */);},
+module.exports = require(259    /* ./is-implemented */)() ? Math.sign : require(260    /* ./shim */);},
 /* es5-ext/math/sign/is-implemented */ function(require, module, exports) {
 'use strict';
 module.exports = function () {
@@ -34168,7 +34479,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/number/is-nan/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(258    /* ./is-implemented */)() ? Number.isNaN : require(259    /* ./shim */);},
+module.exports = require(262    /* ./is-implemented */)() ? Number.isNaN : require(263    /* ./shim */);},
 /* es5-ext/number/is-nan/is-implemented */ function(require, module, exports) {
 'use strict';
 module.exports = function () {
@@ -34185,7 +34496,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/number/to-integer */ function(require, module, exports) {
 'use strict';
-var sign = require(254    /* ../math/sign */), abs = Math.abs, floor = Math.floor;
+var sign = require(258    /* ../math/sign */), abs = Math.abs, floor = Math.floor;
 module.exports = function (value) {
     if (isNaN(value))
         return 0;
@@ -34196,7 +34507,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/number/to-pos-integer */ function(require, module, exports) {
 'use strict';
-var toInteger = require(260    /* ./to-integer */), max = Math.max;
+var toInteger = require(264    /* ./to-integer */), max = Math.max;
 module.exports = function (value) {
     return max(0, toInteger(value));
 };},
@@ -34205,7 +34516,7 @@ module.exports = function (value) {
 // Calls a function for each key-value pair found in object
 // Optionally takes compareFn to iterate object in specific order
 'use strict';
-var callable = require(280    /* ./valid-callable */), value = require(282    /* ./valid-value */), bind = Function.prototype.bind, call = Function.prototype.call, keys = Object.keys, objPropertyIsEnumerable = Object.prototype.propertyIsEnumerable;
+var callable = require(284    /* ./valid-callable */), value = require(286    /* ./valid-value */), bind = Function.prototype.bind, call = Function.prototype.call, keys = Object.keys, objPropertyIsEnumerable = Object.prototype.propertyIsEnumerable;
 module.exports = function (method, defVal) {
     return function (obj, cb) {
         var list, thisArg = arguments[2], compareFn = arguments[3];
@@ -34226,7 +34537,7 @@ module.exports = function (method, defVal) {
 };},
 /* es5-ext/object/assign/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(264    /* ./is-implemented */)() ? Object.assign : require(265    /* ./shim */);},
+module.exports = require(268    /* ./is-implemented */)() ? Object.assign : require(269    /* ./shim */);},
 /* es5-ext/object/assign/is-implemented */ function(require, module, exports) {
 'use strict';
 module.exports = function () {
@@ -34239,7 +34550,7 @@ module.exports = function () {
 };},
 /* es5-ext/object/assign/shim */ function(require, module, exports) {
 'use strict';
-var keys = require(272    /* ../keys */), value = require(282    /* ../valid-value */), max = Math.max;
+var keys = require(276    /* ../keys */), value = require(286    /* ../valid-value */), max = Math.max;
 module.exports = function (dest, src) {
     var error, i, length = max(arguments.length, 2), assign;
     dest = Object(value(dest));
@@ -34261,7 +34572,7 @@ module.exports = function (dest, src) {
 };},
 /* es5-ext/object/copy */ function(require, module, exports) {
 'use strict';
-var aFrom = require(247    /* ../array/from */), assign = require(263    /* ./assign */), value = require(282    /* ./valid-value */);
+var aFrom = require(251    /* ../array/from */), assign = require(267    /* ./assign */), value = require(286    /* ./valid-value */);
 module.exports = function (obj) {
     var copy = Object(value(obj)), propertyNames = arguments[1], options = Object(arguments[2]);
     if (copy !== obj && !propertyNames)
@@ -34281,8 +34592,8 @@ module.exports = function (obj) {
 // Workaround for http://code.google.com/p/v8/issues/detail?id=2804
 'use strict';
 var create = Object.create, shim;
-if (!require(278    /* ./set-prototype-of/is-implemented */)()) {
-    shim = require(279    /* ./set-prototype-of/shim */);
+if (!require(282    /* ./set-prototype-of/is-implemented */)()) {
+    shim = require(283    /* ./set-prototype-of/shim */);
 }
 module.exports = function () {
     var nullObject, polyProps, desc;
@@ -34323,7 +34634,7 @@ module.exports = function () {
 }();},
 /* es5-ext/object/for-each */ function(require, module, exports) {
 'use strict';
-module.exports = require(262    /* ./_iterate */)('forEach');},
+module.exports = require(266    /* ./_iterate */)('forEach');},
 /* es5-ext/object/is-callable */ function(require, module, exports) {
 // Deprecated
 'use strict';
@@ -34332,7 +34643,7 @@ module.exports = function (obj) {
 };},
 /* es5-ext/object/is-object */ function(require, module, exports) {
 'use strict';
-var isValue = require(271    /* ./is-value */);
+var isValue = require(275    /* ./is-value */);
 var map = {
     function: true,
     object: true
@@ -34342,14 +34653,14 @@ module.exports = function (value) {
 };},
 /* es5-ext/object/is-value */ function(require, module, exports) {
 'use strict';
-var _undefined = require(252    /* ../function/noop */)();
+var _undefined = require(256    /* ../function/noop */)();
 // Support ES3 engines
 module.exports = function (val) {
     return val !== _undefined && val !== null;
 };},
 /* es5-ext/object/keys/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(273    /* ./is-implemented */)() ? Object.keys : require(274    /* ./shim */);},
+module.exports = require(277    /* ./is-implemented */)() ? Object.keys : require(278    /* ./shim */);},
 /* es5-ext/object/keys/is-implemented */ function(require, module, exports) {
 'use strict';
 module.exports = function () {
@@ -34362,14 +34673,14 @@ module.exports = function () {
 };},
 /* es5-ext/object/keys/shim */ function(require, module, exports) {
 'use strict';
-var isValue = require(271    /* ../is-value */);
+var isValue = require(275    /* ../is-value */);
 var keys = Object.keys;
 module.exports = function (object) {
     return keys(isValue(object) ? Object(object) : object);
 };},
 /* es5-ext/object/map */ function(require, module, exports) {
 'use strict';
-var callable = require(280    /* ./valid-callable */), forEach = require(268    /* ./for-each */), call = Function.prototype.call;
+var callable = require(284    /* ./valid-callable */), forEach = require(272    /* ./for-each */), call = Function.prototype.call;
 module.exports = function (obj, cb) {
     var result = {}, thisArg = arguments[2];
     callable(cb);
@@ -34380,7 +34691,7 @@ module.exports = function (obj, cb) {
 };},
 /* es5-ext/object/normalize-options */ function(require, module, exports) {
 'use strict';
-var isValue = require(271    /* ./is-value */);
+var isValue = require(275    /* ./is-value */);
 var forEach = Array.prototype.forEach, create = Object.create;
 var process = function (src, obj) {
     var key;
@@ -34399,7 +34710,7 @@ module.exports = function (opts1) {
 };},
 /* es5-ext/object/set-prototype-of/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(278    /* ./is-implemented */)() ? Object.setPrototypeOf : require(279    /* ./shim */);},
+module.exports = require(282    /* ./is-implemented */)() ? Object.setPrototypeOf : require(283    /* ./shim */);},
 /* es5-ext/object/set-prototype-of/is-implemented */ function(require, module, exports) {
 'use strict';
 var create = Object.create, getPrototypeOf = Object.getPrototypeOf, plainObject = {};
@@ -34414,7 +34725,7 @@ module.exports = function () {
 // Big thanks to @WebReflection for sorting this out
 // https://gist.github.com/WebReflection/5593554
 'use strict';
-var isObject = require(270    /* ../is-object */), value = require(282    /* ../valid-value */), objIsPrototypOf = Object.prototype.isPrototypeOf, defineProperty = Object.defineProperty, nullDesc = {
+var isObject = require(274    /* ../is-object */), value = require(286    /* ../valid-value */), objIsPrototypOf = Object.prototype.isPrototypeOf, defineProperty = Object.defineProperty, nullDesc = {
         configurable: true,
         enumerable: false,
         writable: true,
@@ -34488,7 +34799,7 @@ module.exports = function (status) {
         return { level: 1 };
     return false;
 }());
-require(267    /* ../create */);},
+require(271    /* ../create */);},
 /* es5-ext/object/valid-callable */ function(require, module, exports) {
 'use strict';
 module.exports = function (fn) {
@@ -34498,7 +34809,7 @@ module.exports = function (fn) {
 };},
 /* es5-ext/object/valid-object */ function(require, module, exports) {
 'use strict';
-var isObject = require(270    /* ./is-object */);
+var isObject = require(274    /* ./is-object */);
 module.exports = function (value) {
     if (!isObject(value))
         throw new TypeError(value + ' is not an Object');
@@ -34506,7 +34817,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/object/valid-value */ function(require, module, exports) {
 'use strict';
-var isValue = require(271    /* ./is-value */);
+var isValue = require(275    /* ./is-value */);
 module.exports = function (value) {
     if (!isValue(value))
         throw new TypeError('Cannot use null or undefined');
@@ -34514,7 +34825,7 @@ module.exports = function (value) {
 };},
 /* es5-ext/string/#/contains/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(284    /* ./is-implemented */)() ? String.prototype.contains : require(285    /* ./shim */);},
+module.exports = require(288    /* ./is-implemented */)() ? String.prototype.contains : require(289    /* ./shim */);},
 /* es5-ext/string/#/contains/is-implemented */ function(require, module, exports) {
 'use strict';
 var str = 'razdwatrzy';
@@ -34547,7 +34858,7 @@ module.exports = function () {
 };},
 /* es6-iterator/array */ function(require, module, exports) {
 'use strict';
-var setPrototypeOf = require(277    /* es5-ext/object/set-prototype-of */), contains = require(283    /* es5-ext/string/#/contains */), d = require(244    /* d */), Iterator = require(291    /* ./ */), defineProperty = Object.defineProperty, ArrayIterator;
+var setPrototypeOf = require(281    /* es5-ext/object/set-prototype-of */), contains = require(287    /* es5-ext/string/#/contains */), d = require(248    /* d */), Iterator = require(295    /* ./ */), defineProperty = Object.defineProperty, ArrayIterator;
 ArrayIterator = module.exports = function (arr, kind) {
     if (!(this instanceof ArrayIterator))
         return new ArrayIterator(arr, kind);
@@ -34582,7 +34893,7 @@ ArrayIterator.prototype = Object.create(Iterator.prototype, {
 });},
 /* es6-iterator/for-of */ function(require, module, exports) {
 'use strict';
-var isArguments = require(250    /* es5-ext/function/is-arguments */), callable = require(280    /* es5-ext/object/valid-callable */), isString = require(286    /* es5-ext/string/is-string */), get = require(290    /* ./get */), isArray = Array.isArray, call = Function.prototype.call, some = Array.prototype.some;
+var isArguments = require(254    /* es5-ext/function/is-arguments */), callable = require(284    /* es5-ext/object/valid-callable */), isString = require(290    /* es5-ext/string/is-string */), get = require(294    /* ./get */), isArray = Array.isArray, call = Function.prototype.call, some = Array.prototype.some;
 module.exports = function (iterable, cb) {
     var mode, thisArg = arguments[2], result, doBreak, broken, i, l, char, code;
     if (isArray(iterable) || isArguments(iterable))
@@ -34628,7 +34939,7 @@ module.exports = function (iterable, cb) {
 };},
 /* es6-iterator/get */ function(require, module, exports) {
 'use strict';
-var isArguments = require(250    /* es5-ext/function/is-arguments */), isString = require(286    /* es5-ext/string/is-string */), ArrayIterator = require(288    /* ./array */), StringIterator = require(293    /* ./string */), iterable = require(294    /* ./valid-iterable */), iteratorSymbol = require(301    /* es6-symbol */).iterator;
+var isArguments = require(254    /* es5-ext/function/is-arguments */), isString = require(290    /* es5-ext/string/is-string */), ArrayIterator = require(292    /* ./array */), StringIterator = require(297    /* ./string */), iterable = require(298    /* ./valid-iterable */), iteratorSymbol = require(305    /* es6-symbol */).iterator;
 module.exports = function (obj) {
     if (typeof iterable(obj)[iteratorSymbol] === 'function')
         return obj[iteratorSymbol]();
@@ -34640,7 +34951,7 @@ module.exports = function (obj) {
 };},
 /* es6-iterator/index */ function(require, module, exports) {
 'use strict';
-var clear = require(245    /* es5-ext/array/#/clear */), assign = require(263    /* es5-ext/object/assign */), callable = require(280    /* es5-ext/object/valid-callable */), value = require(282    /* es5-ext/object/valid-value */), d = require(244    /* d */), autoBind = require(243    /* d/auto-bind */), Symbol = require(301    /* es6-symbol */), defineProperty = Object.defineProperty, defineProperties = Object.defineProperties, Iterator;
+var clear = require(249    /* es5-ext/array/#/clear */), assign = require(267    /* es5-ext/object/assign */), callable = require(284    /* es5-ext/object/valid-callable */), value = require(286    /* es5-ext/object/valid-value */), d = require(248    /* d */), autoBind = require(247    /* d/auto-bind */), Symbol = require(305    /* es6-symbol */), defineProperty = Object.defineProperty, defineProperties = Object.defineProperties, Iterator;
 module.exports = Iterator = function (list, context) {
     if (!(this instanceof Iterator))
         return new Iterator(list, context);
@@ -34743,7 +35054,7 @@ defineProperty(Iterator.prototype, Symbol.iterator, d(function () {
 defineProperty(Iterator.prototype, Symbol.toStringTag, d('', 'Iterator'));},
 /* es6-iterator/is-iterable */ function(require, module, exports) {
 'use strict';
-var isArguments = require(250    /* es5-ext/function/is-arguments */), isString = require(286    /* es5-ext/string/is-string */), iteratorSymbol = require(301    /* es6-symbol */).iterator, isArray = Array.isArray;
+var isArguments = require(254    /* es5-ext/function/is-arguments */), isString = require(290    /* es5-ext/string/is-string */), iteratorSymbol = require(305    /* es6-symbol */).iterator, isArray = Array.isArray;
 module.exports = function (value) {
     if (value == null)
         return false;
@@ -34759,7 +35070,7 @@ module.exports = function (value) {
 // Thanks @mathiasbynens
 // http://mathiasbynens.be/notes/javascript-unicode#iterating-over-symbols
 'use strict';
-var setPrototypeOf = require(277    /* es5-ext/object/set-prototype-of */), d = require(244    /* d */), Iterator = require(291    /* ./ */), defineProperty = Object.defineProperty, StringIterator;
+var setPrototypeOf = require(281    /* es5-ext/object/set-prototype-of */), d = require(248    /* d */), Iterator = require(295    /* ./ */), defineProperty = Object.defineProperty, StringIterator;
 StringIterator = module.exports = function (str) {
     if (!(this instanceof StringIterator))
         return new StringIterator(str);
@@ -34793,7 +35104,7 @@ StringIterator.prototype = Object.create(Iterator.prototype, {
 });},
 /* es6-iterator/valid-iterable */ function(require, module, exports) {
 'use strict';
-var isIterable = require(292    /* ./is-iterable */);
+var isIterable = require(296    /* ./is-iterable */);
 module.exports = function (value) {
     if (!isIterable(value))
         throw new TypeError(value + ' is not iterable');
@@ -35663,9 +35974,9 @@ module.exports = function (value) {
 }.call(this));},
 /* es6-set/implement */ function(require, module, exports) {
 'use strict';
-if (!require(297    /* ./is-implemented */)()) {
-    Object.defineProperty(require(253    /* es5-ext/global */), 'Set', {
-        value: require(300    /* ./polyfill */),
+if (!require(301    /* ./is-implemented */)()) {
+    Object.defineProperty(require(257    /* es5-ext/global */), 'Set', {
+        value: require(304    /* ./polyfill */),
         configurable: true,
         enumerable: false,
         writable: true
@@ -35721,7 +36032,7 @@ module.exports = function () {
 }();},
 /* es6-set/lib/iterator */ function(require, module, exports) {
 'use strict';
-var setPrototypeOf = require(277    /* es5-ext/object/set-prototype-of */), contains = require(283    /* es5-ext/string/#/contains */), d = require(244    /* d */), Iterator = require(291    /* es6-iterator */), toStringTagSymbol = require(301    /* es6-symbol */).toStringTag, defineProperty = Object.defineProperty, SetIterator;
+var setPrototypeOf = require(281    /* es5-ext/object/set-prototype-of */), contains = require(287    /* es5-ext/string/#/contains */), d = require(248    /* d */), Iterator = require(295    /* es6-iterator */), toStringTagSymbol = require(305    /* es6-symbol */).toStringTag, defineProperty = Object.defineProperty, SetIterator;
 SetIterator = module.exports = function (set, kind) {
     if (!(this instanceof SetIterator))
         return new SetIterator(set, kind);
@@ -35753,7 +36064,7 @@ SetIterator.prototype = Object.create(Iterator.prototype, {
 defineProperty(SetIterator.prototype, toStringTagSymbol, d('c', 'Set Iterator'));},
 /* es6-set/polyfill */ function(require, module, exports) {
 'use strict';
-var clear = require(245    /* es5-ext/array/#/clear */), eIndexOf = require(246    /* es5-ext/array/#/e-index-of */), setPrototypeOf = require(277    /* es5-ext/object/set-prototype-of */), callable = require(280    /* es5-ext/object/valid-callable */), d = require(244    /* d */), ee = require(310    /* event-emitter */), Symbol = require(301    /* es6-symbol */), iterator = require(294    /* es6-iterator/valid-iterable */), forOf = require(289    /* es6-iterator/for-of */), Iterator = require(299    /* ./lib/iterator */), isNative = require(298    /* ./is-native-implemented */), call = Function.prototype.call, defineProperty = Object.defineProperty, getPrototypeOf = Object.getPrototypeOf, SetPoly, getValues, NativeSet;
+var clear = require(249    /* es5-ext/array/#/clear */), eIndexOf = require(250    /* es5-ext/array/#/e-index-of */), setPrototypeOf = require(281    /* es5-ext/object/set-prototype-of */), callable = require(284    /* es5-ext/object/valid-callable */), d = require(248    /* d */), ee = require(314    /* event-emitter */), Symbol = require(305    /* es6-symbol */), iterator = require(298    /* es6-iterator/valid-iterable */), forOf = require(293    /* es6-iterator/for-of */), Iterator = require(303    /* ./lib/iterator */), isNative = require(302    /* ./is-native-implemented */), call = Function.prototype.call, defineProperty = Object.defineProperty, getPrototypeOf = Object.getPrototypeOf, SetPoly, getValues, NativeSet;
 if (isNative)
     NativeSet = Set;
 module.exports = SetPoly = function Set() {
@@ -35836,7 +36147,7 @@ defineProperty(SetPoly.prototype, Symbol.iterator, d(getValues));
 defineProperty(SetPoly.prototype, Symbol.toStringTag, d('c', 'Set'));},
 /* es6-symbol/index */ function(require, module, exports) {
 'use strict';
-module.exports = require(302    /* ./is-implemented */)() ? Symbol : require(304    /* ./polyfill */);},
+module.exports = require(306    /* ./is-implemented */)() ? Symbol : require(308    /* ./polyfill */);},
 /* es6-symbol/is-implemented */ function(require, module, exports) {
 'use strict';
 var validTypes = {
@@ -35878,7 +36189,7 @@ module.exports = function (x) {
 /* es6-symbol/polyfill */ function(require, module, exports) {
 // ES2015 Symbol polyfill for environments that do not (or partially) support it
 'use strict';
-var d = require(244    /* d */), validateSymbol = require(305    /* ./validate-symbol */), create = Object.create, defineProperties = Object.defineProperties, defineProperty = Object.defineProperty, objPrototype = Object.prototype, NativeSymbol, SymbolPolyfill, HiddenSymbol, globalSymbols = create(null), isNativeSafe;
+var d = require(248    /* d */), validateSymbol = require(309    /* ./validate-symbol */), create = Object.create, defineProperties = Object.defineProperties, defineProperty = Object.defineProperty, objPrototype = Object.prototype, NativeSymbol, SymbolPolyfill, HiddenSymbol, globalSymbols = create(null), isNativeSafe;
 if (typeof Symbol === 'function') {
     NativeSymbol = Symbol;
     try {
@@ -35992,7 +36303,7 @@ defineProperty(HiddenSymbol.prototype, SymbolPolyfill.toStringTag, d('c', Symbol
 defineProperty(HiddenSymbol.prototype, SymbolPolyfill.toPrimitive, d('c', SymbolPolyfill.prototype[SymbolPolyfill.toPrimitive]));},
 /* es6-symbol/validate-symbol */ function(require, module, exports) {
 'use strict';
-var isSymbol = require(303    /* ./is-symbol */);
+var isSymbol = require(307    /* ./is-symbol */);
 module.exports = function (value) {
     if (!isSymbol(value))
         throw new TypeError(value + ' is not a symbol');
@@ -36000,9 +36311,9 @@ module.exports = function (value) {
 };},
 /* es6-weak-map/implement */ function(require, module, exports) {
 'use strict';
-if (!require(307    /* ./is-implemented */)()) {
-    Object.defineProperty(require(253    /* es5-ext/global */), 'WeakMap', {
-        value: require(309    /* ./polyfill */),
+if (!require(311    /* ./is-implemented */)()) {
+    Object.defineProperty(require(257    /* es5-ext/global */), 'WeakMap', {
+        value: require(313    /* ./polyfill */),
         configurable: true,
         enumerable: false,
         writable: true
@@ -36057,7 +36368,7 @@ module.exports = function () {
 }();},
 /* es6-weak-map/polyfill */ function(require, module, exports) {
 'use strict';
-var setPrototypeOf = require(277    /* es5-ext/object/set-prototype-of */), object = require(281    /* es5-ext/object/valid-object */), value = require(282    /* es5-ext/object/valid-value */), randomUniq = require(287    /* es5-ext/string/random-uniq */), d = require(244    /* d */), getIterator = require(290    /* es6-iterator/get */), forOf = require(289    /* es6-iterator/for-of */), toStringTagSymbol = require(301    /* es6-symbol */).toStringTag, isNative = require(308    /* ./is-native-implemented */), isArray = Array.isArray, defineProperty = Object.defineProperty, hasOwnProperty = Object.prototype.hasOwnProperty, getPrototypeOf = Object.getPrototypeOf, WeakMapPoly;
+var setPrototypeOf = require(281    /* es5-ext/object/set-prototype-of */), object = require(285    /* es5-ext/object/valid-object */), value = require(286    /* es5-ext/object/valid-value */), randomUniq = require(291    /* es5-ext/string/random-uniq */), d = require(248    /* d */), getIterator = require(294    /* es6-iterator/get */), forOf = require(293    /* es6-iterator/for-of */), toStringTagSymbol = require(305    /* es6-symbol */).toStringTag, isNative = require(312    /* ./is-native-implemented */), isArray = Array.isArray, defineProperty = Object.defineProperty, hasOwnProperty = Object.prototype.hasOwnProperty, getPrototypeOf = Object.getPrototypeOf, WeakMapPoly;
 module.exports = WeakMapPoly = function () {
     var iterable = arguments[0], self;
     if (!(this instanceof WeakMapPoly))
@@ -36112,7 +36423,7 @@ Object.defineProperties(WeakMapPoly.prototype, {
 defineProperty(WeakMapPoly.prototype, toStringTagSymbol, d('c', 'WeakMap'));},
 /* event-emitter/index */ function(require, module, exports) {
 'use strict';
-var d = require(244    /* d */), callable = require(280    /* es5-ext/object/valid-callable */), apply = Function.prototype.apply, call = Function.prototype.call, create = Object.create, defineProperty = Object.defineProperty, defineProperties = Object.defineProperties, hasOwnProperty = Object.prototype.hasOwnProperty, descriptor = {
+var d = require(248    /* d */), callable = require(284    /* es5-ext/object/valid-callable */), apply = Function.prototype.apply, call = Function.prototype.call, create = Object.create, defineProperty = Object.defineProperty, defineProperties = Object.defineProperties, hasOwnProperty = Object.prototype.hasOwnProperty, descriptor = {
         configurable: true,
         enumerable: false,
         writable: true
@@ -38574,7 +38885,7 @@ exports.methods = methods;},
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var strength_1 = require(317    /* ./strength */);
+var strength_1 = require(321    /* ./strength */);
 /**
  * An enum defining the linear constraint operators.
  */
@@ -38686,9 +38997,9 @@ var CnId = 0;},
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var tsu_1 = require(321    /* ./tsu */);
-var variable_1 = require(324    /* ./variable */);
-var maptype_1 = require(315    /* ./maptype */);
+var tsu_1 = require(325    /* ./tsu */);
+var variable_1 = require(328    /* ./variable */);
+var maptype_1 = require(319    /* ./maptype */);
 /**
  * An expression of variable terms and a constant.
  *
@@ -38829,11 +39140,11 @@ function __export(m) {
             exports[p] = m[p];
 }
 Object.defineProperty(exports, '__esModule', { value: true });
-__export(require(324    /* ./variable */));
-__export(require(313    /* ./expression */));
-__export(require(312    /* ./constraint */));
-__export(require(317    /* ./strength */));
-__export(require(316    /* ./solver */));},
+__export(require(328    /* ./variable */));
+__export(require(317    /* ./expression */));
+__export(require(316    /* ./constraint */));
+__export(require(321    /* ./strength */));
+__export(require(320    /* ./solver */));},
 /* kiwi/build/maptype */ function(require, module, exports) {
 'use strict';
 /*-----------------------------------------------------------------------------
@@ -38844,7 +39155,7 @@ __export(require(316    /* ./solver */));},
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var tsu_1 = require(321    /* ./tsu */);
+var tsu_1 = require(325    /* ./tsu */);
 function createMap(compare) {
     return new tsu_1.AssociativeArray(compare);
 }
@@ -38859,12 +39170,12 @@ exports.createMap = createMap;},
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var variable_1 = require(324    /* ./variable */);
-var expression_1 = require(313    /* ./expression */);
-var constraint_1 = require(312    /* ./constraint */);
-var strength_1 = require(317    /* ./strength */);
-var maptype_1 = require(315    /* ./maptype */);
-var tsu_1 = require(321    /* ./tsu */);
+var variable_1 = require(328    /* ./variable */);
+var expression_1 = require(317    /* ./expression */);
+var constraint_1 = require(316    /* ./constraint */);
+var strength_1 = require(321    /* ./strength */);
+var maptype_1 = require(319    /* ./maptype */);
+var tsu_1 = require(325    /* ./tsu */);
 /**
  * The constraint solver class.
  *
@@ -39856,7 +40167,7 @@ var Strength;
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var iterator_1 = require(322    /* ./iterator */);
+var iterator_1 = require(326    /* ./iterator */);
 /**
 * Perform a lower bound search on a sorted array.
 *
@@ -40153,7 +40464,7 @@ exports.setSymmetricDifference = setSymmetricDifference;},
 | The full license is in the file COPYING.txt, distributed with this software.
 |----------------------------------------------------------------------------*/
 Object.defineProperty(exports, '__esModule', { value: true });
-var iterator_1 = require(322    /* ./iterator */);
+var iterator_1 = require(326    /* ./iterator */);
 /**
 * A base class for implementing array-based data structures.
 *
@@ -40253,10 +40564,10 @@ var __extends = this && this.__extends || function () {
     };
 }();
 Object.defineProperty(exports, '__esModule', { value: true });
-var pair_1 = require(323    /* ./pair */);
-var array_base_1 = require(319    /* ./array_base */);
-var algorithm_1 = require(318    /* ./algorithm */);
-var iterator_1 = require(322    /* ./iterator */);
+var pair_1 = require(327    /* ./pair */);
+var array_base_1 = require(323    /* ./array_base */);
+var algorithm_1 = require(322    /* ./algorithm */);
+var iterator_1 = require(326    /* ./iterator */);
 /**
 * A mapping container build on a sorted array.
 *
@@ -40443,11 +40754,11 @@ function __export(m) {
             exports[p] = m[p];
 }
 Object.defineProperty(exports, '__esModule', { value: true });
-__export(require(318    /* ./algorithm */));
-__export(require(319    /* ./array_base */));
-__export(require(320    /* ./associative_array */));
-__export(require(322    /* ./iterator */));
-__export(require(323    /* ./pair */));},
+__export(require(322    /* ./algorithm */));
+__export(require(323    /* ./array_base */));
+__export(require(324    /* ./associative_array */));
+__export(require(326    /* ./iterator */));
+__export(require(327    /* ./pair */));},
 /* kiwi/build/tsu/iterator */ function(require, module, exports) {
 'use strict';
 /*-----------------------------------------------------------------------------
@@ -41468,12 +41779,12 @@ function format(input, formatString, language, roundingFunction) {
 }
 module.exports = { 'format': format };},
 /* proj4/lib/Proj */ function(require, module, exports) {
-var parseCode = require(346    /* ./parseCode */);
-var extend = require(344    /* ./extend */);
-var projections = require(348    /* ./projections */);
-var deriveConstants = require(343    /* ./deriveConstants */);
-var Datum = require(334    /* ./constants/Datum */);
-var datum = require(339    /* ./datum */);
+var parseCode = require(350    /* ./parseCode */);
+var extend = require(348    /* ./extend */);
+var projections = require(352    /* ./projections */);
+var deriveConstants = require(347    /* ./deriveConstants */);
+var Datum = require(338    /* ./constants/Datum */);
+var datum = require(343    /* ./datum */);
 function Projection(srsCode, callback) {
     if (!(this instanceof Projection)) {
         return new Projection(srsCode);
@@ -41585,7 +41896,7 @@ var TWO_PI = Math.PI * 2;
 // have drifted from their original location along the 180th meridian (due to
 // floating point error) from changing their sign.
 var SPI = 3.14159265359;
-var sign = require(331    /* ./sign */);
+var sign = require(335    /* ./sign */);
 module.exports = function (x) {
     return Math.abs(x) <= SPI ? x : x - sign(x) * TWO_PI;
 };},
@@ -41965,8 +42276,8 @@ exports.oslo = 10.722916666667;    //"10d43'22.5\"E"
 exports.ft = { to_meter: 0.3048 };
 exports['us-ft'] = { to_meter: 1200 / 3937 };},
 /* proj4/lib/core */ function(require, module, exports) {
-var proj = require(326    /* ./Proj */);
-var transform = require(351    /* ./transform */);
+var proj = require(330    /* ./Proj */);
+var transform = require(355    /* ./transform */);
 var wgs84 = proj('WGS84');
 function transformer(from, to, coords) {
     var transformedArray;
@@ -42314,7 +42625,7 @@ var PJD_3PARAM = 1;
 var PJD_7PARAM = 2;
 var PJD_NODATUM = 5;
 // WGS84 or equivalent
-var datum = require(340    /* ./datumUtils */);
+var datum = require(344    /* ./datumUtils */);
 function checkParams(type) {
     return type === PJD_3PARAM || type === PJD_7PARAM;
 }
@@ -42346,9 +42657,9 @@ module.exports = function (source, dest, point) {
     return datum.geocentricToGeodetic(point, dest.es, dest.a, dest.b);
 };},
 /* proj4/lib/defs */ function(require, module, exports) {
-var globals = require(345    /* ./global */);
-var parseProj = require(347    /* ./projString */);
-var wkt = require(352    /* ./wkt */);
+var globals = require(349    /* ./global */);
+var parseProj = require(351    /* ./projString */);
+var wkt = require(356    /* ./wkt */);
 function defs(name) {
     /*global console*/
     var that = this;
@@ -42398,7 +42709,7 @@ var RA4 = 0.04722222222222222;
 /* 17/360 */
 var RA6 = 0.022156084656084655;
 var EPSLN = 1e-10;
-var Ellipsoid = require(335    /* ./constants/Ellipsoid */);
+var Ellipsoid = require(339    /* ./constants/Ellipsoid */);
 exports.eccentricity = function (a, b, rf, R_A) {
     var a2 = a * a;
     // used in geocentric
@@ -42475,9 +42786,9 @@ module.exports = function (defs) {
     defs['EPSG:102113'] = defs['EPSG:3857'];
 };},
 /* proj4/lib/parseCode */ function(require, module, exports) {
-var defs = require(342    /* ./defs */);
-var wkt = require(352    /* ./wkt */);
-var projStr = require(347    /* ./projString */);
+var defs = require(346    /* ./defs */);
+var wkt = require(356    /* ./wkt */);
+var projStr = require(351    /* ./projString */);
 function testObj(code) {
     return typeof code === 'string';
 }
@@ -42517,8 +42828,8 @@ function parse(code) {
 module.exports = parse;},
 /* proj4/lib/projString */ function(require, module, exports) {
 var D2R = 0.017453292519943295;
-var PrimeMeridian = require(336    /* ./constants/PrimeMeridian */);
-var units = require(337    /* ./constants/units */);
+var PrimeMeridian = require(340    /* ./constants/PrimeMeridian */);
+var units = require(341    /* ./constants/units */);
 module.exports = function (defData) {
     var self = {};
     var paramObj = defData.split('+').map(function (v) {
@@ -42646,8 +42957,8 @@ module.exports = function (defData) {
 };},
 /* proj4/lib/projections */ function(require, module, exports) {
 var projs = [
-    require(350    /* ./projections/merc */),
-    require(349    /* ./projections/longlat */)
+    require(354    /* ./projections/merc */),
+    require(353    /* ./projections/longlat */)
 ];
 var names = {};
 var projStore = [];
@@ -42689,14 +43000,14 @@ exports.names = [
     'identity'
 ];},
 /* proj4/lib/projections/merc */ function(require, module, exports) {
-var msfnz = require(329    /* ../common/msfnz */);
+var msfnz = require(333    /* ../common/msfnz */);
 var HALF_PI = Math.PI / 2;
 var EPSLN = 1e-10;
 var R2D = 57.29577951308232;
-var adjust_lon = require(328    /* ../common/adjust_lon */);
+var adjust_lon = require(332    /* ../common/adjust_lon */);
 var FORTPI = Math.PI / 4;
-var tsfnz = require(333    /* ../common/tsfnz */);
-var phi2z = require(330    /* ../common/phi2z */);
+var tsfnz = require(337    /* ../common/tsfnz */);
+var phi2z = require(334    /* ../common/phi2z */);
 exports.init = function () {
     var con = this.b / this.a;
     this.es = 1 - con * con;
@@ -42782,10 +43093,10 @@ var D2R = 0.017453292519943295;
 var R2D = 57.29577951308232;
 var PJD_3PARAM = 1;
 var PJD_7PARAM = 2;
-var datum_transform = require(341    /* ./datum_transform */);
-var adjust_axis = require(327    /* ./adjust_axis */);
-var proj = require(326    /* ./Proj */);
-var toPoint = require(332    /* ./common/toPoint */);
+var datum_transform = require(345    /* ./datum_transform */);
+var adjust_axis = require(331    /* ./adjust_axis */);
+var proj = require(330    /* ./Proj */);
+var toPoint = require(336    /* ./common/toPoint */);
 function checkNotWGS(source, dest) {
     return (source.datum.datum_type === PJD_3PARAM || source.datum.datum_type === PJD_7PARAM) && dest.datumCode !== 'WGS84' || (dest.datum.datum_type === PJD_3PARAM || dest.datum.datum_type === PJD_7PARAM) && source.datumCode !== 'WGS84';
 }
@@ -42856,7 +43167,7 @@ module.exports = function transform(source, dest, point) {
 };},
 /* proj4/lib/wkt */ function(require, module, exports) {
 var D2R = 0.017453292519943295;
-var extend = require(344    /* ./extend */);
+var extend = require(348    /* ./extend */);
 function mapit(obj, key, v) {
     obj[key] = v.map(function (aa) {
         var o = {};
@@ -43214,7 +43525,7 @@ function defaultCompare(a, b) {
 /* rbush/index */ function(require, module, exports) {
 'use strict';
 module.exports = rbush;
-var quickselect = require(353    /* quickselect */);
+var quickselect = require(357    /* quickselect */);
 function rbush(maxEntries, format) {
     if (!(this instanceof rbush))
         return new rbush(maxEntries, format);
@@ -44680,7 +44991,7 @@ var __asyncValues;
     exporter('__asyncDelegator', __asyncDelegator);
     exporter('__asyncValues', __asyncValues);
 }));}
-], {"base":0,"client":1,"core/bokeh_events":2,"core/build_views":3,"core/dom":4,"core/dom_view":5,"core/enums":6,"core/has_props":7,"core/hittest":8,"core/layout/layout_canvas":9,"core/layout/side_panel":10,"core/layout/solver":11,"core/logging":12,"core/properties":13,"core/property_mixins":14,"core/selection_manager":15,"core/selector":16,"core/settings":17,"core/signaling":18,"core/ui_events":19,"core/util/array":20,"core/util/bbox":21,"core/util/callback":22,"core/util/canvas":23,"core/util/color":24,"core/util/data_structures":25,"core/util/eq":26,"core/util/math":27,"core/util/object":28,"core/util/proj4":29,"core/util/projections":30,"core/util/refs":31,"core/util/selection":32,"core/util/serialization":33,"core/util/spatial":34,"core/util/string":35,"core/util/svg_colors":36,"core/util/templating":37,"core/util/text":38,"core/util/throttle":39,"core/util/types":40,"core/util/wheel":41,"core/util/zoom":42,"core/view":43,"core/visuals":44,"document":45,"embed":46,"main":47,"model":48,"models/annotations/annotation":49,"models/annotations/arrow":50,"models/annotations/arrow_head":51,"models/annotations/band":52,"models/annotations/box_annotation":53,"models/annotations/color_bar":54,"models/annotations/index":55,"models/annotations/label":56,"models/annotations/label_set":57,"models/annotations/legend":58,"models/annotations/legend_item":59,"models/annotations/poly_annotation":60,"models/annotations/span":61,"models/annotations/text_annotation":62,"models/annotations/title":63,"models/annotations/tooltip":64,"models/annotations/whisker":65,"models/axes/axis":66,"models/axes/categorical_axis":67,"models/axes/continuous_axis":68,"models/axes/datetime_axis":69,"models/axes/index":70,"models/axes/linear_axis":71,"models/axes/log_axis":72,"models/callbacks/customjs":73,"models/callbacks/index":74,"models/callbacks/open_url":75,"models/canvas/canvas":76,"models/canvas/cartesian_frame":77,"models/canvas/index":78,"models/expressions/expression":79,"models/expressions/index":80,"models/expressions/stack":81,"models/filters/boolean_filter":82,"models/filters/customjs_filter":83,"models/filters/filter":84,"models/filters/group_filter":85,"models/filters/index":86,"models/filters/index_filter":87,"models/formatters/basic_tick_formatter":88,"models/formatters/categorical_tick_formatter":89,"models/formatters/datetime_tick_formatter":90,"models/formatters/func_tick_formatter":91,"models/formatters/index":92,"models/formatters/log_tick_formatter":93,"models/formatters/mercator_tick_formatter":94,"models/formatters/numeral_tick_formatter":95,"models/formatters/printf_tick_formatter":96,"models/formatters/tick_formatter":97,"models/glyphs/annular_wedge":98,"models/glyphs/annulus":99,"models/glyphs/arc":100,"models/glyphs/bezier":101,"models/glyphs/circle":102,"models/glyphs/ellipse":103,"models/glyphs/glyph":104,"models/glyphs/hbar":105,"models/glyphs/image":106,"models/glyphs/image_rgba":107,"models/glyphs/image_url":108,"models/glyphs/index":109,"models/glyphs/line":110,"models/glyphs/multi_line":111,"models/glyphs/oval":112,"models/glyphs/patch":113,"models/glyphs/patches":114,"models/glyphs/quad":115,"models/glyphs/quadratic":116,"models/glyphs/ray":117,"models/glyphs/rect":118,"models/glyphs/segment":119,"models/glyphs/text":120,"models/glyphs/vbar":121,"models/glyphs/wedge":122,"models/glyphs/xy_glyph":123,"models/graphs/graph_hit_test_policy":124,"models/graphs/index":125,"models/graphs/layout_provider":126,"models/graphs/static_layout_provider":127,"models/grids/grid":128,"models/grids/index":129,"models/index":130,"models/layouts/box":131,"models/layouts/column":132,"models/layouts/index":133,"models/layouts/layout_dom":134,"models/layouts/row":135,"models/layouts/spacer":136,"models/layouts/widget_box":137,"models/mappers/categorical_color_mapper":138,"models/mappers/color_mapper":139,"models/mappers/index":140,"models/mappers/linear_color_mapper":141,"models/mappers/log_color_mapper":142,"models/markers/index":143,"models/markers/marker":144,"models/plots/gmap_plot":145,"models/plots/gmap_plot_canvas":146,"models/plots/index":147,"models/plots/plot":148,"models/plots/plot_canvas":149,"models/ranges/data_range":150,"models/ranges/data_range1d":151,"models/ranges/factor_range":152,"models/ranges/index":153,"models/ranges/range":154,"models/ranges/range1d":155,"models/renderers/glyph_renderer":156,"models/renderers/graph_renderer":157,"models/renderers/guide_renderer":158,"models/renderers/index":159,"models/renderers/renderer":160,"models/scales/categorical_scale":161,"models/scales/index":162,"models/scales/linear_scale":163,"models/scales/log_scale":164,"models/scales/scale":165,"models/sources/ajax_data_source":166,"models/sources/cds_view":167,"models/sources/column_data_source":168,"models/sources/columnar_data_source":169,"models/sources/data_source":170,"models/sources/geojson_data_source":171,"models/sources/index":172,"models/sources/remote_data_source":173,"models/tickers/adaptive_ticker":174,"models/tickers/basic_ticker":175,"models/tickers/categorical_ticker":176,"models/tickers/composite_ticker":177,"models/tickers/continuous_ticker":178,"models/tickers/datetime_ticker":179,"models/tickers/days_ticker":180,"models/tickers/fixed_ticker":181,"models/tickers/index":182,"models/tickers/log_ticker":183,"models/tickers/mercator_ticker":184,"models/tickers/months_ticker":185,"models/tickers/single_interval_ticker":186,"models/tickers/ticker":187,"models/tickers/util":188,"models/tickers/years_ticker":189,"models/tiles/bbox_tile_source":190,"models/tiles/dynamic_image_renderer":191,"models/tiles/image_pool":192,"models/tiles/image_source":193,"models/tiles/index":194,"models/tiles/mercator_tile_source":195,"models/tiles/quadkey_tile_source":196,"models/tiles/tile_renderer":197,"models/tiles/tile_source":198,"models/tiles/tile_utils":199,"models/tiles/tms_tile_source":200,"models/tiles/wmts_tile_source":201,"models/tools/actions/action_tool":202,"models/tools/actions/help_tool":203,"models/tools/actions/redo_tool":204,"models/tools/actions/reset_tool":205,"models/tools/actions/save_tool":206,"models/tools/actions/undo_tool":207,"models/tools/actions/zoom_in_tool":208,"models/tools/actions/zoom_out_tool":209,"models/tools/button_tool":210,"models/tools/gestures/box_select_tool":211,"models/tools/gestures/box_zoom_tool":212,"models/tools/gestures/gesture_tool":213,"models/tools/gestures/lasso_select_tool":214,"models/tools/gestures/pan_tool":215,"models/tools/gestures/poly_select_tool":216,"models/tools/gestures/select_tool":217,"models/tools/gestures/tap_tool":218,"models/tools/gestures/wheel_pan_tool":219,"models/tools/gestures/wheel_zoom_tool":220,"models/tools/index":221,"models/tools/inspectors/crosshair_tool":222,"models/tools/inspectors/hover_tool":223,"models/tools/inspectors/inspect_tool":224,"models/tools/on_off_button":225,"models/tools/tool":226,"models/tools/tool_proxy":227,"models/tools/toolbar":228,"models/tools/toolbar_base":229,"models/tools/toolbar_box":230,"models/transforms/customjs_transform":231,"models/transforms/dodge":232,"models/transforms/index":233,"models/transforms/interpolator":234,"models/transforms/jitter":235,"models/transforms/linear_interpolator":236,"models/transforms/step_interpolator":237,"models/transforms/transform":238,"polyfill":239,"safely":240,"version":241}, 47);
+], {"base":0,"client/connection":1,"client/session":2,"core/bokeh_events":3,"core/build_views":4,"core/dom":5,"core/dom_view":6,"core/enums":7,"core/has_props":8,"core/hittest":9,"core/layout/layout_canvas":10,"core/layout/side_panel":11,"core/layout/solver":12,"core/logging":13,"core/properties":14,"core/property_mixins":15,"core/selection_manager":16,"core/selector":17,"core/settings":18,"core/signaling":19,"core/ui_events":20,"core/util/array":21,"core/util/bbox":22,"core/util/callback":23,"core/util/canvas":24,"core/util/color":25,"core/util/data_structures":26,"core/util/eq":27,"core/util/math":28,"core/util/object":29,"core/util/proj4":30,"core/util/projections":31,"core/util/refs":32,"core/util/selection":33,"core/util/serialization":34,"core/util/spatial":35,"core/util/string":36,"core/util/svg_colors":37,"core/util/templating":38,"core/util/text":39,"core/util/throttle":40,"core/util/types":41,"core/util/wheel":42,"core/util/zoom":43,"core/view":44,"core/visuals":45,"document":46,"embed":47,"main":48,"model":49,"models/annotations/annotation":50,"models/annotations/arrow":51,"models/annotations/arrow_head":52,"models/annotations/band":53,"models/annotations/box_annotation":54,"models/annotations/color_bar":55,"models/annotations/index":56,"models/annotations/label":57,"models/annotations/label_set":58,"models/annotations/legend":59,"models/annotations/legend_item":60,"models/annotations/poly_annotation":61,"models/annotations/span":62,"models/annotations/text_annotation":63,"models/annotations/title":64,"models/annotations/tooltip":65,"models/annotations/whisker":66,"models/axes/axis":67,"models/axes/categorical_axis":68,"models/axes/continuous_axis":69,"models/axes/datetime_axis":70,"models/axes/index":71,"models/axes/linear_axis":72,"models/axes/log_axis":73,"models/callbacks/customjs":74,"models/callbacks/index":75,"models/callbacks/open_url":76,"models/canvas/canvas":77,"models/canvas/cartesian_frame":78,"models/canvas/index":79,"models/expressions/expression":80,"models/expressions/index":81,"models/expressions/stack":82,"models/filters/boolean_filter":83,"models/filters/customjs_filter":84,"models/filters/filter":85,"models/filters/group_filter":86,"models/filters/index":87,"models/filters/index_filter":88,"models/formatters/basic_tick_formatter":89,"models/formatters/categorical_tick_formatter":90,"models/formatters/datetime_tick_formatter":91,"models/formatters/func_tick_formatter":92,"models/formatters/index":93,"models/formatters/log_tick_formatter":94,"models/formatters/mercator_tick_formatter":95,"models/formatters/numeral_tick_formatter":96,"models/formatters/printf_tick_formatter":97,"models/formatters/tick_formatter":98,"models/glyphs/annular_wedge":99,"models/glyphs/annulus":100,"models/glyphs/arc":101,"models/glyphs/bezier":102,"models/glyphs/box":103,"models/glyphs/circle":104,"models/glyphs/ellipse":105,"models/glyphs/glyph":106,"models/glyphs/hbar":107,"models/glyphs/image":108,"models/glyphs/image_rgba":109,"models/glyphs/image_url":110,"models/glyphs/index":111,"models/glyphs/line":112,"models/glyphs/multi_line":113,"models/glyphs/oval":114,"models/glyphs/patch":115,"models/glyphs/patches":116,"models/glyphs/quad":117,"models/glyphs/quadratic":118,"models/glyphs/ray":119,"models/glyphs/rect":120,"models/glyphs/segment":121,"models/glyphs/text":122,"models/glyphs/vbar":123,"models/glyphs/wedge":124,"models/glyphs/xy_glyph":125,"models/graphs/graph_hit_test_policy":126,"models/graphs/index":127,"models/graphs/layout_provider":128,"models/graphs/static_layout_provider":129,"models/grids/grid":130,"models/grids/index":131,"models/index":132,"models/layouts/box":133,"models/layouts/column":134,"models/layouts/index":135,"models/layouts/layout_dom":136,"models/layouts/row":137,"models/layouts/spacer":138,"models/layouts/widget_box":139,"models/mappers/categorical_color_mapper":140,"models/mappers/color_mapper":141,"models/mappers/index":142,"models/mappers/linear_color_mapper":143,"models/mappers/log_color_mapper":144,"models/markers/index":145,"models/markers/marker":146,"models/plots/gmap_plot":147,"models/plots/gmap_plot_canvas":148,"models/plots/index":149,"models/plots/plot":150,"models/plots/plot_canvas":151,"models/ranges/data_range":152,"models/ranges/data_range1d":153,"models/ranges/factor_range":154,"models/ranges/index":155,"models/ranges/range":156,"models/ranges/range1d":157,"models/renderers/glyph_renderer":158,"models/renderers/graph_renderer":159,"models/renderers/guide_renderer":160,"models/renderers/index":161,"models/renderers/renderer":162,"models/scales/categorical_scale":163,"models/scales/index":164,"models/scales/linear_scale":165,"models/scales/log_scale":166,"models/scales/scale":167,"models/sources/ajax_data_source":168,"models/sources/cds_view":169,"models/sources/column_data_source":170,"models/sources/columnar_data_source":171,"models/sources/data_source":172,"models/sources/geojson_data_source":173,"models/sources/index":174,"models/sources/remote_data_source":175,"models/tickers/adaptive_ticker":176,"models/tickers/basic_ticker":177,"models/tickers/categorical_ticker":178,"models/tickers/composite_ticker":179,"models/tickers/continuous_ticker":180,"models/tickers/datetime_ticker":181,"models/tickers/days_ticker":182,"models/tickers/fixed_ticker":183,"models/tickers/index":184,"models/tickers/log_ticker":185,"models/tickers/mercator_ticker":186,"models/tickers/months_ticker":187,"models/tickers/single_interval_ticker":188,"models/tickers/ticker":189,"models/tickers/util":190,"models/tickers/years_ticker":191,"models/tiles/bbox_tile_source":192,"models/tiles/dynamic_image_renderer":193,"models/tiles/image_pool":194,"models/tiles/image_source":195,"models/tiles/index":196,"models/tiles/mercator_tile_source":197,"models/tiles/quadkey_tile_source":198,"models/tiles/tile_renderer":199,"models/tiles/tile_source":200,"models/tiles/tile_utils":201,"models/tiles/tms_tile_source":202,"models/tiles/wmts_tile_source":203,"models/tools/actions/action_tool":204,"models/tools/actions/help_tool":205,"models/tools/actions/redo_tool":206,"models/tools/actions/reset_tool":207,"models/tools/actions/save_tool":208,"models/tools/actions/undo_tool":209,"models/tools/actions/zoom_in_tool":210,"models/tools/actions/zoom_out_tool":211,"models/tools/button_tool":212,"models/tools/gestures/box_select_tool":213,"models/tools/gestures/box_zoom_tool":214,"models/tools/gestures/gesture_tool":215,"models/tools/gestures/lasso_select_tool":216,"models/tools/gestures/pan_tool":217,"models/tools/gestures/poly_select_tool":218,"models/tools/gestures/select_tool":219,"models/tools/gestures/tap_tool":220,"models/tools/gestures/wheel_pan_tool":221,"models/tools/gestures/wheel_zoom_tool":222,"models/tools/index":223,"models/tools/inspectors/crosshair_tool":224,"models/tools/inspectors/hover_tool":225,"models/tools/inspectors/inspect_tool":226,"models/tools/on_off_button":227,"models/tools/tool":228,"models/tools/tool_proxy":229,"models/tools/toolbar":230,"models/tools/toolbar_base":231,"models/tools/toolbar_box":232,"models/transforms/customjs_transform":233,"models/transforms/dodge":234,"models/transforms/index":235,"models/transforms/interpolator":236,"models/transforms/jitter":237,"models/transforms/linear_interpolator":238,"models/transforms/step_interpolator":239,"models/transforms/transform":240,"polyfill":241,"protocol/message":242,"protocol/receiver":243,"safely":244,"version":245}, 48);
 })
 
 //# sourceMappingURL=bokeh.js.map

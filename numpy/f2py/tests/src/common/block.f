@@ -1,11 +1,1 @@
-      SUBROUTINE INITCB
-      DOUBLE PRECISION LONG
-      CHARACTER        STRING
-      INTEGER          OK
-    
-      COMMON  /BLOCK/ LONG, STRING, OK
-      LONG = 1.0
-      STRING = '2'
-      OK = 3
-      RETURN
-      END
+../../../../../../../../Cellar/numpy/1.13.3/lib/python3.6/site-packages/numpy/f2py/tests/src/common/block.f

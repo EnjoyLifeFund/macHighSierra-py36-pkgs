@@ -30,11 +30,11 @@ __license__ = "GNU Lesser General Public License (LGPL)"
 
 from paramiko.transport import SecurityOptions, Transport
 from paramiko.client import (
-    SSHClient, MissingHostKeyPolicy, AutoAddPolicy, RejectPolicy, 
+    SSHClient, MissingHostKeyPolicy, AutoAddPolicy, RejectPolicy,
     WarningPolicy,
 )
 from paramiko.auth_handler import AuthHandler
-from paramiko.ssh_gss import GSSAuth, GSS_AUTH_AVAILABLE
+from paramiko.ssh_gss import GSSAuth, GSS_AUTH_AVAILABLE, GSS_EXCEPTIONS
 from paramiko.channel import Channel, ChannelFile
 from paramiko.ssh_exception import (
     SSHException, PasswordRequiredException, BadAuthenticationType,
@@ -57,7 +57,7 @@ from paramiko.message import Message
 from paramiko.packet import Packetizer
 from paramiko.file import BufferedFile
 from paramiko.agent import Agent, AgentKey
-from paramiko.pkey import PKey
+from paramiko.pkey import PKey, PublicBlob
 from paramiko.hostkeys import HostKeys
 from paramiko.config import SSHConfig
 from paramiko.proxy import ProxyCommand

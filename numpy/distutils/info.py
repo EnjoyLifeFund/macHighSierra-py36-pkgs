@@ -1,6 +1,1 @@
-"""
-Enhanced distutils with Fortran compilers support and more.
-"""
-from __future__ import division, absolute_import, print_function
-
-postpone_import = True
+../../../../../Cellar/numpy/1.13.3/lib/python3.6/site-packages/numpy/distutils/info.py

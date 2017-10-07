@@ -6,6 +6,7 @@ Home-page: https://pip.pypa.io/
 Author: The pip developers
 Author-email: python-virtualenv@groups.google.com
 License: MIT
+Description-Content-Type: UNKNOWN
 Description: pip
         ===
         

@@ -26,6 +26,7 @@ require([
     'base/js/namespace',
     'base/js/dialog',
     'base/js/events',
+    'base/js/promises',
     'base/js/page',
     'base/js/utils',
     'services/config',
@@ -41,6 +42,7 @@ require([
     IPython,
     dialog,
     events,
+    promises,
     page,
     utils,
     config,
@@ -75,7 +77,7 @@ require([
 
     // Instantiate the main objects
 
-    page = new page.Page();
+    page = new page.Page('div#header', 'div#site');
 
     var session_list = new sesssionlist.SesssionList($.extend({
         events: events},

@@ -143,7 +143,7 @@ class Message(object):
 
         self._header_json = None
 
-        self._buffers.add((buf_header, buf_payload))
+        self._buffers.append((buf_header, buf_payload))
 
     def assemble_buffer(self, buf_header, buf_payload):
         ''' Add a buffer header and payload that we read from the socket.
@@ -161,7 +161,7 @@ class Message(object):
         Raises:
             ProtocolError
         '''
-        if self.header['num_buffers'] <= len(self._buffers):
+        if self.header.get('num_buffers', 0) <= len(self._buffers):
             raise ProtocolError("too many buffers received expecting " + str(self.header['num_buffers']))
         self._buffers.append((buf_header, buf_payload))
 
@@ -309,10 +309,8 @@ class Message(object):
             self._metadata_json = json_encode(self.metadata)
         return self._metadata_json
 
+    # buffer properties
+
     @property
     def buffers(self):
         return self._buffers
-
-    @buffers.setter
-    def buffers(self, value):
-        self._buffers = list(value)

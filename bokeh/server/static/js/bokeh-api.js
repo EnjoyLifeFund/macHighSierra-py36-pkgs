@@ -17,15 +17,15 @@
     }
   })
 ({
-358: /* api/charts */ function(require, module, exports) {
+362: /* api/charts */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var hexcolor2rgb, is_dark, num2hexcolor;
-var sprintf_js_1 = require(355    /* sprintf-js */);
-var models = require(362    /* ./models */);
-var palettes = require(363    /* ./palettes */);
-var array_1 = require(20    /* ../core/util/array */);
-var types_1 = require(40    /* ../core/util/types */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
+var models = require(366    /* ./models */);
+var palettes = require(367    /* ./palettes */);
+var array_1 = require(21    /* ../core/util/array */);
+var types_1 = require(41    /* ../core/util/types */);
 num2hexcolor = function (num) {
     return sprintf_js_1.sprintf('#%06x', num);
 };
@@ -445,51 +445,51 @@ exports.bar = function (data, opts) {
     return plot;
 };    
 },
-359: /* api/index */ function(require, module, exports) {
+363: /* api/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
+var tslib_1 = require(361    /* tslib */);
 // api/bokeh.d.ts
-var LinAlg = require(360    /* ./linalg */);
+var LinAlg = require(364    /* ./linalg */);
 exports.LinAlg = LinAlg;
 // api/charts.d.ts
-var Charts = require(358    /* ./charts */);
+var Charts = require(362    /* ./charts */);
 exports.Charts = Charts;
 // api/plotting.d.ts
-var Plotting = require(364    /* ./plotting */);
+var Plotting = require(368    /* ./plotting */);
 exports.Plotting = Plotting;
 // api/typings/models/document.d.ts
-var document_1 = require(45    /* ../document */);
+var document_1 = require(46    /* ../document */);
 exports.Document = document_1.Document;
 // api/typings/bokeh.d.ts
-var sprintf_js_1 = require(355    /* sprintf-js */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
 exports.sprintf = sprintf_js_1.sprintf;
 // api/typings/models/*.d.ts
-tslib_1.__exportStar(require(362    /* ./models */), exports);    
+tslib_1.__exportStar(require(366    /* ./models */), exports);    
 },
-360: /* api/linalg */ function(require, module, exports) {
+364: /* api/linalg */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(28    /* ../core/util/object */), exports);
-tslib_1.__exportStar(require(20    /* ../core/util/array */), exports);
-tslib_1.__exportStar(require(35    /* ../core/util/string */), exports);
-tslib_1.__exportStar(require(40    /* ../core/util/types */), exports);
-tslib_1.__exportStar(require(26    /* ../core/util/eq */), exports);    
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(29    /* ../core/util/object */), exports);
+tslib_1.__exportStar(require(21    /* ../core/util/array */), exports);
+tslib_1.__exportStar(require(36    /* ../core/util/string */), exports);
+tslib_1.__exportStar(require(41    /* ../core/util/types */), exports);
+tslib_1.__exportStar(require(27    /* ../core/util/eq */), exports);    
 },
-361: /* api/main */ function(require, module, exports) {
+365: /* api/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(359    /* ./index */), exports);    
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(363    /* ./index */), exports);    
 },
-362: /* api/models */ function(require, module, exports) {
+366: /* api/models */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(357    /* tslib */);
-tslib_1.__exportStar(require(130    /* ../models/index */), exports);    
+var tslib_1 = require(361    /* tslib */);
+tslib_1.__exportStar(require(132    /* ../models/index */), exports);    
 },
-363: /* api/palettes */ function(require, module, exports) {
+367: /* api/palettes */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.YlGn3 = [
@@ -5711,7 +5711,7 @@ exports.Colorblind = {
  */
       
 },
-364: /* api/plotting */ function(require, module, exports) {
+368: /* api/plotting */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var _default_tools, _default_tooltips, _known_tools, _with_default, extend1 = function (child, parent) {
@@ -5733,17 +5733,17 @@ var _default_tools, _default_tooltips, _known_tools, _with_default, extend1 = fu
         }
         return -1;
     };
-var sprintf_js_1 = require(355    /* sprintf-js */);
-var document_1 = require(45    /* ../document */);
-var embed = require(46    /* ../embed */);
-var embed_1 = require(46    /* ../embed */);
-var models = require(362    /* ./models */);
-var dom_1 = require(4    /* ../core/dom */);
-var string_1 = require(35    /* ../core/util/string */);
-var eq_1 = require(26    /* ../core/util/eq */);
-var array_1 = require(20    /* ../core/util/array */);
-var object_1 = require(28    /* ../core/util/object */);
-var types_1 = require(40    /* ../core/util/types */);
+var sprintf_js_1 = require(359    /* sprintf-js */);
+var document_1 = require(46    /* ../document */);
+var embed = require(47    /* ../embed */);
+var embed_1 = require(47    /* ../embed */);
+var models = require(366    /* ./models */);
+var dom_1 = require(5    /* ../core/dom */);
+var string_1 = require(36    /* ../core/util/string */);
+var eq_1 = require(27    /* ../core/util/eq */);
+var array_1 = require(21    /* ../core/util/array */);
+var object_1 = require(29    /* ../core/util/object */);
+var types_1 = require(41    /* ../core/util/types */);
 _default_tooltips = [
     [
         'index',
@@ -6582,7 +6582,7 @@ exports.gridplot = function (children, options) {
     return layout;
 };    
 }
-}, {"api/charts":358,"api/index":359,"api/linalg":360,"api/main":361,"api/models":362,"api/palettes":363,"api/plotting":364}, 361);
+}, {"api/charts":362,"api/index":363,"api/linalg":364,"api/main":365,"api/models":366,"api/palettes":367,"api/plotting":368}, 365);
 })
 
 //# sourceMappingURL=bokeh-api.js.map

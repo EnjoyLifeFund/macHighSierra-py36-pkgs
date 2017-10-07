@@ -106,7 +106,7 @@ class Unsupported(OpenerError):
 
 def parse(fs_url):
     """
-    Parse a Filesystem URL and return a :class:`ParseResult`, or raise
+    Parse a Filesystem URL and return a :class:`~fs.opener.parse.ParseResult`, or raise
     :class:`ParseError` (subclass of ValueError) if the FS URL is
     not value.
 

@@ -1208,6 +1208,7 @@ div.output_unrecognized a:hover {
 }
 .rendered_html ul ul {
   list-style: square;
+  margin-top: 0;
 }
 .rendered_html ul ul ul {
   list-style: circle;
@@ -1217,6 +1218,7 @@ div.output_unrecognized a:hover {
 }
 .rendered_html ol ol {
   list-style: upper-alpha;
+  margin-top: 0;
 }
 .rendered_html ol ol ol {
   list-style: lower-alpha;
@@ -1239,14 +1241,23 @@ div.output_unrecognized a:hover {
 }
 .rendered_html pre {
   margin: 1em 2em;
+  padding: 0px;
+  background-color: #fff;
+}
+.rendered_html code {
+  background-color: #eff0f1;
+}
+.rendered_html p code {
+  padding: 1px 5px;
+}
+.rendered_html pre code {
+  background-color: #fff;
 }
 .rendered_html pre,
 .rendered_html code {
   border: 0;
-  background-color: #fff;
   color: #000;
   font-size: 100%;
-  padding: 0px;
 }
 .rendered_html blockquote {
   margin: 1em 2em;

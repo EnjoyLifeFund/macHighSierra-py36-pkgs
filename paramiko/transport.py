@@ -139,6 +139,11 @@ class Transport(threading.Thread, ClosingContextManager):
         'diffie-hellman-group14-sha1',
         'diffie-hellman-group1-sha1',
     )
+    _preferred_gsskex = (
+        'gss-gex-sha1-toWM5Slw5Ew8Mqkay+al2g==',
+        'gss-group14-sha1-toWM5Slw5Ew8Mqkay+al2g==',
+        'gss-group1-sha1-toWM5Slw5Ew8Mqkay+al2g==',
+    )
     _preferred_compression = ('none',)
 
     _cipher_info = {
@@ -204,11 +209,17 @@ class Transport(threading.Thread, ClosingContextManager):
 
     _key_info = {
         'ssh-rsa': RSAKey,
+        'ssh-rsa-cert-v01@openssh.com': RSAKey,
         'ssh-dss': DSSKey,
+        'ssh-dss-cert-v01@openssh.com': DSSKey,
         'ecdsa-sha2-nistp256': ECDSAKey,
+        'ecdsa-sha2-nistp256-cert-v01@openssh.com': ECDSAKey,
         'ecdsa-sha2-nistp384': ECDSAKey,
+        'ecdsa-sha2-nistp384-cert-v01@openssh.com': ECDSAKey,
         'ecdsa-sha2-nistp521': ECDSAKey,
+        'ecdsa-sha2-nistp521-cert-v01@openssh.com': ECDSAKey,
         'ssh-ed25519': Ed25519Key,
+        'ssh-ed25519-cert-v01@openssh.com': Ed25519Key,
     }
 
     _kex_info = {
@@ -287,10 +298,12 @@ class Transport(threading.Thread, ClosingContextManager):
             arguments.
         """
         self.active = False
+        self.hostname = None
 
         if isinstance(sock, string_types):
             # convert "host:port" into (host, port)
             hl = sock.split(':', 1)
+            self.hostname = hl[0]
             if len(hl) == 1:
                 sock = (hl[0], 22)
             else:
@@ -298,6 +311,7 @@ class Transport(threading.Thread, ClosingContextManager):
         if type(sock) is tuple:
             # connect to the given (host, port)
             hostname, port = sock
+            self.hostname = hostname
             reason = 'No suitable address family'
             addrinfos = socket.getaddrinfo(
                 hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM
@@ -344,12 +358,7 @@ class Transport(threading.Thread, ClosingContextManager):
         self.gss_host = None
         if self.use_gss_kex:
             self.kexgss_ctxt = GSSAuth("gssapi-keyex", gss_deleg_creds)
-            self._preferred_kex = ('gss-gex-sha1-toWM5Slw5Ew8Mqkay+al2g==',
-                                   'gss-group14-sha1-toWM5Slw5Ew8Mqkay+al2g==',
-                                   'gss-group1-sha1-toWM5Slw5Ew8Mqkay+al2g==',
-                                   'diffie-hellman-group-exchange-sha1',
-                                   'diffie-hellman-group14-sha1',
-                                   'diffie-hellman-group1-sha1')
+            self._preferred_kex = self._preferred_gsskex + self._preferred_kex
 
         # state used during negotiation
         self.kex_engine = None
@@ -446,15 +455,39 @@ class Transport(threading.Thread, ClosingContextManager):
         """
         return SecurityOptions(self)
 
-    def set_gss_host(self, gss_host):
+    def set_gss_host(self, gss_host, trust_dns=True, gssapi_requested=True):
         """
-        Setter for C{gss_host} if GSS-API Key Exchange is performed.
+        Normalize/canonicalize ``self.gss_host`` depending on various factors.
 
-        :param str gss_host: The targets name in the kerberos database
-                             Default: The name of the host to connect to
+        :param str gss_host:
+            The explicitly requested GSS-oriented hostname to connect to (i.e.
+            what the host's name is in the Kerberos database.) Defaults to
+            ``self.hostname`` (which will be the 'real' target hostname and/or
+            host portion of given socket object.)
+        :param bool trust_dns:
+            Indicates whether or not DNS is trusted; if true, DNS will be used
+            to canonicalize the GSS hostname (which again will either be
+            ``gss_host`` or the transport's default hostname.)
+            (Defaults to True due to backwards compatibility.)
+        :param bool gssapi_requested:
+            Whether GSSAPI key exchange or authentication was even requested.
+            If not, this is a no-op and nothing happens
+            (and ``self.gss_host`` is not set.)
+            (Defaults to True due to backwards compatibility.)
+        :returns: ``None``.
         """
-        # We need the FQDN to get this working with SSPI
-        self.gss_host = socket.getfqdn(gss_host)
+        # No GSSAPI in play == nothing to do
+        if not gssapi_requested:
+            return
+        # Obtain the correct host first - did user request a GSS-specific name
+        # to use that is distinct from the actual SSH target hostname?
+        if gss_host is None:
+            gss_host = self.hostname
+        # Finally, canonicalize via DNS if DNS is trusted.
+        if trust_dns and gss_host is not None:
+            gss_host = socket.getfqdn(gss_host)
+        # And set attribute for reference later.
+        self.gss_host = gss_host
 
     def start_client(self, event=None, timeout=None):
         """
@@ -1075,6 +1108,7 @@ class Transport(threading.Thread, ClosingContextManager):
         gss_auth=False,
         gss_kex=False,
         gss_deleg_creds=True,
+        gss_trust_dns=True,
     ):
         """
         Negotiate an SSH2 session, and optionally verify the server's host key
@@ -1113,12 +1147,25 @@ class Transport(threading.Thread, ClosingContextManager):
             Perform GSS-API Key Exchange and user authentication.
         :param bool gss_deleg_creds:
             Whether to delegate GSS-API client credentials.
+        :param gss_trust_dns:
+            Indicates whether or not the DNS is trusted to securely
+            canonicalize the name of the host being connected to (default
+            ``True``).
 
         :raises: `.SSHException` -- if the SSH2 negotiation fails, the host key
             supplied by the server is incorrect, or authentication fails.
+
+        .. versionchanged:: 2.3
+            Added the ``gss_trust_dns`` argument.
         """
         if hostkey is not None:
             self._preferred_keys = [hostkey.get_name()]
+
+        self.set_gss_host(
+            gss_host=gss_host,
+            trust_dns=gss_trust_dns,
+            gssapi_requested=gss_kex or gss_auth,
+        )
 
         self.start_client()
 
@@ -1144,7 +1191,9 @@ class Transport(threading.Thread, ClosingContextManager):
         if (pkey is not None) or (password is not None) or gss_auth or gss_kex:
             if gss_auth:
                 self._log(DEBUG, 'Attempting GSS-API auth... (gssapi-with-mic)') # noqa
-                self.auth_gssapi_with_mic(username, gss_host, gss_deleg_creds)
+                self.auth_gssapi_with_mic(
+                    username, self.gss_host, gss_deleg_creds,
+                )
             elif gss_kex:
                 self._log(DEBUG, 'Attempting GSS-API auth... (gssapi-keyex)')
                 self.auth_gssapi_keyex(username)
@@ -1825,8 +1874,6 @@ class Transport(threading.Thread, ClosingContextManager):
                         continue
                     elif ptype == MSG_DISCONNECT:
                         self._parse_disconnect(m)
-                        self.active = False
-                        self.packetizer.close()
                         break
                     elif ptype == MSG_DEBUG:
                         self._parse_debug(m)
@@ -1850,14 +1897,15 @@ class Transport(threading.Thread, ClosingContextManager):
                             self._log(DEBUG, 'Ignoring message for dead channel %d' % chanid) # noqa
                         else:
                             self._log(ERROR, 'Channel request for unknown channel %d' % chanid) # noqa
-                            self.active = False
-                            self.packetizer.close()
+                            break
                     elif (
                         self.auth_handler is not None and
                         ptype in self.auth_handler._handler_table
                     ):
                         handler = self.auth_handler._handler_table[ptype]
                         handler(self.auth_handler, m)
+                        if len(self._expected_packet) > 0:
+                            continue
                     else:
                         self._log(WARNING, 'Oops, unhandled type %d' % ptype)
                         msg = Message()
@@ -1992,6 +2040,7 @@ class Transport(threading.Thread, ClosingContextManager):
             self.clear_to_send.clear()
         finally:
             self.clear_to_send_lock.release()
+        self.gss_kex_used = False
         self.in_kex = True
         if self.server_mode:
             mp_required_prefix = 'diffie-hellman-group-exchange-sha'

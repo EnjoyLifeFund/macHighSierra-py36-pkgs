@@ -11,7 +11,7 @@ serializable properties.
 from __future__ import absolute_import
 
 import logging
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 import difflib
 import inspect
@@ -27,16 +27,6 @@ from ..util.string import nice_join
 from .property.containers import PropertyValueContainer
 from .property.descriptor_factory import PropertyDescriptorFactory
 from .property.override import Override
-
-IPython = import_optional('IPython')
-
-if IPython:
-    from IPython.lib.pretty import RepresentationPrinter
-
-    class _BokehPrettyPrinter(RepresentationPrinter):
-        def __init__(self, output, verbose=False, max_width=79, newline='\n'):
-            super(_BokehPrettyPrinter, self).__init__(output, verbose, max_width, newline)
-            self.type_pprinters[HasProps] = lambda obj, p, cycle: obj._repr_pretty(p, cycle)
 
 _ABSTRACT_ADMONITION = '''
     .. note::
@@ -336,11 +326,11 @@ class HasProps(with_metaclass(MetaHasProps, object)):
 
         '''
         if name in self.properties():
-            #logger.debug("Patching attribute %s of %r", attr, patched_obj)
+            log.trace("Patching attribute %r of %r with %r", name, self, json)
             descriptor = self.lookup(name)
             descriptor.set_from_json(self, json, models, setter)
         else:
-            logger.warn("JSON had attr %r on obj %r, which is a client-only or invalid attribute that shouldn't have been sent", name, self)
+            log.warn("JSON had attr %r on obj %r, which is a client-only or invalid attribute that shouldn't have been sent", name, self)
 
     def update(self, **kwargs):
         ''' Updates the object's properties from the given keyword arguments.
@@ -656,6 +646,16 @@ class HasProps(with_metaclass(MetaHasProps, object)):
             ValueError, if ``IPython`` cannot be imported
 
         '''
+        IPython = import_optional('IPython')
+
+        if IPython:
+            from IPython.lib.pretty import RepresentationPrinter
+
+        class _BokehPrettyPrinter(RepresentationPrinter):
+            def __init__(self, output, verbose=False, max_width=79, newline='\n'):
+                super(_BokehPrettyPrinter, self).__init__(output, verbose, max_width, newline)
+                self.type_pprinters[HasProps] = lambda obj, p, cycle: obj._repr_pretty(p, cycle)
+
         if not IPython:
             cls = self.__class__
             raise RuntimeError("%s.%s.pretty() requires IPython" % (cls.__module__, cls.__name__))

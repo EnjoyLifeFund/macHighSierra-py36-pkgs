@@ -1,6 +1,1 @@
-"""Fortran to Python Interface Generator.
-
-"""
-from __future__ import division, absolute_import, print_function
-
-postpone_import = True
+../../../../../Cellar/numpy/1.13.3/lib/python3.6/site-packages/numpy/f2py/info.py

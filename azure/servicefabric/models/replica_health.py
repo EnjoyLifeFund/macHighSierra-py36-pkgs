@@ -19,44 +19,44 @@ class ReplicaHealth(EntityHealth):
     unhealthy evaluations.
     .
 
-    :param aggregated_health_state: The HealthState representing the
-     aggregated health state of the entity computed by Health Manager.
-     The health evaluation of the entity reflects all events reported on the
-     entity and its children (if any).
-     The aggregation is done by applying the desired health policy.
-     . Possible values include: 'Invalid', 'Ok', 'Warning', 'Error', 'Unknown'
-    :type aggregated_health_state: str
+    :param aggregated_health_state: Possible values include: 'Invalid', 'Ok',
+     'Warning', 'Error', 'Unknown'
+    :type aggregated_health_state: str or :class:`enum
+     <azure.servicefabric.models.enum>`
     :param health_events: The list of health events reported on the entity.
     :type health_events: list of :class:`HealthEvent
      <azure.servicefabric.models.HealthEvent>`
-    :param unhealthy_evaluations: The unhealthy evaluations that show why the
-     current aggregated health state was returned by Health Manager.
+    :param unhealthy_evaluations:
     :type unhealthy_evaluations: list of :class:`HealthEvaluationWrapper
      <azure.servicefabric.models.HealthEvaluationWrapper>`
-    :param partition_id: Id of the partition to which this replica belongs.
+    :param health_statistics:
+    :type health_statistics: :class:`HealthStatistics
+     <azure.servicefabric.models.HealthStatistics>`
+    :param partition_id:
     :type partition_id: str
-    :param ServiceKind: Polymorphic Discriminator
-    :type ServiceKind: str
-    """ 
+    :param service_kind: Polymorphic Discriminator
+    :type service_kind: str
+    """
 
     _validation = {
-        'ServiceKind': {'required': True},
+        'service_kind': {'required': True},
     }
 
     _attribute_map = {
         'aggregated_health_state': {'key': 'AggregatedHealthState', 'type': 'str'},
         'health_events': {'key': 'HealthEvents', 'type': '[HealthEvent]'},
         'unhealthy_evaluations': {'key': 'UnhealthyEvaluations', 'type': '[HealthEvaluationWrapper]'},
+        'health_statistics': {'key': 'HealthStatistics', 'type': 'HealthStatistics'},
         'partition_id': {'key': 'PartitionId', 'type': 'str'},
-        'ServiceKind': {'key': 'ServiceKind', 'type': 'str'},
+        'service_kind': {'key': 'ServiceKind', 'type': 'str'},
     }
 
     _subtype_map = {
-        'ServiceKind': {'Stateful': 'StatefulServiceReplicaHealth', 'Stateless': 'StatelessServiceInstanceHealth'}
+        'service_kind': {'Stateful': 'StatefulServiceReplicaHealth', 'Stateless': 'StatelessServiceInstanceHealth'}
     }
 
-    def __init__(self, aggregated_health_state=None, health_events=None, unhealthy_evaluations=None, partition_id=None):
-        super(ReplicaHealth, self).__init__(aggregated_health_state=aggregated_health_state, health_events=health_events, unhealthy_evaluations=unhealthy_evaluations)
+    def __init__(self, aggregated_health_state=None, health_events=None, unhealthy_evaluations=None, health_statistics=None, partition_id=None):
+        super(ReplicaHealth, self).__init__(aggregated_health_state=aggregated_health_state, health_events=health_events, unhealthy_evaluations=unhealthy_evaluations, health_statistics=health_statistics)
         self.partition_id = partition_id
-        self.ServiceKind = None
-        self.ServiceKind = 'ReplicaHealth'
+        self.service_kind = None
+        self.service_kind = 'ReplicaHealth'

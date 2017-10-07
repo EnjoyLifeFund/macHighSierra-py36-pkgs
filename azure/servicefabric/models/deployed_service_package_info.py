@@ -15,17 +15,17 @@ from msrest.serialization import Model
 class DeployedServicePackageInfo(Model):
     """Information about service package deployed on a Service Fabric node.
 
-    :param name: The name of the service package.
+    :param name:
     :type name: str
     :param version: The version of the service package specified in service
      manifest.
     :type version: str
     :param status: Possible values include: 'Invalid', 'Downloading',
      'Activating', 'Active', 'Upgrading', 'Deactivating'
-    :type status: str
+    :type status: str or :class:`enum <azure.servicefabric.models.enum>`
     :param service_package_activation_id:
     :type service_package_activation_id: str
-    """ 
+    """
 
     _attribute_map = {
         'name': {'key': 'Name', 'type': 'str'},

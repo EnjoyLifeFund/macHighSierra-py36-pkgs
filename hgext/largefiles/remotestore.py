@@ -5,13 +5,14 @@
 # GNU General Public License version 2 or any later version.
 
 '''remote largefile store; the base class for wirestore'''
-
+from __future__ import absolute_import
 
 from mercurial.i18n import _
 
 from mercurial import (
     error,
     util,
+    wireproto,
 )
 
 from . import (
@@ -40,7 +41,7 @@ class remotestore(basestore.basestore):
 
     def exists(self, hashes):
         return dict((h, s == 0) for (h, s) in # dict-from-generator
-                    self._stat(hashes).items())
+                    self._stat(hashes).iteritems())
 
     def sendfile(self, filename, hash):
         self.ui.debug('remotestore: sendfile(%s, %s)\n' % (filename, hash))
@@ -107,6 +108,10 @@ class remotestore(basestore.basestore):
                         raise RuntimeError('verify failed: unexpected response '
                                            'from statlfile (%r)' % stat)
         return failed
+
+    def batch(self):
+        '''Support for remote batching.'''
+        return wireproto.remotebatch(self)
 
     def _put(self, hash, fd):
         '''Put file with the given hash in the remote store.'''

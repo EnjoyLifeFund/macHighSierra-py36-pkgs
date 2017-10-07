@@ -11,9 +11,8 @@
 # demand loading is per-package. Keeping demandimport in the mercurial package
 # would disable demand loading for any modules in mercurial.
 
+from __future__ import absolute_import
 
-
-import os
 import sys
 
 if sys.version_info[0] >= 3:
@@ -69,11 +68,6 @@ demandimport.init(ignore)
 
 # Re-export.
 isenabled = demandimport.isenabled
+enable = demandimport.enable
 disable = demandimport.disable
 deactivated = demandimport.deactivated
-
-def enable():
-    # chg pre-imports modules so do not enable demandimport for it
-    if ('CHGINTERNALMARK' not in os.environ
-        and os.environ.get('HGDEMANDIMPORT') != 'disable'):
-        demandimport.enable()

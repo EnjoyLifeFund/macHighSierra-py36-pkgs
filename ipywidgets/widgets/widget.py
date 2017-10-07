@@ -301,6 +301,12 @@ class Widget(LoggingHasTraits):
     # widget_types is a registry of widgets by module, version, and name:
     widget_types = WidgetRegistry()
 
+    @classmethod
+    def close_all(cls):
+        for widget in list(cls.widgets.values()):
+            widget.close()
+
+
     @staticmethod
     def on_widget_constructed(callback):
         """Registers a callback to be called when a widget is constructed.
@@ -707,7 +713,8 @@ class Widget(LoggingHasTraits):
             # and the currently registered mimetypes at
             # http://www.iana.org/assignments/media-types/media-types.xhtml.
             data = {
-                'text/plain': "A Jupyter Widget",
+                'text/plain': repr(self),
+                'text/html': self._fallback_html(),
                 'application/vnd.jupyter.widget-view+json': {
                     'version_major': 2,
                     'version_minor': 0,
@@ -748,3 +755,23 @@ class Widget(LoggingHasTraits):
             for key in keys
         )
         return '%s(%s)' % (class_name, signature)
+
+    def _fallback_html(self):
+        return _FALLBACK_HTML_TEMPLATE.format(widget_type=type(self).__name__)
+
+
+_FALLBACK_HTML_TEMPLATE = """\
+<p>Failed to display Jupyter Widget of type <code>{widget_type}</code>.</p>
+<p>
+  If you're reading this message in Jupyter Notebook or JupyterLab, it may mean
+  that the widgets JavaScript is still loading. If this message persists, it
+  likely means that the widgets JavaScript library is either not installed or
+  not enabled. See the <a href="https://ipywidgets.readthedocs.io/en/stable/user_install.html">Jupyter
+  Widgets Documentation</a> for setup instructions.
+</p>
+<p>
+  If you're reading this message in another notebook frontend (for example, a static
+  rendering on GitHub or <a href="https://nbviewer.jupyter.org/">NBViewer</a>),
+  it may mean that your frontend doesn't currently support widgets.
+</p>
+"""

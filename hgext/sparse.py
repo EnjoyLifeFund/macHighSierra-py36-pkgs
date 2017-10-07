@@ -71,7 +71,7 @@ certain files::
   tools/tests/**
 """
 
-
+from __future__ import absolute_import
 
 from mercurial.i18n import _
 from mercurial import (
@@ -155,8 +155,7 @@ def _clonesparsecmd(orig, ui, repo, *args, **opts):
     if include or exclude or enableprofile:
         def clonesparse(orig, self, node, overwrite, *args, **kwargs):
             sparse.updateconfig(self.unfiltered(), pat, {}, include=include,
-                                exclude=exclude, enableprofile=enableprofile,
-                                usereporootpaths=True)
+                                exclude=exclude, enableprofile=enableprofile)
             return orig(self, node, overwrite, *args, **kwargs)
         extensions.wrapfunction(hg, 'updaterepo', clonesparse)
     return orig(ui, repo, *args, **opts)
@@ -327,10 +326,10 @@ def debugsparse(ui, repo, *pats, **opts):
     if refresh:
         try:
             wlock = repo.wlock()
-            fcounts = list(map(
+            fcounts = map(
                 len,
                 sparse.refreshwdir(repo, repo.status(), sparse.matcher(repo),
-                                   force=force)))
+                                   force=force))
             sparse.printchanges(ui, opts, added=fcounts[0], dropped=fcounts[1],
                                 conflicting=fcounts[2])
         finally:

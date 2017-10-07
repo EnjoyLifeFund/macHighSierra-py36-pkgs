@@ -17,7 +17,7 @@
     }
   })
 ({
-365: /* models/widgets/abstract_button */ function(require, module, exports) {
+369: /* models/widgets/abstract_button */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -33,10 +33,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var build_views_1 = require(3    /* core/build_views */);
-var widget_1 = require(405    /* ./widget */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var build_views_1 = require(4    /* core/build_views */);
+var widget_1 = require(409    /* ./widget */);
 exports.AbstractButtonView = function (superClass) {
     extend(AbstractButtonView, superClass);
     function AbstractButtonView() {
@@ -119,7 +119,7 @@ exports.AbstractButton = function (superClass) {
     return AbstractButton;
 }(widget_1.Widget);    
 },
-366: /* models/widgets/abstract_icon */ function(require, module, exports) {
+370: /* models/widgets/abstract_icon */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -135,7 +135,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(405    /* ./widget */);
+var widget_1 = require(409    /* ./widget */);
 exports.AbstractIcon = function (superClass) {
     extend(AbstractIcon, superClass);
     function AbstractIcon() {
@@ -145,7 +145,7 @@ exports.AbstractIcon = function (superClass) {
     return AbstractIcon;
 }(widget_1.Widget);    
 },
-367: /* models/widgets/abstract_slider */ function(require, module, exports) {
+371: /* models/widgets/abstract_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -161,12 +161,12 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var noUiSlider = require(396    /* nouislider */);
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var logging_1 = require(12    /* core/logging */);
-var callback_1 = require(22    /* core/util/callback */);
-var widget_1 = require(405    /* ./widget */);
+var noUiSlider = require(400    /* nouislider */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var logging_1 = require(13    /* core/logging */);
+var callback_1 = require(23    /* core/util/callback */);
+var widget_1 = require(409    /* ./widget */);
 exports.AbstractSliderView = function (superClass) {
     extend(AbstractSliderView, superClass);
     function AbstractSliderView() {
@@ -423,7 +423,7 @@ exports.AbstractSlider = function (superClass) {
     return AbstractSlider;
 }(widget_1.Widget);    
 },
-368: /* models/widgets/autocomplete_input */ function(require, module, exports) {
+372: /* models/widgets/autocomplete_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -439,10 +439,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var text_input_1 = require(393    /* ./text_input */);
-var common_1 = require(372    /* ./common */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var text_input_1 = require(397    /* ./text_input */);
+var common_1 = require(376    /* ./common */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.AutocompleteInputView = function (superClass) {
     extend(AutocompleteInputView, superClass);
     function AutocompleteInputView() {
@@ -562,7 +562,7 @@ exports.AutocompleteInput = function (superClass) {
     return AutocompleteInput;
 }(text_input_1.TextInput);    
 },
-369: /* models/widgets/button */ function(require, module, exports) {
+373: /* models/widgets/button */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -578,9 +578,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var bokeh_events_1 = require(2    /* core/bokeh_events */);
-var abstract_button_1 = require(365    /* ./abstract_button */);
+var p = require(14    /* core/properties */);
+var bokeh_events_1 = require(3    /* core/bokeh_events */);
+var abstract_button_1 = require(369    /* ./abstract_button */);
 exports.ButtonView = function (superClass) {
     extend(ButtonView, superClass);
     function ButtonView() {
@@ -610,7 +610,7 @@ exports.Button = function (superClass) {
 }(abstract_button_1.AbstractButton);
 bokeh_events_1.register_with_event(bokeh_events_1.ButtonClick, exports.Button);    
 },
-370: /* models/widgets/checkbox_button_group */ function(require, module, exports) {
+374: /* models/widgets/checkbox_button_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -632,9 +632,9 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var widget_1 = require(405    /* ./widget */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
 exports.CheckboxButtonGroupView = function (superClass) {
     extend(CheckboxButtonGroupView, superClass);
     function CheckboxButtonGroupView() {
@@ -727,7 +727,7 @@ exports.CheckboxButtonGroup = function (superClass) {
     return CheckboxButtonGroup;
 }(widget_1.Widget);    
 },
-371: /* models/widgets/checkbox_group */ function(require, module, exports) {
+375: /* models/widgets/checkbox_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -749,9 +749,9 @@ var extend = function (child, parent) {
         }
         return -1;
     };
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var widget_1 = require(405    /* ./widget */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
 exports.CheckboxGroupView = function (superClass) {
     extend(CheckboxGroupView, superClass);
     function CheckboxGroupView() {
@@ -845,16 +845,16 @@ exports.CheckboxGroup = function (superClass) {
     return CheckboxGroup;
 }(widget_1.Widget);    
 },
-372: /* models/widgets/common */ function(require, module, exports) {
+376: /* models/widgets/common */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var signaling_1 = require(18    /* core/signaling */);
+var signaling_1 = require(19    /* core/signaling */);
 exports.clear_menus = new signaling_1.Signal({}, 'clear_menus');
 document.addEventListener('click', function () {
     return exports.clear_menus.emit(undefined);
 });    
 },
-373: /* models/widgets/date_picker */ function(require, module, exports) {
+377: /* models/widgets/date_picker */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var bind = function (fn, me) {
@@ -874,10 +874,10 @@ var bind = function (fn, me) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var input_widget_1 = require(379    /* ./input_widget */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var Pikaday = require(397    /* pikaday */);
+var input_widget_1 = require(383    /* ./input_widget */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var Pikaday = require(401    /* pikaday */);
 Pikaday.prototype.adjustPosition = function () {
     var clientRect, field, height, left, scrollTop, top, viewportHeight, viewportWidth, width;
     if (this._o.container) {
@@ -960,7 +960,7 @@ exports.DatePicker = function (superClass) {
     return DatePicker;
 }(input_widget_1.InputWidget);    
 },
-374: /* models/widgets/date_range_slider */ function(require, module, exports) {
+378: /* models/widgets/date_range_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -976,8 +976,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var tz = require(356    /* timezone */);
-var abstract_slider_1 = require(367    /* ./abstract_slider */);
+var tz = require(360    /* timezone */);
+var abstract_slider_1 = require(371    /* ./abstract_slider */);
 exports.DateRangeSliderView = function (superClass) {
     extend(DateRangeSliderView, superClass);
     function DateRangeSliderView() {
@@ -1014,7 +1014,7 @@ exports.DateRangeSlider = function (superClass) {
     return DateRangeSlider;
 }(abstract_slider_1.AbstractSlider);    
 },
-375: /* models/widgets/date_slider */ function(require, module, exports) {
+379: /* models/widgets/date_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1030,8 +1030,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var tz = require(356    /* timezone */);
-var abstract_slider_1 = require(367    /* ./abstract_slider */);
+var tz = require(360    /* timezone */);
+var abstract_slider_1 = require(371    /* ./abstract_slider */);
 exports.DateSliderView = function (superClass) {
     extend(DateSliderView, superClass);
     function DateSliderView() {
@@ -1069,7 +1069,7 @@ exports.DateSlider = function (superClass) {
     return DateSlider;
 }(abstract_slider_1.AbstractSlider);    
 },
-376: /* models/widgets/div */ function(require, module, exports) {
+380: /* models/widgets/div */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1085,9 +1085,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(381    /* ./markup */);
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
+var markup_1 = require(385    /* ./markup */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
 exports.DivView = function (superClass) {
     extend(DivView, superClass);
     function DivView() {
@@ -1123,7 +1123,7 @@ exports.Div = function (superClass) {
     return Div;
 }(markup_1.Markup);    
 },
-377: /* models/widgets/dropdown */ function(require, module, exports) {
+381: /* models/widgets/dropdown */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1139,10 +1139,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_1 = require(4    /* core/dom */);
-var p = require(13    /* core/properties */);
-var abstract_button_1 = require(365    /* ./abstract_button */);
-var common_1 = require(372    /* ./common */);
+var dom_1 = require(5    /* core/dom */);
+var p = require(14    /* core/properties */);
+var abstract_button_1 = require(369    /* ./abstract_button */);
+var common_1 = require(376    /* ./common */);
 exports.DropdownView = function (superClass) {
     extend(DropdownView, superClass);
     function DropdownView() {
@@ -1267,65 +1267,65 @@ exports.Dropdown = function (superClass) {
     return Dropdown;
 }(abstract_button_1.AbstractButton);    
 },
-378: /* models/widgets/index */ function(require, module, exports) {
+382: /* models/widgets/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var abstract_button_1 = require(365    /* ./abstract_button */);
+var abstract_button_1 = require(369    /* ./abstract_button */);
 exports.AbstractButton = abstract_button_1.AbstractButton;
-var abstract_icon_1 = require(366    /* ./abstract_icon */);
+var abstract_icon_1 = require(370    /* ./abstract_icon */);
 exports.AbstractIcon = abstract_icon_1.AbstractIcon;
-var autocomplete_input_1 = require(368    /* ./autocomplete_input */);
+var autocomplete_input_1 = require(372    /* ./autocomplete_input */);
 exports.AutocompleteInput = autocomplete_input_1.AutocompleteInput;
-var button_1 = require(369    /* ./button */);
+var button_1 = require(373    /* ./button */);
 exports.Button = button_1.Button;
-var checkbox_button_group_1 = require(370    /* ./checkbox_button_group */);
+var checkbox_button_group_1 = require(374    /* ./checkbox_button_group */);
 exports.CheckboxButtonGroup = checkbox_button_group_1.CheckboxButtonGroup;
-var checkbox_group_1 = require(371    /* ./checkbox_group */);
+var checkbox_group_1 = require(375    /* ./checkbox_group */);
 exports.CheckboxGroup = checkbox_group_1.CheckboxGroup;
-var date_picker_1 = require(373    /* ./date_picker */);
+var date_picker_1 = require(377    /* ./date_picker */);
 exports.DatePicker = date_picker_1.DatePicker;
-var date_range_slider_1 = require(374    /* ./date_range_slider */);
+var date_range_slider_1 = require(378    /* ./date_range_slider */);
 exports.DateRangeSlider = date_range_slider_1.DateRangeSlider;
-var date_slider_1 = require(375    /* ./date_slider */);
+var date_slider_1 = require(379    /* ./date_slider */);
 exports.DateSlider = date_slider_1.DateSlider;
-var div_1 = require(376    /* ./div */);
+var div_1 = require(380    /* ./div */);
 exports.Div = div_1.Div;
-var dropdown_1 = require(377    /* ./dropdown */);
+var dropdown_1 = require(381    /* ./dropdown */);
 exports.Dropdown = dropdown_1.Dropdown;
-var input_widget_1 = require(379    /* ./input_widget */);
+var input_widget_1 = require(383    /* ./input_widget */);
 exports.InputWidget = input_widget_1.InputWidget;
-var markup_1 = require(381    /* ./markup */);
+var markup_1 = require(385    /* ./markup */);
 exports.Markup = markup_1.Markup;
-var multiselect_1 = require(382    /* ./multiselect */);
+var multiselect_1 = require(386    /* ./multiselect */);
 exports.MultiSelect = multiselect_1.MultiSelect;
-var panel_1 = require(383    /* ./panel */);
+var panel_1 = require(387    /* ./panel */);
 exports.Panel = panel_1.Panel;
-var paragraph_1 = require(384    /* ./paragraph */);
+var paragraph_1 = require(388    /* ./paragraph */);
 exports.Paragraph = paragraph_1.Paragraph;
-var password_input_1 = require(385    /* ./password_input */);
+var password_input_1 = require(389    /* ./password_input */);
 exports.PasswordInput = password_input_1.PasswordInput;
-var pretext_1 = require(386    /* ./pretext */);
+var pretext_1 = require(390    /* ./pretext */);
 exports.PreText = pretext_1.PreText;
-var radio_button_group_1 = require(387    /* ./radio_button_group */);
+var radio_button_group_1 = require(391    /* ./radio_button_group */);
 exports.RadioButtonGroup = radio_button_group_1.RadioButtonGroup;
-var radio_group_1 = require(388    /* ./radio_group */);
+var radio_group_1 = require(392    /* ./radio_group */);
 exports.RadioGroup = radio_group_1.RadioGroup;
-var range_slider_1 = require(389    /* ./range_slider */);
+var range_slider_1 = require(393    /* ./range_slider */);
 exports.RangeSlider = range_slider_1.RangeSlider;
-var selectbox_1 = require(390    /* ./selectbox */);
+var selectbox_1 = require(394    /* ./selectbox */);
 exports.Select = selectbox_1.Select;
-var slider_1 = require(391    /* ./slider */);
+var slider_1 = require(395    /* ./slider */);
 exports.Slider = slider_1.Slider;
-var tabs_1 = require(392    /* ./tabs */);
+var tabs_1 = require(396    /* ./tabs */);
 exports.Tabs = tabs_1.Tabs;
-var text_input_1 = require(393    /* ./text_input */);
+var text_input_1 = require(397    /* ./text_input */);
 exports.TextInput = text_input_1.TextInput;
-var toggle_1 = require(394    /* ./toggle */);
+var toggle_1 = require(398    /* ./toggle */);
 exports.Toggle = toggle_1.Toggle;
-var widget_1 = require(405    /* ./widget */);
+var widget_1 = require(409    /* ./widget */);
 exports.Widget = widget_1.Widget;    
 },
-379: /* models/widgets/input_widget */ function(require, module, exports) {
+383: /* models/widgets/input_widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1341,8 +1341,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(405    /* ./widget */);
-var p = require(13    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
+var p = require(14    /* core/properties */);
 exports.InputWidgetView = function (superClass) {
     extend(InputWidgetView, superClass);
     function InputWidgetView() {
@@ -1371,15 +1371,15 @@ exports.InputWidget = function (superClass) {
     return InputWidget;
 }(widget_1.Widget);    
 },
-380: /* models/widgets/main */ function(require, module, exports) {
+384: /* models/widgets/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var Widgets = require(378    /* ./index */);
+var Widgets = require(382    /* ./index */);
 exports.Widgets = Widgets;
 var base_1 = require(0    /* ../../base */);
 base_1.register_models(Widgets);    
 },
-381: /* models/widgets/markup */ function(require, module, exports) {
+385: /* models/widgets/markup */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend1 = function (child, parent) {
@@ -1395,10 +1395,10 @@ var extend1 = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var object_1 = require(28    /* core/util/object */);
-var widget_1 = require(405    /* ./widget */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var object_1 = require(29    /* core/util/object */);
+var widget_1 = require(409    /* ./widget */);
 exports.MarkupView = function (superClass) {
     extend1(MarkupView, superClass);
     function MarkupView() {
@@ -1449,7 +1449,7 @@ exports.Markup = function (superClass) {
     return Markup;
 }(widget_1.Widget);    
 },
-382: /* models/widgets/multiselect */ function(require, module, exports) {
+386: /* models/widgets/multiselect */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var bind = function (fn, me) {
@@ -1475,10 +1475,10 @@ var bind = function (fn, me) {
         }
         return -1;
     };
-var dom_1 = require(4    /* core/dom */);
-var types_1 = require(40    /* core/util/types */);
-var p = require(13    /* core/properties */);
-var input_widget_1 = require(379    /* ./input_widget */);
+var dom_1 = require(5    /* core/dom */);
+var types_1 = require(41    /* core/util/types */);
+var p = require(14    /* core/properties */);
+var input_widget_1 = require(383    /* ./input_widget */);
 exports.MultiSelectView = function (superClass) {
     extend(MultiSelectView, superClass);
     function MultiSelectView() {
@@ -1603,7 +1603,7 @@ exports.MultiSelect = function (superClass) {
     return MultiSelect;
 }(input_widget_1.InputWidget);    
 },
-383: /* models/widgets/panel */ function(require, module, exports) {
+387: /* models/widgets/panel */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1619,9 +1619,9 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(405    /* ./widget */);
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
+var widget_1 = require(409    /* ./widget */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
 exports.PanelView = function (superClass) {
     extend(PanelView, superClass);
     function PanelView() {
@@ -1655,7 +1655,7 @@ exports.Panel = function (superClass) {
     return Panel;
 }(widget_1.Widget);    
 },
-384: /* models/widgets/paragraph */ function(require, module, exports) {
+388: /* models/widgets/paragraph */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1671,8 +1671,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(381    /* ./markup */);
-var dom_1 = require(4    /* core/dom */);
+var markup_1 = require(385    /* ./markup */);
+var dom_1 = require(5    /* core/dom */);
 exports.ParagraphView = function (superClass) {
     extend(ParagraphView, superClass);
     function ParagraphView() {
@@ -1696,7 +1696,7 @@ exports.Paragraph = function (superClass) {
     return Paragraph;
 }(markup_1.Markup);    
 },
-385: /* models/widgets/password_input */ function(require, module, exports) {
+389: /* models/widgets/password_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1712,7 +1712,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var text_input_1 = require(393    /* ./text_input */);
+var text_input_1 = require(397    /* ./text_input */);
 exports.PasswordInputView = function (superClass) {
     extend(PasswordInputView, superClass);
     function PasswordInputView() {
@@ -1734,7 +1734,7 @@ exports.PasswordInput = function (superClass) {
     return PasswordInput;
 }(text_input_1.TextInput);    
 },
-386: /* models/widgets/pretext */ function(require, module, exports) {
+390: /* models/widgets/pretext */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1750,8 +1750,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(381    /* ./markup */);
-var dom_1 = require(4    /* core/dom */);
+var markup_1 = require(385    /* ./markup */);
+var dom_1 = require(5    /* core/dom */);
 exports.PreTextView = function (superClass) {
     extend(PreTextView, superClass);
     function PreTextView() {
@@ -1775,7 +1775,7 @@ exports.PreText = function (superClass) {
     return PreText;
 }(markup_1.Markup);    
 },
-387: /* models/widgets/radio_button_group */ function(require, module, exports) {
+391: /* models/widgets/radio_button_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1791,10 +1791,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_1 = require(4    /* core/dom */);
-var string_1 = require(35    /* core/util/string */);
-var p = require(13    /* core/properties */);
-var widget_1 = require(405    /* ./widget */);
+var dom_1 = require(5    /* core/dom */);
+var string_1 = require(36    /* core/util/string */);
+var p = require(14    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
 exports.RadioButtonGroupView = function (superClass) {
     extend(RadioButtonGroupView, superClass);
     function RadioButtonGroupView() {
@@ -1889,7 +1889,7 @@ exports.RadioButtonGroup = function (superClass) {
     return RadioButtonGroup;
 }(widget_1.Widget);    
 },
-388: /* models/widgets/radio_group */ function(require, module, exports) {
+392: /* models/widgets/radio_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -1905,10 +1905,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_1 = require(4    /* core/dom */);
-var string_1 = require(35    /* core/util/string */);
-var p = require(13    /* core/properties */);
-var widget_1 = require(405    /* ./widget */);
+var dom_1 = require(5    /* core/dom */);
+var string_1 = require(36    /* core/util/string */);
+var p = require(14    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
 exports.RadioGroupView = function (superClass) {
     extend(RadioGroupView, superClass);
     function RadioGroupView() {
@@ -2004,7 +2004,7 @@ exports.RadioGroup = function (superClass) {
     return RadioGroup;
 }(widget_1.Widget);    
 },
-389: /* models/widgets/range_slider */ function(require, module, exports) {
+393: /* models/widgets/range_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2020,8 +2020,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var numbro_1 = require(325    /* numbro */);
-var abstract_slider_1 = require(367    /* ./abstract_slider */);
+var numbro_1 = require(329    /* numbro */);
+var abstract_slider_1 = require(371    /* ./abstract_slider */);
 exports.RangeSliderView = function (superClass) {
     extend(RangeSliderView, superClass);
     function RangeSliderView() {
@@ -2058,7 +2058,7 @@ exports.RangeSlider = function (superClass) {
     return RangeSlider;
 }(abstract_slider_1.AbstractSlider);    
 },
-390: /* models/widgets/selectbox */ function(require, module, exports) {
+394: /* models/widgets/selectbox */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2074,11 +2074,11 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_1 = require(4    /* core/dom */);
-var types_1 = require(40    /* core/util/types */);
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var input_widget_1 = require(379    /* ./input_widget */);
+var dom_1 = require(5    /* core/dom */);
+var types_1 = require(41    /* core/util/types */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var input_widget_1 = require(383    /* ./input_widget */);
 exports.SelectView = function (superClass) {
     extend(SelectView, superClass);
     function SelectView() {
@@ -2157,7 +2157,7 @@ exports.Select = function (superClass) {
     return Select;
 }(input_widget_1.InputWidget);    
 },
-391: /* models/widgets/slider */ function(require, module, exports) {
+395: /* models/widgets/slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2173,8 +2173,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var numbro_1 = require(325    /* numbro */);
-var abstract_slider_1 = require(367    /* ./abstract_slider */);
+var numbro_1 = require(329    /* numbro */);
+var abstract_slider_1 = require(371    /* ./abstract_slider */);
 exports.SliderView = function (superClass) {
     extend(SliderView, superClass);
     function SliderView() {
@@ -2212,7 +2212,7 @@ exports.Slider = function (superClass) {
     return Slider;
 }(abstract_slider_1.AbstractSlider);    
 },
-392: /* models/widgets/tabs */ function(require, module, exports) {
+396: /* models/widgets/tabs */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2228,10 +2228,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var dom_1 = require(4    /* core/dom */);
-var array_1 = require(20    /* core/util/array */);
-var p = require(13    /* core/properties */);
-var widget_1 = require(405    /* ./widget */);
+var dom_1 = require(5    /* core/dom */);
+var array_1 = require(21    /* core/util/array */);
+var p = require(14    /* core/properties */);
+var widget_1 = require(409    /* ./widget */);
 exports.TabsView = function (superClass) {
     extend(TabsView, superClass);
     function TabsView() {
@@ -2336,7 +2336,7 @@ exports.Tabs = function (superClass) {
     return Tabs;
 }(widget_1.Widget);    
 },
-393: /* models/widgets/text_input */ function(require, module, exports) {
+397: /* models/widgets/text_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2352,10 +2352,10 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var logging_1 = require(12    /* core/logging */);
-var p = require(13    /* core/properties */);
-var dom_1 = require(4    /* core/dom */);
-var input_widget_1 = require(379    /* ./input_widget */);
+var logging_1 = require(13    /* core/logging */);
+var p = require(14    /* core/properties */);
+var dom_1 = require(5    /* core/dom */);
+var input_widget_1 = require(383    /* ./input_widget */);
 exports.TextInputView = function (superClass) {
     extend(TextInputView, superClass);
     function TextInputView() {
@@ -2427,7 +2427,7 @@ exports.TextInput = function (superClass) {
     return TextInput;
 }(input_widget_1.InputWidget);    
 },
-394: /* models/widgets/toggle */ function(require, module, exports) {
+398: /* models/widgets/toggle */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2443,8 +2443,8 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var p = require(13    /* core/properties */);
-var abstract_button_1 = require(365    /* ./abstract_button */);
+var p = require(14    /* core/properties */);
+var abstract_button_1 = require(369    /* ./abstract_button */);
 exports.ToggleView = function (superClass) {
     extend(ToggleView, superClass);
     function ToggleView() {
@@ -2480,7 +2480,7 @@ exports.Toggle = function (superClass) {
     return Toggle;
 }(abstract_button_1.AbstractButton);    
 },
-405: /* models/widgets/widget */ function(require, module, exports) {
+409: /* models/widgets/widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var extend = function (child, parent) {
@@ -2496,7 +2496,7 @@ var extend = function (child, parent) {
         child.__super__ = parent.prototype;
         return child;
     }, hasProp = {}.hasOwnProperty;
-var layout_dom_1 = require(134    /* ../layouts/layout_dom */);
+var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
 exports.WidgetView = function (superClass) {
     extend(WidgetView, superClass);
     function WidgetView() {
@@ -2524,7 +2524,7 @@ exports.Widget = function (superClass) {
     return Widget;
 }(layout_dom_1.LayoutDOM);    
 },
-396: /* nouislider/distribute/nouislider */ function(require, module, exports) {
+400: /* nouislider/distribute/nouislider */ function(require, module, exports) {
 /*! nouislider - 10.1.0 - 2017-07-28 17:11:18 */
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
@@ -4415,7 +4415,7 @@ exports.Widget = function (superClass) {
         create: initialize
     };
 }));},
-397: /* pikaday/pikaday */ function(require, module, exports) {
+401: /* pikaday/pikaday */ function(require, module, exports) {
 /*!
  * Pikaday
  *
@@ -5377,7 +5377,7 @@ exports.Widget = function (superClass) {
     };
     return Pikaday;
 }));}
-}, {"models/widgets/abstract_button":365,"models/widgets/abstract_icon":366,"models/widgets/abstract_slider":367,"models/widgets/autocomplete_input":368,"models/widgets/button":369,"models/widgets/checkbox_button_group":370,"models/widgets/checkbox_group":371,"models/widgets/common":372,"models/widgets/date_picker":373,"models/widgets/date_range_slider":374,"models/widgets/date_slider":375,"models/widgets/div":376,"models/widgets/dropdown":377,"models/widgets/index":378,"models/widgets/input_widget":379,"models/widgets/main":380,"models/widgets/markup":381,"models/widgets/multiselect":382,"models/widgets/panel":383,"models/widgets/paragraph":384,"models/widgets/password_input":385,"models/widgets/pretext":386,"models/widgets/radio_button_group":387,"models/widgets/radio_group":388,"models/widgets/range_slider":389,"models/widgets/selectbox":390,"models/widgets/slider":391,"models/widgets/tabs":392,"models/widgets/text_input":393,"models/widgets/toggle":394,"models/widgets/widget":405}, 380);
+}, {"models/widgets/abstract_button":369,"models/widgets/abstract_icon":370,"models/widgets/abstract_slider":371,"models/widgets/autocomplete_input":372,"models/widgets/button":373,"models/widgets/checkbox_button_group":374,"models/widgets/checkbox_group":375,"models/widgets/common":376,"models/widgets/date_picker":377,"models/widgets/date_range_slider":378,"models/widgets/date_slider":379,"models/widgets/div":380,"models/widgets/dropdown":381,"models/widgets/index":382,"models/widgets/input_widget":383,"models/widgets/main":384,"models/widgets/markup":385,"models/widgets/multiselect":386,"models/widgets/panel":387,"models/widgets/paragraph":388,"models/widgets/password_input":389,"models/widgets/pretext":390,"models/widgets/radio_button_group":391,"models/widgets/radio_group":392,"models/widgets/range_slider":393,"models/widgets/selectbox":394,"models/widgets/slider":395,"models/widgets/tabs":396,"models/widgets/text_input":397,"models/widgets/toggle":398,"models/widgets/widget":409}, 384);
 })
 
 //# sourceMappingURL=bokeh-widgets.js.map

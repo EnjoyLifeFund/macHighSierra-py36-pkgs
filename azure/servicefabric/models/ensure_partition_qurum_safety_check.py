@@ -16,17 +16,16 @@ class EnsurePartitionQurumSafetyCheck(PartitionSafetyCheck):
     """Safety check that ensures that a quorum of replicas are not lost for a
     partition.
 
-    :param Kind: Polymorphic Discriminator
-    :type Kind: str
-    :param partition_id: Id of the partition which is undergoing the safety
-     check.
+    :param kind: Polymorphic Discriminator
+    :type kind: str
+    :param partition_id:
     :type partition_id: str
-    """ 
+    """
 
     _validation = {
-        'Kind': {'required': True},
+        'kind': {'required': True},
     }
 
     def __init__(self, partition_id=None):
         super(EnsurePartitionQurumSafetyCheck, self).__init__(partition_id=partition_id)
-        self.Kind = 'EnsurePartitionQuorum'
+        self.kind = 'EnsurePartitionQuorum'

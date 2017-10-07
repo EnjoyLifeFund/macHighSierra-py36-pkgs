@@ -17,9 +17,9 @@ class ServiceNameInfo(Model):
 
     :param id:
     :type id: str
-    :param name: The name of the service.
+    :param name:
     :type name: str
-    """ 
+    """
 
     _attribute_map = {
         'id': {'key': 'Id', 'type': 'str'},

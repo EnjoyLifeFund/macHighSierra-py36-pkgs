@@ -15,26 +15,26 @@ from msrest.serialization import Model
 class DeployedServiceReplicaDetailInfo(Model):
     """Information about a Service Fabric service replica deployed on a node.
 
-    :param service_name: Full hierarchical name of the service in URI format
-     starting with `fabric:`.
+    :param service_name:
     :type service_name: str
     :param partition_id:
     :type partition_id: str
     :param current_service_operation: Possible values include: 'Unknown',
      'None', 'Open', 'ChangeRole', 'Close', 'Abort'
-    :type current_service_operation: str
+    :type current_service_operation: str or :class:`enum
+     <azure.servicefabric.models.enum>`
     :param current_service_operation_start_time_utc: The start time of the
      current service operation in UTC format.
     :type current_service_operation_start_time_utc: datetime
     :param reported_load:
     :type reported_load: list of :class:`LoadMetricReportInfo
      <azure.servicefabric.models.LoadMetricReportInfo>`
-    :param ServiceKind: Polymorphic Discriminator
-    :type ServiceKind: str
-    """ 
+    :param service_kind: Polymorphic Discriminator
+    :type service_kind: str
+    """
 
     _validation = {
-        'ServiceKind': {'required': True},
+        'service_kind': {'required': True},
     }
 
     _attribute_map = {
@@ -43,11 +43,11 @@ class DeployedServiceReplicaDetailInfo(Model):
         'current_service_operation': {'key': 'CurrentServiceOperation', 'type': 'str'},
         'current_service_operation_start_time_utc': {'key': 'CurrentServiceOperationStartTimeUtc', 'type': 'iso-8601'},
         'reported_load': {'key': 'ReportedLoad', 'type': '[LoadMetricReportInfo]'},
-        'ServiceKind': {'key': 'ServiceKind', 'type': 'str'},
+        'service_kind': {'key': 'ServiceKind', 'type': 'str'},
     }
 
     _subtype_map = {
-        'ServiceKind': {'Stateful': 'DeployedStatefulServiceReplicaDetailInfo', 'Stateless': 'DeployedStatelessServiceInstanceDetailInfo'}
+        'service_kind': {'Stateful': 'DeployedStatefulServiceReplicaDetailInfo', 'Stateless': 'DeployedStatelessServiceInstanceDetailInfo'}
     }
 
     def __init__(self, service_name=None, partition_id=None, current_service_operation=None, current_service_operation_start_time_utc=None, reported_load=None):
@@ -56,4 +56,4 @@ class DeployedServiceReplicaDetailInfo(Model):
         self.current_service_operation = current_service_operation
         self.current_service_operation_start_time_utc = current_service_operation_start_time_utc
         self.reported_load = reported_load
-        self.ServiceKind = None
+        self.service_kind = None

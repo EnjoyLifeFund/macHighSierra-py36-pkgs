@@ -1,9 +1,9 @@
 """
-Partial backport of Python 3.5's weakref module:
+Partial backport of Python 3.6's weakref module:
 
     finalize (new in Python 3.4)
 
-Backport modifications are marked with marked with "XXX backport".
+Backport modifications are marked with "XXX backport".
 """
 from __future__ import absolute_import
 

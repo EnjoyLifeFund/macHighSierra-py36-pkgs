@@ -33,6 +33,7 @@ from ansible.plugins.lookup import LookupBase
 #             - two
 #             - three
 
+
 class LookupModule(LookupBase):
 
     def run(self, terms, inject=None, **kwargs):

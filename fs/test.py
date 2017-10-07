@@ -329,7 +329,6 @@ class FSTestCases(object):
         self.assertEqual(data, contents)
         self.assertIsInstance(data, text_type)
 
-
     def test_appendbytes(self):
         with self.assertRaises(ValueError):
             self.fs.appendbytes('foo', 'bar')
@@ -595,6 +594,10 @@ class FSTestCases(object):
         with self.assertRaises(errors.ResourceNotFound):
             self.fs.move('bar', 'egg/bar')
 
+        # Check moving an unexisting source
+        with self.assertRaises(errors.ResourceNotFound):
+            self.fs.move('egg', 'spam')
+
         # Check moving between different directories
         self.fs.makedir('baz')
         self.fs.setbytes('baz/bazbaz', b'bazbaz')
@@ -602,6 +605,12 @@ class FSTestCases(object):
         self.fs.move('baz/bazbaz', 'baz2/bazbaz')
         self.assert_not_exists('baz/bazbaz')
         self.assert_bytes('baz2/bazbaz', b'bazbaz')
+
+        # Check moving a directory raises an error
+        self.assert_isdir('baz2')
+        self.assert_not_exists('yolk')
+        with self.assertRaises(errors.FileExpected):
+            self.fs.move('baz2', 'yolk')
 
     def test_makedir(self):
         # Check edge case of root
@@ -658,6 +667,30 @@ class FSTestCases(object):
 
         with self.assertRaises(errors.DirectoryExpected):
             self.fs.makedirs('foo.bin/bar/baz/egg')
+
+    def test_repeat_dir(self):
+        # Catches bug with directories contain repeated names,
+        # discovered in s3fs
+        self.fs.makedirs('foo/foo/foo')
+        self.assertEqual(
+            self.fs.listdir(u''),
+            ['foo']
+        )
+        self.assertEqual(
+            self.fs.listdir('foo'),
+            ['foo']
+        )
+        self.assertEqual(
+            self.fs.listdir('foo/foo'),
+            ['foo']
+        )
+        self.assertEqual(
+            self.fs.listdir('foo/foo/foo'),
+            []
+        )
+        scan = list(self.fs.scandir('foo'))
+        self.assertEqual(len(scan), 1)
+        self.assertEqual(scan[0].name, 'foo')
 
     def test_open(self):
         # Open a file that doesn't exist
@@ -734,7 +767,7 @@ class FSTestCases(object):
             self.assertIsInstance(f, io.IOBase)
             self.assertTrue(f.writable())
             self.assertFalse(f.readable())
-            f.write(text)
+            self.assertEqual(len(text), f.write(text))
             self.assertFalse(f.closed)
         self.assertTrue(f.closed)
 
@@ -756,7 +789,7 @@ class FSTestCases(object):
         # Test overwrite
         text = b'Goodbye, World'
         with self.fs.openbin('foo/hello', 'w') as f:
-            f.write(text)
+            self.assertEqual(len(text), f.write(text))
         self.assert_bytes('foo/hello', text)
 
         # Test FileExpected raised
@@ -782,7 +815,6 @@ class FSTestCases(object):
         with self.fs.openbin("iter.bin") as f:
             for actual, expected in zip(f, lines.splitlines(1)):
                 self.assertEqual(actual, expected)
-
 
     def test_open_files(self):
         # Test file-like objects work as expected.
@@ -845,6 +877,9 @@ class FSTestCases(object):
         iter_lines = iter(self.fs.open('text'))
         self.assertEqual(next(iter_lines), 'Hello\n')
 
+        with self.fs.open('unicode', 'w') as f:
+            self.assertEqual(12, f.write('Héllo\nWörld\n'))
+
         with self.fs.open('text', 'rb') as f:
             self.assertIsInstance(f, io.IOBase)
             self.assertFalse(f.writable())
@@ -852,11 +887,11 @@ class FSTestCases(object):
             self.assertTrue(f.seekable())
             self.assertFalse(f.closed)
             self.assertEqual(f.read(1), b'H')
-            f.seek(3, Seek.set)
+            self.assertEqual(3, f.seek(3, Seek.set))
             self.assertEqual(f.read(1), b'l')
-            f.seek(2, Seek.current)
+            self.assertEqual(6, f.seek(2, Seek.current))
             self.assertEqual(f.read(1), b'W')
-            f.seek(-2, Seek.end)
+            self.assertEqual(22, f.seek(-2, Seek.end))
             self.assertEqual(f.read(1), b'z')
             with self.assertRaises(ValueError):
                 f.seek(10, 77)
@@ -868,18 +903,19 @@ class FSTestCases(object):
             self.assertTrue(f.writable())
             self.assertTrue(f.seekable())
             self.assertFalse(f.closed)
-            f.seek(5)
-            f.truncate()
-            f.seek(0)
+            self.assertEqual(5, f.seek(5))
+            self.assertEqual(5, f.truncate())
+            self.assertEqual(0, f.seek(0))
             self.assertEqual(f.read(), b'Hello')
-            f.truncate(10)
-            f.seek(0)
+            self.assertEqual(10, f.truncate(10))
+            self.assertEqual(5, f.tell())
+            self.assertEqual(0, f.seek(0))
             print(repr(self.fs))
             print(repr(f))
             self.assertEqual(f.read(), b'Hello\0\0\0\0\0')
-            f.seek(4)
+            self.assertEqual(4, f.seek(4))
             f.write(b'O')
-            f.seek(4)
+            self.assertEqual(4, f.seek(4))
             self.assertEqual(f.read(1), b'O')
         self.assertTrue(f.closed)
 
@@ -892,7 +928,7 @@ class FSTestCases(object):
             self.assertTrue(write_file.writable())
             self.assertFalse(write_file.readable())
             self.assertFalse(write_file.closed)
-            write_file.write(b'\0\1\2')
+            self.assertEqual(3, write_file.write(b'\0\1\2'))
         self.assertTrue(write_file.closed)
 
         # Read a binary file
@@ -1121,6 +1157,15 @@ class FSTestCases(object):
         # Test copying to a directory that doesn't exist
         with self.assertRaises(errors.ResourceNotFound):
             self.fs.copy('baz', 'a/b/c/baz')
+
+        # Test copying a source that doesn't exist
+        with self.assertRaises(errors.ResourceNotFound):
+            self.fs.copy('egg', 'spam')
+
+        # Test copying a directory
+        self.fs.makedir('dir')
+        with self.assertRaises(errors.FileExpected):
+            self.fs.copy('dir', 'folder')
 
     def test_create(self):
         # Test create new file
@@ -1639,6 +1684,10 @@ class FSTestCases(object):
 
         with self.assertRaises(errors.ResourceNotFound):
             self.fs.copydir('foo', 'foofoo')
+        with self.assertRaises(errors.ResourceNotFound):
+            self.fs.copydir('spam', 'egg', create=True)
+        with self.assertRaises(errors.DirectoryExpected):
+            self.fs.copydir('foo2/foofoo.txt', 'foofoo.txt', create=True)
 
     def test_movedir(self):
         self.fs.makedirs('foo/bar/baz/egg')
@@ -1650,8 +1699,17 @@ class FSTestCases(object):
         self.assert_not_exists('foo/bar/foofoo.txt')
         self.assert_not_exists('foo/bar/baz/egg')
 
+        # Check moving to an unexisting directory
         with self.assertRaises(errors.ResourceNotFound):
             self.fs.movedir('foo', 'foofoo')
+
+        # Check moving an unexisting directory
+        with self.assertRaises(errors.ResourceNotFound):
+            self.fs.movedir('spam', 'egg', create=True)
+
+        # Check moving a file
+        with self.assertRaises(errors.DirectoryExpected):
+            self.fs.movedir('foo2/foofoo.txt', 'foo2/baz/egg')
 
     def test_match(self):
         self.assertTrue(self.fs.match(['*.py'], 'foo.py'))
@@ -1664,3 +1722,47 @@ class FSTestCases(object):
         written = write_tree.getvalue()
         expected = u'|-- foo\n|   `-- bar\n`-- test.txt\n'
         self.assertEqual(expected, written)
+
+    def test_unicode_path(self):
+        if not self.fs.getmeta().get('unicode_paths', False):
+            self.skipTest('the filesystem does not support unicode paths.')
+
+        self.fs.makedir('földér')
+        self.fs.settext('☭.txt', 'Smells like communism.')
+        self.fs.setbytes('földér/☣.txt', b'Smells like an old syringe.')
+
+        self.assert_isdir('földér')
+        self.assertEqual(['☣.txt'], self.fs.listdir('földér'))
+        self.assertEqual('☣.txt', self.fs.getinfo('földér/☣.txt').name)
+        self.assert_text('☭.txt', 'Smells like communism.')
+        self.assert_bytes('földér/☣.txt', b'Smells like an old syringe.')
+
+        if self.fs.hassyspath('földér/☣.txt'):
+            self.assertTrue(os.path.exists(self.fs.getsyspath('földér/☣.txt')))
+
+        self.fs.remove('földér/☣.txt')
+        self.assert_not_exists('földér/☣.txt')
+        self.fs.removedir('földér')
+        self.assert_not_exists('földér')
+
+
+    def test_case_sensitive(self):
+        meta = self.fs.getmeta()
+        if 'case_insensitive' not in meta:
+            self.skipTest('case sensitivity not known')
+
+        if meta.get('case_insensitive', False):
+            self.skipTest('the filesystem is not case sensitive.')
+
+        self.fs.makedir('foo')
+        self.fs.makedir('Foo')
+        self.fs.touch('fOO')
+
+        self.assert_exists('foo')
+        self.assert_exists('Foo')
+        self.assert_exists('fOO')
+        self.assert_not_exists('FoO')
+
+        self.assert_isdir('foo')
+        self.assert_isdir('Foo')
+        self.assert_isfile('fOO')

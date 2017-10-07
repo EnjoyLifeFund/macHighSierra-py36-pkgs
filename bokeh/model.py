@@ -89,13 +89,6 @@ def get_class(view_model_name):
     from . import models; models
     from .plotting import Figure; Figure
 
-    # We have to try-except here, because this import will fail if Pandas is
-    # not installed, but in that case bkcharts is not usable anyway
-    # try:
-    #     from bkcharts import Chart; Chart
-    # except RuntimeError:
-    #     pass
-
     d = MetaModel.model_class_reverse_map
     if view_model_name in d:
         return d[view_model_name]
@@ -547,7 +540,7 @@ class Model(with_metaclass(MetaModel, HasProps, PropertyCallbackManager, EventCa
         # this may need to be further refined in the future, if the a
         # assumption does not hold for future hinted events (e.g. the hint
         # could specify explicitly whether to do normal invalidation or not)
-        if not hint:
+        if hint is None:
             dirty = { 'count' : 0 }
             def mark_dirty(obj):
                 dirty['count'] += 1
@@ -557,7 +550,7 @@ class Model(with_metaclass(MetaModel, HasProps, PropertyCallbackManager, EventCa
                 if dirty['count'] > 0:
                     self._document._invalidate_all_models()
         # chain up to invoke callbacks
-        super(Model, self).trigger(attr, old, new, hint, setter)
+        super(Model, self).trigger(attr, old, new, hint=hint, setter=setter)
 
     def _attach_document(self, doc):
         ''' Attach a model to a Bokeh |Document|.

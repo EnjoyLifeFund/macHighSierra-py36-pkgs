@@ -24,8 +24,8 @@ class ApplicationHealthPolicy(Model):
      percentage of unhealthy deployed applications. Allowed values are Byte
      values from zero to 100.
      The percentage represents the maximum tolerated percentage of deployed
-     applications that can be unhealthy before the application is considered
-     in error.
+     applications that can be unhealthy before the application is considered in
+     error.
      This is calculated by dividing the number of unhealthy deployed
      applications over the number of nodes where the application is currently
      deployed on in the cluster.
@@ -33,16 +33,14 @@ class ApplicationHealthPolicy(Model):
      nodes. Default percentage is zero.
      . Default value: 0 .
     :type max_percent_unhealthy_deployed_applications: int
-    :param default_service_type_health_policy: The health policy used by
-     default to evaluate the health of a service type.
+    :param default_service_type_health_policy:
     :type default_service_type_health_policy: :class:`ServiceTypeHealthPolicy
      <azure.servicefabric.models.ServiceTypeHealthPolicy>`
-    :param service_type_health_policy_map: The map with service type health
-     policy per service type name. The map is empty be default.
+    :param service_type_health_policy_map:
     :type service_type_health_policy_map: list of
      :class:`ServiceTypeHealthPolicyMapItem
      <azure.servicefabric.models.ServiceTypeHealthPolicyMapItem>`
-    """ 
+    """
 
     _attribute_map = {
         'consider_warning_as_error': {'key': 'ConsiderWarningAsError', 'type': 'bool'},

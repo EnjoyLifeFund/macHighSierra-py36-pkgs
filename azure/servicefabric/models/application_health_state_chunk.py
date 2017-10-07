@@ -15,31 +15,25 @@ from .entity_health_state_chunk import EntityHealthStateChunk
 class ApplicationHealthStateChunk(EntityHealthStateChunk):
     """Represents the health state chunk of a application.
     The application health state chunk contains the application name, its
-    aggregated health state and any children services and deployed
-    applications that respect the filters in cluster health chunk query
-    description.
+    aggregated health state and any children services and deployed applications
+    that respect the filters in cluster health chunk query description.
     .
 
     :param health_state: Possible values include: 'Invalid', 'Ok', 'Warning',
      'Error', 'Unknown'
-    :type health_state: str
-    :param application_name: The name of the application.
+    :type health_state: str or :class:`enum <azure.servicefabric.models.enum>`
+    :param application_name:
     :type application_name: str
-    :param application_type_name: The application type name for the
-     application.
+    :param application_type_name:
     :type application_type_name: str
-    :param service_health_state_chunks: The list of service health state
-     chunks in the cluster that respect the filters in the cluster health
-     chunk query description.
+    :param service_health_state_chunks:
     :type service_health_state_chunks: :class:`ServiceHealthStateChunkList
      <azure.servicefabric.models.ServiceHealthStateChunkList>`
-    :param deployed_application_health_state_chunks: The list of deployed
-     application health state chunks in the cluster that respect the filters
-     in the cluster health chunk query description.
+    :param deployed_application_health_state_chunks:
     :type deployed_application_health_state_chunks:
      :class:`DeployedApplicationHealthStateChunkList
      <azure.servicefabric.models.DeployedApplicationHealthStateChunkList>`
-    """ 
+    """
 
     _attribute_map = {
         'health_state': {'key': 'HealthState', 'type': 'str'},
