@@ -666,9 +666,12 @@ _method_cache = {}
 
 
 class methodcaller(object):
-    """Return a callable object that calls the given method on its operand.
+    """
+    Return a callable object that calls the given method on its operand.
 
-    Unlike the builtin `methodcaller`, this class is serializable"""
+    Unlike the builtin `operator.methodcaller`, instances of this class are
+    serializable
+    """
 
     __slots__ = ('method',)
     func = property(lambda self: self.method)  # For `funcname` to work
@@ -691,6 +694,25 @@ class methodcaller(object):
         return "<%s: %s>" % (self.__class__.__name__, self.method)
 
     __repr__ = __str__
+
+
+class itemgetter(object):
+    """
+    Return a callable object that gets an item from the operand
+
+    Unlike the builtin `operator.itemgetter`, instances of this class are
+    serializable
+    """
+    __slots__ = ('index',)
+
+    def __init__(self, index):
+        self.index = index
+
+    def __call__(self, x):
+        return x[self.index]
+
+    def __reduce__(self):
+        return (itemgetter, (self.index,))
 
 
 class MethodCache(object):
@@ -802,28 +824,6 @@ def ensure_dict(d):
     return dict(d)
 
 
-_packages = {}
-
-
-def package_of(typ):
-    """ Return package containing type's definition
-
-    Or return None if not found
-    """
-    try:
-        return _packages[typ]
-    except KeyError:
-        # http://stackoverflow.com/questions/43462701/get-package-of-python-object/43462865#43462865
-        mod = inspect.getmodule(typ)
-        if not mod:
-            result = None
-        else:
-            base, _sep, _stem = mod.__name__.partition('.')
-            result = sys.modules[base]
-        _packages[typ] = result
-        return result
-
-
 # XXX: Kept to keep old versions of distributed/dask in sync. After
 # distributed's dask requirement is updated to > this commit, this function can
 # be moved to dask.bytes.utils.
@@ -899,3 +899,18 @@ def infer_storage_options(urlpath, inherit_storage_options=None):
         inferred_storage_options.update(inherit_storage_options)
 
     return inferred_storage_options
+
+
+def partial_by_order(*args, **kwargs):
+    """
+
+    >>> from operator import add
+    >>> partial_by_order(5, function=add, other=[(1, 10)])
+    15
+    """
+    function = kwargs.pop('function')
+    other = kwargs.pop('other')
+    args2 = list(args)
+    for i, arg in other:
+        args2.insert(i, arg)
+    return function(*args2, **kwargs)

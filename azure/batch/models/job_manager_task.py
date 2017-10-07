@@ -15,8 +15,22 @@ from msrest.serialization import Model
 class JobManagerTask(Model):
     """Specifies details of a Job Manager task.
 
-    :param id: A string that uniquely identifies the Job Manager taskwithin
-     the job. The id can contain any combination of alphanumeric characters
+    The Job Manager task is automatically started when the job is created. The
+    Batch service tries to schedule the Job Manager task before any other tasks
+    in the job. When shrinking a pool, the Batch service tries to preserve
+    compute nodes where Job Manager tasks are running for as long as possible
+    (that is, nodes running 'normal' tasks are removed before nodes running Job
+    Manager tasks). When a Job Manager task fails and needs to be restarted,
+    the system tries to schedule it at the highest priority. If there are no
+    idle nodes available, the system may terminate one of the running tasks in
+    the pool and return it to the queue in order to make room for the Job
+    Manager task to restart. Note that a Job Manager task in one job does not
+    have priority over tasks in other jobs. Across jobs, only job level
+    priorities are observed. For example, if a Job Manager in a priority 0 job
+    needs to be restarted, it will not displace tasks of a priority 1 job.
+
+    :param id: A string that uniquely identifies the Job Manager task within
+     the job. The ID can contain any combination of alphanumeric characters
      including hyphens and underscores and cannot contain more than 64
      characters.
     :type id: str
@@ -31,13 +45,26 @@ class JobManagerTask(Model):
      line, for example using "cmd /c MyCommand" in Windows or "/bin/sh -c
      MyCommand" in Linux.
     :type command_line: str
+    :param container_settings: The settings for the container under which the
+     Job Manager task runs. If the pool that will run this task has
+     containerConfiguration set, this must be set as well. If the pool that
+     will run this task doesn't have containerConfiguration set, this must not
+     be set. When this is specified, all directories recursively below the
+     AZ_BATCH_NODE_ROOT_DIR (the root of Azure Batch directories on the node)
+     are mapped into the container, all task environment variables are mapped
+     into the container, and the task command line is executed in the
+     container.
+    :type container_settings: :class:`TaskContainerSettings
+     <azure.batch.models.TaskContainerSettings>`
     :param resource_files: A list of files that the Batch service will
      download to the compute node before running the command line. Files listed
      under this element are located in the task's working directory.
     :type resource_files: list of :class:`ResourceFile
      <azure.batch.models.ResourceFile>`
     :param output_files: A list of files that the Batch service will upload
-     from the compute node after running the command line.
+     from the compute node after running the command line. For multi-instance
+     tasks, the files will only be uploaded from the compute node on which the
+     primary task is executed.
     :type output_files: list of :class:`OutputFile
      <azure.batch.models.OutputFile>`
     :param environment_settings: A list of environment variable settings for
@@ -78,12 +105,11 @@ class JobManagerTask(Model):
     :param application_package_references: A list of application packages that
      the Batch service will deploy to the compute node before running the
      command line. Application packages are downloaded and deployed to a shared
-     directory, not the task directory. Therefore, if a referenced package is
-     already on the compute node, and is up to date, then it is not
+     directory, not the task working directory. Therefore, if a referenced
+     package is already on the compute node, and is up to date, then it is not
      re-downloaded; the existing copy on the compute node is used. If a
      referenced application package cannot be installed, for example because
-     the package has been deleted or because download failed, the task fails
-     with a scheduling error.
+     the package has been deleted or because download failed, the task fails.
     :type application_package_references: list of
      :class:`ApplicationPackageReference
      <azure.batch.models.ApplicationPackageReference>`
@@ -112,6 +138,7 @@ class JobManagerTask(Model):
         'id': {'key': 'id', 'type': 'str'},
         'display_name': {'key': 'displayName', 'type': 'str'},
         'command_line': {'key': 'commandLine', 'type': 'str'},
+        'container_settings': {'key': 'containerSettings', 'type': 'TaskContainerSettings'},
         'resource_files': {'key': 'resourceFiles', 'type': '[ResourceFile]'},
         'output_files': {'key': 'outputFiles', 'type': '[OutputFile]'},
         'environment_settings': {'key': 'environmentSettings', 'type': '[EnvironmentSetting]'},
@@ -124,10 +151,11 @@ class JobManagerTask(Model):
         'allow_low_priority_node': {'key': 'allowLowPriorityNode', 'type': 'bool'},
     }
 
-    def __init__(self, id, command_line, display_name=None, resource_files=None, output_files=None, environment_settings=None, constraints=None, kill_job_on_completion=None, user_identity=None, run_exclusive=None, application_package_references=None, authentication_token_settings=None, allow_low_priority_node=None):
+    def __init__(self, id, command_line, display_name=None, container_settings=None, resource_files=None, output_files=None, environment_settings=None, constraints=None, kill_job_on_completion=None, user_identity=None, run_exclusive=None, application_package_references=None, authentication_token_settings=None, allow_low_priority_node=None):
         self.id = id
         self.display_name = display_name
         self.command_line = command_line
+        self.container_settings = container_settings
         self.resource_files = resource_files
         self.output_files = output_files
         self.environment_settings = environment_settings

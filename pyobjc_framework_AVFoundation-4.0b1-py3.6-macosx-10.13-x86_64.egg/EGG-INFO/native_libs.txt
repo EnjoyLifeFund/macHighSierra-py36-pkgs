@@ -1,2 +1,0 @@
-AVFoundation/_AVFoundation.cpython-36dm-darwin.so
-AVFoundation/_inlines.cpython-36dm-darwin.so

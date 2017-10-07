@@ -156,6 +156,11 @@ class Page(object):
         #: The page height, including margins, in CSS pixels.
         self.height = page_box.margin_height()
 
+        #: The page bleed width, in CSS pixels.
+        self.bleed = {
+            side: page_box.style['bleed_%s' % side].value
+            for side in ('top', 'right', 'bottom', 'left')}
+
         #: A list of ``(bookmark_level, bookmark_label, target)`` tuples.
         #: :obj:`bookmark_level` and :obj:`bookmark_label` are respectively
         #: an integer and a Unicode string, based on the CSS properties
@@ -298,8 +303,9 @@ class Document(object):
     """
     @classmethod
     def _render(cls, html, stylesheets, enable_hinting,
-                presentational_hints=False):
-        font_config = FontConfiguration()
+                presentational_hints=False, font_config=None):
+        if font_config is None:
+            font_config = FontConfiguration()
         page_rules = []
         style_for, cascaded_styles, computed_styles = get_all_computed_styles(
             html, presentational_hints=presentational_hints, user_stylesheets=[
@@ -319,7 +325,6 @@ class Document(object):
         rendering = cls(
             [Page(p, enable_hinting) for p in page_boxes],
             DocumentMetadata(**html._get_metadata()), html.url_fetcher)
-        font_config.clean()
         return rendering
 
     def __init__(self, pages, metadata, url_fetcher):
@@ -481,10 +486,15 @@ class Document(object):
         LOGGER.info('Step 6 - Drawing')
         for page in self.pages:
             surface.set_size(
-                math.floor(page.width * scale),
-                math.floor(page.height * scale))
-            page.paint(context, scale=scale)
-            surface.show_page()
+                math.floor(scale * (
+                    page.width + page.bleed['left'] + page.bleed['right'])),
+                math.floor(scale * (
+                    page.height + page.bleed['top'] + page.bleed['bottom'])))
+            with stacked(context):
+                context.translate(
+                    page.bleed['left'] * scale, page.bleed['top'] * scale)
+                page.paint(context, scale=scale)
+                surface.show_page()
         surface.finish()
 
         LOGGER.info('Step 7 - Adding PDF metadata')

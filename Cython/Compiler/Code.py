@@ -6,10 +6,11 @@
 from __future__ import absolute_import
 
 import cython
-cython.declare(os=object, re=object, operator=object,
-               Naming=object, Options=object, StringEncoding=object,
+cython.declare(os=object, re=object, operator=object, textwrap=object,
+               Template=object, Naming=object, Options=object, StringEncoding=object,
                Utils=object, SourceDescriptor=object, StringIOTree=object,
-               DebugFlags=object, basestring=object)
+               DebugFlags=object, basestring=object, defaultdict=object,
+               closing=object, partial=object)
 
 import os
 import re
@@ -116,7 +117,6 @@ class UtilityCodeBase(object):
     """
 
     is_cython_utility = False
-    requires = None
     _utility_cache = {}
 
     @classmethod
@@ -138,19 +138,16 @@ class UtilityCodeBase(object):
 
         if type == 'proto':
             utility[0] = code
-        elif type.startswith('proto.'):
-            utility[0] = code
-            utility[1] = type[6:]
         elif type == 'impl':
-            utility[2] = code
+            utility[1] = code
         else:
-            all_tags = utility[3]
+            all_tags = utility[2]
             if KEYWORDS_MUST_BE_BYTES:
                 type = type.encode('ASCII')
             all_tags[type] = code
 
         if tags:
-            all_tags = utility[3]
+            all_tags = utility[2]
             for name, values in tags.items():
                 if KEYWORDS_MUST_BE_BYTES:
                     name = name.encode('ASCII')
@@ -181,7 +178,7 @@ class UtilityCodeBase(object):
         with closing(Utils.open_source_file(filename, encoding='UTF-8')) as f:
             all_lines = f.readlines()
 
-        utilities = defaultdict(lambda: [None, None, None, {}])
+        utilities = defaultdict(lambda: [None, None, {}])
         lines = []
         tags = defaultdict(set)
         utility = type = None
@@ -255,7 +252,7 @@ class UtilityCodeBase(object):
             from_file = files[0]
 
         utilities = cls.load_utilities_from_file(from_file)
-        proto, proto_block, impl, tags = utilities[util_code_name]
+        proto, impl, tags = utilities[util_code_name]
 
         if tags:
             orig_kwargs = kwargs.copy()
@@ -274,13 +271,11 @@ class UtilityCodeBase(object):
                 elif not values:
                     values = None
                 elif len(values) == 1:
-                    values = values[0]
+                    values = list(values)[0]
                 kwargs[name] = values
 
         if proto is not None:
             kwargs['proto'] = proto
-        if proto_block is not None:
-            kwargs['proto_block'] = proto_block
         if impl is not None:
             kwargs['impl'] = impl
 
@@ -564,6 +559,7 @@ class LazyUtilityCode(UtilityCodeBase):
     available. Useful when you only have 'env' but not 'code'.
     """
     __name__ = '<lazy>'
+    requires = None
 
     def __init__(self, callback):
         self.callback = callback
@@ -602,6 +598,7 @@ class FunctionState(object):
 
         self.in_try_finally = 0
         self.exc_vars = None
+        self.current_except = None
         self.can_trace = False
         self.gil_owned = True
 
@@ -632,8 +629,8 @@ class FunctionState(object):
             label += '_' + name
         return label
 
-    def new_yield_label(self):
-        label = self.new_label('resume_from_yield')
+    def new_yield_label(self, expr_type='yield'):
+        label = self.new_label('resume_from_%s' % expr_type)
         num_and_label = (len(self.yield_labels) + 1, label)
         self.yield_labels.append(num_and_label)
         return num_and_label
@@ -1628,7 +1625,7 @@ class CCodeWriter(object):
     # Functions delegated to function scope
     def new_label(self, name=None):    return self.funcstate.new_label(name)
     def new_error_label(self):         return self.funcstate.new_error_label()
-    def new_yield_label(self):         return self.funcstate.new_yield_label()
+    def new_yield_label(self, *args):  return self.funcstate.new_yield_label(*args)
     def get_loop_labels(self):         return self.funcstate.get_loop_labels()
     def set_loop_labels(self, labels): return self.funcstate.set_loop_labels(labels)
     def new_loop_labels(self):         return self.funcstate.new_loop_labels()
@@ -1916,9 +1913,12 @@ class CCodeWriter(object):
         if entry.type.is_pyobject:
             self.putln("__Pyx_XGIVEREF(%s);" % self.entry_as_pyobject(entry))
 
-    def put_var_incref(self, entry):
+    def put_var_incref(self, entry, nanny=True):
         if entry.type.is_pyobject:
-            self.putln("__Pyx_INCREF(%s);" % self.entry_as_pyobject(entry))
+            if nanny:
+                self.putln("__Pyx_INCREF(%s);" % self.entry_as_pyobject(entry))
+            else:
+                self.putln("Py_INCREF(%s);" % self.entry_as_pyobject(entry))
 
     def put_var_xincref(self, entry):
         if entry.type.is_pyobject:
@@ -1967,9 +1967,12 @@ class CCodeWriter(object):
         if entry.type.is_pyobject:
             self.putln("__Pyx_XDECREF(%s);" % self.entry_as_pyobject(entry))
 
-    def put_var_xdecref(self, entry):
+    def put_var_xdecref(self, entry, nanny=True):
         if entry.type.is_pyobject:
-            self.putln("__Pyx_XDECREF(%s);" % self.entry_as_pyobject(entry))
+            if nanny:
+                self.putln("__Pyx_XDECREF(%s);" % self.entry_as_pyobject(entry))
+            else:
+                self.putln("Py_XDECREF(%s);" % self.entry_as_pyobject(entry))
 
     def put_var_decref_clear(self, entry):
         self._put_var_decref_clear(entry, null_check=False)

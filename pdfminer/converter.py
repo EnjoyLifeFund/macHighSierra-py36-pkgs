@@ -1,20 +1,29 @@
-import os.path
+#!/usr/bin/env python
 import logging
-
+import re
 from .pdfdevice import PDFTextDevice
 from .pdffont import PDFUnicodeNotDefined
-from .pdftypes import LITERALS_DCT_DECODE
-from .pdfcolor import LITERAL_DEVICE_GRAY, LITERAL_DEVICE_RGB
-from .layout import LTContainer, LTPage, LTText, LTLine, LTRect, LTCurve
-from .layout import LTFigure, LTImage, LTChar, LTTextLine
-from .layout import LTTextBox, LTTextBoxVertical, LTTextGroup
-from .utils import apply_matrix_pt, mult_matrix
-from .utils import htmlescape, bbox2str, create_bmp
+from .layout import LTContainer
+from .layout import LTPage
+from .layout import LTText
+from .layout import LTLine
+from .layout import LTRect
+from .layout import LTCurve
+from .layout import LTFigure
+from .layout import LTImage
+from .layout import LTChar
+from .layout import LTTextLine
+from .layout import LTTextBox
+from .layout import LTTextBoxVertical
+from .layout import LTTextGroup
+from .utils import apply_matrix_pt
+from .utils import mult_matrix
+from .utils import enc
+from .utils import bbox2str
 
 
-logger = logging.getLogger(__name__)
-
-
+##  PDFLayoutAnalyzer
+##
 class PDFLayoutAnalyzer(PDFTextDevice):
 
     def __init__(self, rsrcmgr, pageno=1, laparams=None):
@@ -22,13 +31,15 @@ class PDFLayoutAnalyzer(PDFTextDevice):
         self.pageno = pageno
         self.laparams = laparams
         self._stack = []
+        return
 
     def begin_page(self, page, ctm):
-        (x0,y0,x1,y1) = page.mediabox
-        (x0,y0) = apply_matrix_pt(ctm, (x0,y0))
-        (x1,y1) = apply_matrix_pt(ctm, (x1,y1))
+        (x0, y0, x1, y1) = page.mediabox
+        (x0, y0) = apply_matrix_pt(ctm, (x0, y0))
+        (x1, y1) = apply_matrix_pt(ctm, (x1, y1))
         mediabox = (0, 0, abs(x0-x1), abs(y0-y1))
         self.cur_item = LTPage(self.pageno, mediabox)
+        return
 
     def end_page(self, page):
         assert not self._stack
@@ -37,16 +48,19 @@ class PDFLayoutAnalyzer(PDFTextDevice):
             self.cur_item.analyze(self.laparams)
         self.pageno += 1
         self.receive_layout(self.cur_item)
+        return
 
     def begin_figure(self, name, bbox, matrix):
         self._stack.append(self.cur_item)
         self.cur_item = LTFigure(name, bbox, mult_matrix(matrix, self.ctm))
+        return
 
     def end_figure(self, _):
         fig = self.cur_item
         assert isinstance(self.cur_item, LTFigure)
         self.cur_item = self._stack.pop()
         self.cur_item.add(fig)
+        return
 
     def render_image(self, name, stream):
         assert isinstance(self.cur_item, LTFigure)
@@ -54,31 +68,32 @@ class PDFLayoutAnalyzer(PDFTextDevice):
                        (self.cur_item.x0, self.cur_item.y0,
                         self.cur_item.x1, self.cur_item.y1))
         self.cur_item.add(item)
+        return
 
     def paint_path(self, gstate, stroke, fill, evenodd, path):
         shape = ''.join(x[0] for x in path)
         if shape == 'ml':
             # horizontal/vertical line
-            (_,x0,y0) = path[0]
-            (_,x1,y1) = path[1]
-            (x0,y0) = apply_matrix_pt(self.ctm, (x0,y0))
-            (x1,y1) = apply_matrix_pt(self.ctm, (x1,y1))
+            (_, x0, y0) = path[0]
+            (_, x1, y1) = path[1]
+            (x0, y0) = apply_matrix_pt(self.ctm, (x0, y0))
+            (x1, y1) = apply_matrix_pt(self.ctm, (x1, y1))
             if x0 == x1 or y0 == y1:
-                self.cur_item.add(LTLine(gstate.linewidth, (x0,y0), (x1,y1)))
+                self.cur_item.add(LTLine(gstate.linewidth, (x0, y0), (x1, y1)))
                 return
         if shape == 'mlllh':
             # rectangle
-            (_,x0,y0) = path[0]
-            (_,x1,y1) = path[1]
-            (_,x2,y2) = path[2]
-            (_,x3,y3) = path[3]
-            (x0,y0) = apply_matrix_pt(self.ctm, (x0,y0))
-            (x1,y1) = apply_matrix_pt(self.ctm, (x1,y1))
-            (x2,y2) = apply_matrix_pt(self.ctm, (x2,y2))
-            (x3,y3) = apply_matrix_pt(self.ctm, (x3,y3))
+            (_, x0, y0) = path[0]
+            (_, x1, y1) = path[1]
+            (_, x2, y2) = path[2]
+            (_, x3, y3) = path[3]
+            (x0, y0) = apply_matrix_pt(self.ctm, (x0, y0))
+            (x1, y1) = apply_matrix_pt(self.ctm, (x1, y1))
+            (x2, y2) = apply_matrix_pt(self.ctm, (x2, y2))
+            (x3, y3) = apply_matrix_pt(self.ctm, (x3, y3))
             if ((x0 == x1 and y1 == y2 and x2 == x3 and y3 == y0) or
                 (y0 == y1 and x1 == x2 and y2 == y3 and x3 == x0)):
-                self.cur_item.add(LTRect(gstate.linewidth, (x0,y0,x2,y2)))
+                self.cur_item.add(LTRect(gstate.linewidth, (x0, y0, x2, y2)))
                 return
         # other shapes
         pts = []
@@ -86,6 +101,7 @@ class PDFLayoutAnalyzer(PDFTextDevice):
             for i in range(1, len(p), 2):
                 pts.append(apply_matrix_pt(self.ctm, (p[i], p[i+1])))
         self.cur_item.add(LTCurve(gstate.linewidth, pts))
+        return
 
     def render_char(self, matrix, font, fontsize, scaling, rise, cid):
         try:
@@ -100,21 +116,25 @@ class PDFLayoutAnalyzer(PDFTextDevice):
         return item.adv
 
     def handle_undefined_char(self, font, cid):
-        logger.warning('undefined: %r, %r', font, cid)
+        logging.info('undefined: %r, %r' % (font, cid))
         return '(cid:%d)' % cid
 
     def receive_layout(self, ltpage):
-        pass
+        return
 
 
+##  PDFPageAggregator
+##
 class PDFPageAggregator(PDFLayoutAnalyzer):
 
     def __init__(self, rsrcmgr, pageno=1, laparams=None):
         PDFLayoutAnalyzer.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
         self.result = None
-    
+        return
+
     def receive_layout(self, ltpage):
         self.result = ltpage
+        return
 
     def get_result(self):
         return self.result
@@ -123,45 +143,28 @@ class PDFPageAggregator(PDFLayoutAnalyzer):
 ##  PDFConverter
 ##
 class PDFConverter(PDFLayoutAnalyzer):
-    # outfp is an fp opened in *text* mode
-    def __init__(self, rsrcmgr, outfp, pageno=1, laparams=None):
+
+    def __init__(self, rsrcmgr, outfp, codec='utf-8', pageno=1, laparams=None):
         PDFLayoutAnalyzer.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
         self.outfp = outfp
+        self.codec = codec
+        return
 
-    def write_image(self, image):
-        stream = image.stream
-        filters = stream.get_filters()
-        if len(filters) == 1 and filters[0] in LITERALS_DCT_DECODE:
-            ext = '.jpg'
-            data = stream.get_rawdata()
-        elif image.colorspace is LITERAL_DEVICE_RGB:
-            ext = '.bmp'
-            data = create_bmp(stream.get_data(), stream.bits*3, image.width, image.height)
-        elif image.colorspace is LITERAL_DEVICE_GRAY:
-            ext = '.bmp'
-            data = create_bmp(stream.get_data(), stream.bits, image.width, image.height)
-        else:
-            ext = '.img'
-            data = stream.get_data()
-        name = image.name+ext
-        path = os.path.join(self.outdir, name)
-        fp = file(path, 'wb')
-        fp.write(data)
-        fp.close()
-        return name
-    
 
 ##  TextConverter
 ##
 class TextConverter(PDFConverter):
 
-    def __init__(self, rsrcmgr, outfp, pageno=1, laparams=None,
-                 showpageno=False):
-        PDFConverter.__init__(self, rsrcmgr, outfp, pageno=pageno, laparams=laparams)
+    def __init__(self, rsrcmgr, outfp, codec='utf-8', pageno=1, laparams=None,
+                 showpageno=False, imagewriter=None):
+        PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
         self.showpageno = showpageno
+        self.imagewriter = imagewriter
+        return
 
     def write_text(self, text):
-        self.outfp.write(text)
+        self.outfp.write(text.encode(self.codec, 'ignore'))
+        return
 
     def receive_layout(self, ltpage):
         def render(item):
@@ -172,18 +175,26 @@ class TextConverter(PDFConverter):
                 self.write_text(item.get_text())
             if isinstance(item, LTTextBox):
                 self.write_text('\n')
+            elif isinstance(item, LTImage):
+                if self.imagewriter is not None:
+                    self.imagewriter.export_image(item)
         if self.showpageno:
             self.write_text('Page %s\n' % ltpage.pageid)
         render(ltpage)
         self.write_text('\f')
+        return
 
-    # Some dummy functions to save memory/CPU when all that is wanted is text.
-    # This stops all the image and drawing ouput from being recorded and taking
-    # up RAM.
+    # Some dummy functions to save memory/CPU when all that is wanted
+    # is text.  This stops all the image and drawing output from being
+    # recorded and taking up RAM.
     def render_image(self, name, stream):
-        pass
+        if self.imagewriter is None:
+            return
+        PDFConverter.render_image(self, name, stream)
+        return
+
     def paint_path(self, gstate, stroke, fill, evenodd, path):
-        pass
+        return
 
 
 ##  HTMLConverter
@@ -198,26 +209,25 @@ class HTMLConverter(PDFConverter):
         'textgroup': 'red',
         'curve': 'black',
         'page': 'gray',
-        }
-    
+    }
+
     TEXT_COLORS = {
         'textbox': 'blue',
         'char': 'black',
-        }
+    }
 
-    def __init__(self, rsrcmgr, outfp, pageno=1, laparams=None, 
-                 scale=1, fontscale=0.7, layoutmode='normal', showpageno=True,
-                 pagemargin=50, outdir=None,
-                 rect_colors={'curve':'black', 'page':'gray'},
-                 text_colors={'char':'black'},
-                 debug=False):
-        PDFConverter.__init__(self, rsrcmgr, outfp, pageno=pageno, laparams=laparams)
+    def __init__(self, rsrcmgr, outfp, codec='utf-8', pageno=1, laparams=None,
+                 scale=1, fontscale=1.0, layoutmode='normal', showpageno=True,
+                 pagemargin=50, imagewriter=None, debug=0,
+                 rect_colors={'curve': 'black', 'page': 'gray'},
+                 text_colors={'char': 'black'}):
+        PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
         self.scale = scale
         self.fontscale = fontscale
         self.layoutmode = layoutmode
         self.showpageno = showpageno
         self.pagemargin = pagemargin
-        self.outdir = outdir
+        self.imagewriter = imagewriter
         self.rect_colors = rect_colors
         self.text_colors = text_colors
         if debug:
@@ -227,22 +237,27 @@ class HTMLConverter(PDFConverter):
         self._font = None
         self._fontstack = []
         self.write_header()
+        return
 
     def write(self, text):
         self.outfp.write(text)
+        return
 
     def write_header(self):
         self.write('<html><head>\n')
-        self.write('<meta http-equiv="Content-Type" content="text/html; charset=%s">\n' % self.outfp.encoding)
+        self.write('<meta http-equiv="Content-Type" content="text/html; charset=%s">\n' % self.codec)
         self.write('</head><body>\n')
+        return
 
     def write_footer(self):
         self.write('<div style="position:absolute; top:0px;">Page: %s</div>\n' %
-                   ', '.join('<a href="#%s">%s</a>' % (i,i) for i in range(1,self.pageno)))
+                   ', '.join('<a href="#%s">%s</a>' % (i, i) for i in range(1, self.pageno)))
         self.write('</body></html>\n')
+        return
 
     def write_text(self, text):
-        self.write(htmlescape(text, self.outfp.encoding))
+        self.write(enc(text, self.codec))
+        return
 
     def place_rect(self, color, borderwidth, x, y, w, h):
         color = self.rect_colors.get(color)
@@ -252,18 +267,21 @@ class HTMLConverter(PDFConverter):
                        (color, borderwidth,
                         x*self.scale, (self._yoffset-y)*self.scale,
                         w*self.scale, h*self.scale))
+        return
 
     def place_border(self, color, borderwidth, item):
         self.place_rect(color, borderwidth, item.x0, item.y1, item.width, item.height)
+        return
 
     def place_image(self, item, borderwidth, x, y, w, h):
-        if self.outdir is not None:
-            name = self.write_image(item)
+        if self.imagewriter is not None:
+            name = self.imagewriter.export_image(item)
             self.write('<img src="%s" border="%d" style="position:absolute; left:%dpx; top:%dpx;" '
                        'width="%d" height="%d" />\n' %
                        (enc(name), borderwidth,
                         x*self.scale, (self._yoffset-y)*self.scale,
                         w*self.scale, h*self.scale))
+        return
 
     def place_text(self, color, text, x, y, size):
         color = self.text_colors.get(color)
@@ -272,8 +290,9 @@ class HTMLConverter(PDFConverter):
                        (color, x*self.scale, (self._yoffset-y)*self.scale, size*self.scale*self.fontscale))
             self.write_text(text)
             self.write('</span>\n')
+        return
 
-    def begin_textbox(self, color, borderwidth, x, y, w, h, writing_mode):
+    def begin_div(self, color, borderwidth, x, y, w, h, writing_mode=False):
         self._fontstack.append(self._font)
         self._font = None
         self.write('<div style="position:absolute; border: %s %dpx solid; writing-mode:%s; '
@@ -281,25 +300,29 @@ class HTMLConverter(PDFConverter):
                    (color, borderwidth, writing_mode,
                     x*self.scale, (self._yoffset-y)*self.scale,
                     w*self.scale, h*self.scale))
-    
+        return
+
+    def end_div(self, color):
+        if self._font is not None:
+            self.write('</span>')
+        self._font = self._fontstack.pop()
+        self.write('</div>')
+        return
+
     def put_text(self, text, fontname, fontsize):
         font = (fontname, fontsize)
         if font != self._font:
             if self._font is not None:
                 self.write('</span>')
             self.write('<span style="font-family: %s; font-size:%dpx">' %
-                       (fontname, fontsize * self.scale * self.fontscale))
+                       (enc(fontname), fontsize * self.scale * self.fontscale))
             self._font = font
         self.write_text(text)
+        return
 
     def put_newline(self):
         self.write('<br>')
-
-    def end_textbox(self, color):
-        if self._font is not None:
-            self.write('</span>')
-        self._font = self._fontstack.pop()
-        self.write('</div>')
+        return
 
     def receive_layout(self, ltpage):
         def show_group(item):
@@ -307,7 +330,8 @@ class HTMLConverter(PDFConverter):
                 self.place_border('textgroup', 1, item)
                 for child in item:
                     show_group(child)
-        
+            return
+
         def render(item):
             if isinstance(item, LTPage):
                 self._yoffset += item.y1
@@ -324,9 +348,10 @@ class HTMLConverter(PDFConverter):
             elif isinstance(item, LTCurve):
                 self.place_border('curve', 1, item)
             elif isinstance(item, LTFigure):
-                self.place_border('figure', 1, item)
+                self.begin_div('figure', 1, item.x0, item.y1, item.width, item.height)
                 for child in item:
                     render(child)
+                self.end_div('figure')
             elif isinstance(item, LTImage):
                 self.place_image(item, 1, item.x0, item.y1, item.width, item.height)
             else:
@@ -350,39 +375,53 @@ class HTMLConverter(PDFConverter):
                         if self.layoutmode != 'loose':
                             self.put_newline()
                     elif isinstance(item, LTTextBox):
-                        self.begin_textbox('textbox', 1, item.x0, item.y1, item.width, item.height,
-                                           item.get_writing_mode())
+                        self.begin_div('textbox', 1, item.x0, item.y1, item.width, item.height,
+                                       item.get_writing_mode())
                         for child in item:
                             render(child)
-                        self.end_textbox('textbox')
+                        self.end_div('textbox')
                     elif isinstance(item, LTChar):
                         self.put_text(item.get_text(), item.fontname, item.size)
                     elif isinstance(item, LTText):
                         self.write_text(item.get_text())
-        
+            return
         render(ltpage)
         self._yoffset += self.pagemargin
+        return
 
     def close(self):
         self.write_footer()
+        return
 
 
+##  XMLConverter
+##
 class XMLConverter(PDFConverter):
 
-    def __init__(self, rsrcmgr, outfp, pageno=1, laparams=None, outdir=None):
-        PDFConverter.__init__(self, rsrcmgr, outfp, pageno=pageno, laparams=laparams)
-        self.outdir = outdir
+    CONTROL = re.compile(r'[\x00-\x08\x0b-\x0c\x0e-\x1f]')
+
+    def __init__(self, rsrcmgr, outfp, codec='utf-8', pageno=1,
+                 laparams=None, imagewriter=None, stripcontrol=False):
+        PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
+        self.imagewriter = imagewriter
+        self.stripcontrol = stripcontrol
         self.write_header()
+        return
 
     def write_header(self):
-        self.outfp.write('<?xml version="1.0" encoding="%s" ?>\n' % self.outfp.encoding)
+        self.outfp.write('<?xml version="1.0" encoding="%s" ?>\n' % self.codec)
         self.outfp.write('<pages>\n')
+        return
 
     def write_footer(self):
         self.outfp.write('</pages>\n')
-    
+        return
+
     def write_text(self, text):
-        self.outfp.write(htmlescape(text, self.outfp.encoding))
+        if self.stripcontrol:
+            text = self.CONTROL.sub('', text)
+        self.outfp.write(enc(text, self.codec))
+        return
 
     def receive_layout(self, ltpage):
         def show_group(item):
@@ -394,7 +433,8 @@ class XMLConverter(PDFConverter):
                 for child in item:
                     show_group(child)
                 self.outfp.write('</textgroup>\n')
-        
+            return
+
         def render(item):
             if isinstance(item, LTPage):
                 self.outfp.write('<page id="%s" bbox="%s" rotate="%d">\n' %
@@ -438,14 +478,14 @@ class XMLConverter(PDFConverter):
                 self.outfp.write('</textbox>\n')
             elif isinstance(item, LTChar):
                 self.outfp.write('<text font="%s" bbox="%s" size="%.3f">' %
-                                 (htmlescape(item.fontname), bbox2str(item.bbox), item.size))
+                                 (enc(item.fontname), bbox2str(item.bbox), item.size))
                 self.write_text(item.get_text())
                 self.outfp.write('</text>\n')
             elif isinstance(item, LTText):
                 self.outfp.write('<text>%s</text>\n' % item.get_text())
             elif isinstance(item, LTImage):
-                if self.outdir:
-                    name = self.write_image(item)
+                if self.imagewriter is not None:
+                    name = self.imagewriter.export_image(item)
                     self.outfp.write('<image src="%s" width="%d" height="%d" />\n' %
                                      (enc(name), item.width, item.height))
                 else:
@@ -453,8 +493,10 @@ class XMLConverter(PDFConverter):
                                      (item.width, item.height))
             else:
                 assert 0, item
-        
+            return
         render(ltpage)
+        return
 
     def close(self):
         self.write_footer()
+        return

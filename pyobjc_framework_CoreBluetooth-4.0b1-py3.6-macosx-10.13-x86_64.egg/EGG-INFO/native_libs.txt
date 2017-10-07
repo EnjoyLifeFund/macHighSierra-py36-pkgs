@@ -1,1 +1,0 @@
-CoreBluetooth/_CoreBluetooth.cpython-36dm-darwin.so

@@ -1,1 +1,0 @@
-ExternalAccessory/_ExternalAccessory.cpython-36dm-darwin.so

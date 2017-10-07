@@ -1,12 +1,13 @@
-import numpy
-from ..ops import NumpyOps
 from ...api import layerize
+from ..util import get_array_module
+from .model import Model
 
 
 def begin_stepwise_tanh(X, nG):
-    Y = numpy.zeros(X.shape, dtype='f')
+    xp = get_array_module(X)
+    Y = xp.zeros(X.shape, dtype='f')
     def tanh_fwd(t):
-        Y[t] = numpy.tanh(X[t])
+        Y[t] = xp.tanh(X[t])
         return Y[t]
     def tanh_bwd(dY):
         return (1-Y**2) * dY
@@ -14,7 +15,8 @@ def begin_stepwise_tanh(X, nG):
 
 
 def begin_stepwise_relu(X, nG):
-    Y = numpy.zeros(X.shape, dtype='f')
+    xp = get_array_module(X)
+    Y = xp.zeros(X.shape, dtype='f')
     def relu_fwd(t):
         Y[t] = X[t] * (X[t] > 0)
         return Y[t]
@@ -24,23 +26,22 @@ def begin_stepwise_relu(X, nG):
 
 
 def begin_stepwise_LSTM(gates, nG):
-    ops = NumpyOps()
-    xp = ops.xp
+    xp = get_array_module(gates)
     nN = gates.shape[0]
     nO = gates.shape[1]//nG
     gates = gates.reshape((nN, nO, nG))
-    Hout = numpy.zeros((nN, nO), dtype='f')
-    cells = numpy.zeros((nN, nO), dtype='f')
-    pad = numpy.zeros((nO,), dtype='f')
-    d_pad = numpy.zeros((nO,), dtype='f')
+    Hout = xp.zeros((nN, nO), dtype='f')
+    cells = xp.zeros((nN, nO), dtype='f')
+    pad = xp.zeros((nO,), dtype='f')
+    d_pad = xp.zeros((nO,), dtype='f')
     def lstm_nonlin_fwd(t):
         ops.lstm(Hout[t], cells[t],
             gates[t], cells[t-1] if t >= 1 else pad)
         return Hout[t]
 
     def lstm_nonlin_bwd(d_output, Wh):
-        d_gates = numpy.zeros(gates.shape, dtype='f')
-        d_cells = numpy.zeros(cells.shape, dtype='f')
+        d_gates = xp.zeros(gates.shape, dtype='f')
+        d_cells = xp.zeros(cells.shape, dtype='f')
         if d_output.shape[0] >= 2:
             d_gates[:-1] += xp.tensordot(d_output[1:], Wh,
                             axes=[[1], [1]]).reshape((nN-1, nO, nG))
@@ -54,8 +55,8 @@ def begin_stepwise_LSTM(gates, nG):
     return Hout, lstm_nonlin_fwd, lstm_nonlin_bwd
 
 
-def LSTM(width, residual=False):
-    alloc, params = numpy_params()
+def LSTM(width, residual=False, xp=None):
+    alloc, params = xp_params(xp)
     model = _ResidualLSTM(alloc, width)
     def lstm_fwd(X, drop=0.):
         y, bp_y = model(X)
@@ -70,8 +71,8 @@ def LSTM(width, residual=False):
     return layerize(lstm_fwd)
 
 
-def BiLSTM(width, residual=False):
-    alloc, params = numpy_params()
+def BiLSTM(width, residual=False, xp=None):
+    alloc, params = xp_params(xp)
     model = _BiLSTM(alloc, width, width, residual=residual)
     def lstm_fwd(X, drop=0.):
         y, bp_y = model(X)
@@ -86,8 +87,8 @@ def BiLSTM(width, residual=False):
     return layerize(lstm_fwd)
 
 
-def BiRNN(width, residual=False):
-    alloc, params = numpy_params()
+def BiRNN(width, residual=False, xp=None):
+    alloc, params = xp_params(xp)
     model = _BiRNN(alloc, width, width, nonlinearity=begin_stepwise_selu,
                    residual=residual)
     def rnn_fwd(X, drop=0.):
@@ -103,8 +104,8 @@ def BiRNN(width, residual=False):
     return layerize(rnn_fwd)
 
 
-def RNN(width, residual=True):
-    alloc, params = numpy_params()
+def RNN(width, residual=True, xp=None):
+    alloc, params = xp_params(xp)
     model = _RNN(alloc, width, width, nonlinearity=begin_stepwise_relu,
                  residual=residual)
     def rnn_fwd(X, drop=0.):
@@ -120,19 +121,16 @@ def RNN(width, residual=True):
     return layerize(rnn_fwd)
 
 
-
-def _get_array_module(array):
-    return numpy
-
-
-def numpy_params():
+def xp_params(xp=None):
+    if xp is None:
+        xp = Model.Ops.xp
     params = []
     def allocate(shape, gradient=False):
-        param = numpy.zeros(shape, dtype='f')
+        param = xp.zeros(shape, dtype='f')
         if not gradient:
             return param
         else:
-            d_param = numpy.zeros(shape, dtype='f')
+            d_param = xp.zeros(shape, dtype='f')
             params.append([param, d_param])
             return param, d_param
     return allocate, params
@@ -144,8 +142,8 @@ def _BiRNN(alloc, nO, nI, nG=1, nonlinearity=begin_stepwise_tanh, residual=False
     assert nO == nI
     l2r_model = _ResidualLSTM(alloc, nI)
     r2l_model = _ResidualLSTM(alloc, nI)
-    xp = numpy
     def birnn_fwd(Xs):
+        xp = get_array_module(Xs[0])
         l2r_Zs, bp_l2r_Zs = l2r_model(Xs) 
         r2l_Zs, bp_r2l_Zs = r2l_model([xp.ascontiguousarray(X[::-1]) for X in Xs]) 
         def birnn_bwd(dZs):
@@ -177,7 +175,7 @@ def _RNN(alloc, nO, nI, nonlinearity=begin_stepwise_tanh, nG=1,
     Wh, dWh    = alloc((nO*nG, nO), gradient=True)
     b, db      = alloc((nO*nG,),    gradient=True)
     pad, d_pad = alloc((nO,),       gradient=True)
-    xp = _get_array_module(Wh)
+    xp = get_array_module(Wh)
     if not residual:
         Wx += xp.random.normal(scale=xp.sqrt(1./nI), size=Wx.size).reshape(Wx.shape)
     Wh += xp.random.normal(scale=xp.sqrt(1./nI), size=Wh.size).reshape(Wh.shape)
@@ -187,8 +185,11 @@ def _RNN(alloc, nO, nI, nonlinearity=begin_stepwise_tanh, nG=1,
         b[:, 0] = 3.
         b = b.reshape((nO * nG,))
 
+    nonlocals = [[], d_pad, dWx, dWh, db]
+
     def rnn_fwd(Xs):
-        Zs = []
+        nonlocals[0] = []
+        Zs = nonlocals[0]
         Ys = []
         backprops = []
         for X in Xs:
@@ -210,7 +211,7 @@ def _RNN(alloc, nO, nI, nonlinearity=begin_stepwise_tanh, nG=1,
             Zs.append(Z)
 
         def rnn_bwd(dZs):
-            nonlocal Zs, d_pad, dWx, dWh, db
+            Zs, d_pad, dWx, dWh, db = nonlocals
             dXs = []
             for X, Z, dZ, bp_Z in zip(Xs, Zs, dZs, backprops):
                 dY = bp_Z(dZ, Wh)
@@ -229,18 +230,20 @@ def _RNN(alloc, nO, nI, nonlinearity=begin_stepwise_tanh, nG=1,
 
 
 def _ResidualLSTM(alloc, nI):
-    ops = NumpyOps()
     nO = nI
     nG = 4
     W, dW      = alloc((nO*nG, nO), gradient=True)
     b, db      = alloc((nO*nG,),    gradient=True)
     pad = alloc((nO,))
-    xp = _get_array_module(W)
+    xp = get_array_module(W)
     W += xp.random.normal(scale=xp.sqrt(1./nI), size=W.size).reshape(W.shape)
     # Initialize forget gates' bias
     b = b.reshape((nO, nG))
     b[:, 0] = 3.
     b = b.reshape((nO * nG,))
+
+    nonlocals = [dW, db]
+    ops = Model.ops
 
     def lstm_fwd(Xs):
         batch_gates = []
@@ -263,7 +266,7 @@ def _ResidualLSTM(alloc, nI):
             batch_Houts.append(Hout)
 
         def lstm_bwd(d_Houts):
-            nonlocal dW, db
+            dW, db = nonlocals
             dXs = []
             for X, gates, cells, dH in zip(Xs, batch_gates, batch_cells, d_Houts):
                 nN = X.shape[0]
@@ -325,7 +328,7 @@ def lstm_fwd(Xs_lengths, W, b):
 
 
 def _make_timestep(Xs, lengths, t):
-    xp = _get_array_module(Xs)
+    xp = get_array_module(Xs)
     n = 0
     for i, length in enumerate(lengths):
         n += length < t
@@ -341,7 +344,7 @@ def _make_timestep(Xs, lengths, t):
 
 
 def _write_timestep(Xs, lengths, t, timestep):
-    xp = _get_array_module(Xs)
+    xp = get_array_module(Xs)
     start = 0
     i = 0
     for length in lengths:

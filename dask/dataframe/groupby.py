@@ -14,7 +14,7 @@ from .methods import drop_columns
 from .shuffle import shuffle
 from .utils import make_meta, insert_meta_param_description, raise_on_meta_error
 from ..base import tokenize
-from ..utils import derived_from, M, funcname
+from ..utils import derived_from, M, funcname, itemgetter
 
 
 # #############################################
@@ -163,6 +163,54 @@ def _groupby_get_group(df, by_key, get_key, columns):
 ###############################################################
 # Aggregation
 ###############################################################
+
+# Implementation detail: use class to make it easier to pass inside spec
+class Aggregation(object):
+    """A user defined aggregation.
+
+    Parameters
+    ----------
+    name : str
+        the name of the aggregation. It should be unique, since intermediate
+        result will be identified by this name.
+    chunk : callable
+        a function that will be called with the grouped column of each
+        partition. It can either return a single series or a tuple of series.
+        The index has to be equal to the groups.
+    agg : callable
+        a function that will be called to aggregate the results of each chunk.
+        Again the argument(s) will be grouped series. If ``chunk`` returned a
+        tuple, ``agg`` will be called with all of them as individual positional
+        arguments.
+    finalize : callable
+        an optional finalizer that will be called with the results from the
+        aggregation.
+
+    Examples
+    --------
+
+    ``sum`` can be implemented as::
+
+        custom_sum = dd.Aggregation('custom_sum', lambda s: s.sum(), lambda s0: s0.sum())
+        df.groupby('g').agg(custom_sum)
+
+    and ``mean`` can be implemented as::
+
+        custom_mean = dd.Aggregation(
+            'custom_mean',
+            lambda s: (s.count(), s.sum()),
+            lambda count, sum: (count.sum(), sum.sum()),
+            lambda count, sum: sum / count,
+        )
+        df.groupby('g').agg(custom_mean)
+
+    """
+    def __init__(self, name, chunk, agg, finalize=None):
+        self.chunk = chunk
+        self.agg = agg
+        self.finalize = finalize
+        self.__name__ = name
+
 
 def _groupby_aggregate(df, aggfunc=None, levels=None):
     return aggfunc(df.groupby(level=levels, sort=False))
@@ -385,12 +433,24 @@ def _build_agg_args(spec):
     """
     known_np_funcs = {np.min: 'min', np.max: 'max'}
 
+    # check that there are no name conflicts for a single input column
+    by_name = {}
+    for _, func, input_column in spec:
+        key = funcname(known_np_funcs.get(func, func)), input_column
+        by_name.setdefault(key, []).append((func, input_column))
+
+    for funcs in by_name.values():
+        if len(funcs) != 1:
+            raise ValueError('conflicting aggregation functions: {}'.format(funcs))
+
     chunks = {}
     aggs = {}
     finalizers = []
 
     for (result_column, func, input_column) in spec:
-        func = funcname(known_np_funcs.get(func, func))
+        if not isinstance(func, Aggregation):
+            func = funcname(known_np_funcs.get(func, func))
+
         impls = _build_agg_args_single(result_column, func, input_column)
 
         # overwrite existing result-columns, generate intermedates only once
@@ -427,6 +487,9 @@ def _build_agg_args_single(result_column, func, input_column):
     elif func == 'mean':
         return _build_agg_args_mean(result_column, func, input_column)
 
+    elif isinstance(func, Aggregation):
+        return _build_agg_args_custom(result_column, func, input_column)
+
     else:
         raise ValueError("unknown aggregate {}".format(func))
 
@@ -440,7 +503,7 @@ def _build_agg_args_simple(result_column, func, input_column, impl_pair):
                      dict(column=input_column, func=chunk_impl))],
         aggregate_funcs=[(intermediate, _apply_func_to_column,
                          dict(column=intermediate, func=agg_impl))],
-        finalizer=(result_column, operator.itemgetter(intermediate), dict()),
+        finalizer=(result_column, itemgetter(intermediate), dict()),
     )
 
 
@@ -497,6 +560,30 @@ def _build_agg_args_mean(result_column, func, input_column):
     )
 
 
+def _build_agg_args_custom(result_column, func, input_column):
+    col = _make_agg_id(funcname(func), input_column)
+
+    if func.finalize is None:
+        finalizer = (result_column, operator.itemgetter(col), dict())
+
+    else:
+        finalizer = (
+            result_column, _apply_func_to_columns,
+            dict(func=func.finalize, prefix=col)
+        )
+
+    return dict(
+        chunk_funcs=[
+            (col, _apply_func_to_column,
+             dict(func=func.chunk, column=input_column))
+        ],
+        aggregate_funcs=[
+            (col, _apply_func_to_columns, dict(func=func.agg, prefix=col))
+        ],
+        finalizer=finalizer
+    )
+
+
 def _groupby_apply_funcs(df, *index, **kwargs):
     """
     Group a dataframe and apply multiple aggregation functions.
@@ -528,7 +615,14 @@ def _groupby_apply_funcs(df, *index, **kwargs):
 
     result = collections.OrderedDict()
     for result_column, func, func_kwargs in funcs:
-        result[result_column] = func(grouped, **func_kwargs)
+        r = func(grouped, **func_kwargs)
+
+        if isinstance(r, tuple):
+            for idx, s in enumerate(r):
+                result['{}-{}'.format(result_column, idx)] = s
+
+        else:
+            result[result_column] = r
 
     return pd.DataFrame(result)
 
@@ -551,6 +645,19 @@ def _apply_func_to_column(df_like, column, func):
         return func(df_like)
 
     return func(df_like[column])
+
+
+def _apply_func_to_columns(df_like, prefix, func):
+    if isinstance(df_like, pd.DataFrame):
+        columns = df_like.columns
+    else:
+        # handle GroupBy objects
+        columns = df_like._selected_obj.columns
+
+    columns = sorted(col for col in columns if col.startswith(prefix))
+
+    columns = [df_like[col] for col in columns]
+    return func(*columns)
 
 
 def _finalize_mean(df, sum_column, count_column):
@@ -695,12 +802,23 @@ class _GroupBy(object):
                                      columns=columns,
                                      token=name_part,
                                      meta=meta)
-        cumpart_ext = (cumpart_raw.to_frame()
-                       if isinstance(meta, pd.Series)
-                       else cumpart_raw).assign(**{i: self.obj[i]
-                                                   for i in index})
 
-        cumlast = map_partitions(_apply_chunk, cumpart_ext, *index,
+        cumpart_raw_frame = (cumpart_raw.to_frame()
+                             if isinstance(meta, pd.Series)
+                             else cumpart_raw)
+
+        cumpart_ext = cumpart_raw_frame.assign(
+            **{i: self.obj[i]
+               if np.isscalar(i) and i in self.obj.columns
+               else self.obj.index
+               for i in index})
+
+        # Use pd.Grouper objects to specify that we are grouping by columns.
+        # Otherwise, pandas will throw an ambiguity warning if the
+        # DataFrame's index (self.obj.index) was included in the grouping
+        # specification (self.index). See pandas #14432
+        index_groupers = [pd.Grouper(key=ind) for ind in index]
+        cumlast = map_partitions(_apply_chunk, cumpart_ext, *index_groupers,
                                  columns=0 if columns is None else columns,
                                  chunk=M.last,
                                  meta=meta,
@@ -849,12 +967,18 @@ class _GroupBy(object):
             spec = _normalize_spec(arg, non_group_columns)
 
         elif isinstance(self.obj, Series):
-            # implementation detail: if self.obj is a series, a pseudo column
-            # None is used to denote the series itself. This pseudo column is
-            # removed from the result columns before passing the spec along.
-            spec = _normalize_spec({None: arg}, [])
-            spec = [(result_column, func, input_column)
-                    for ((_, result_column), func, input_column) in spec]
+            if isinstance(arg, (list, tuple, dict)):
+                # implementation detail: if self.obj is a series, a pseudo column
+                # None is used to denote the series itself. This pseudo column is
+                # removed from the result columns before passing the spec along.
+                spec = _normalize_spec({None: arg}, [])
+                spec = [(result_column, func, input_column)
+                        for ((_, result_column), func, input_column) in spec]
+
+            else:
+                spec = _normalize_spec({None: arg}, [])
+                spec = [(self.obj.name, func, input_column)
+                        for (_, func, input_column) in spec]
 
         else:
             raise ValueError("aggregate on unknown object {}".format(self.obj))
@@ -917,32 +1041,41 @@ class _GroupBy(object):
                 meta = self._meta_nonempty.apply(func)
         meta = make_meta(meta)
 
-        df = self.obj
-        if isinstance(self.index, DataFrame):  # add index columns to dataframe
-            df2 = df.assign(**{'_index_' + c: self.index[c]
-                               for c in self.index.columns})
-            index = self.index
-        elif isinstance(self.index, Series):
-            df2 = df.assign(_index=self.index)
-            index = self.index
-        elif (isinstance(self.index, list) and
-              any(isinstance(item, Series) for item in self.index)):
+        # Validate self.index
+        if (isinstance(self.index, list) and
+                any(isinstance(item, Series) for item in self.index)):
             raise NotImplementedError("groupby-apply with a multiple Series "
                                       "is currently not supported")
+
+        df = self.obj
+        should_shuffle = not (df.known_divisions and
+                              df._contains_index_name(self.index))
+
+        if should_shuffle:
+            if isinstance(self.index, DataFrame):  # add index columns to dataframe
+                df2 = df.assign(**{'_index_' + c: self.index[c]
+                                   for c in self.index.columns})
+                index = self.index
+            elif isinstance(self.index, Series):
+                df2 = df.assign(_index=self.index)
+                index = self.index
+            else:
+                df2 = df
+                index = df._select_columns_or_index(self.index)
+
+            df3 = shuffle(df2, index)  # shuffle dataframe and index
         else:
-            df2 = df
-            index = df[self.index]
+            df3 = df
 
-        df3 = shuffle(df2, index)  # shuffle dataframe and index
-
-        if isinstance(self.index, DataFrame):  # extract index from dataframe
+        if should_shuffle and isinstance(self.index, DataFrame):
+            # extract index from dataframe
             cols = ['_index_' + c for c in self.index.columns]
             index2 = df3[cols]
             if isinstance(meta, pd.DataFrame):
                 df4 = df3.map_partitions(drop_columns, cols, meta.columns.dtype)
             else:
                 df4 = df3.drop(cols, axis=1)
-        elif isinstance(self.index, Series):
+        elif should_shuffle and isinstance(self.index, Series):
             index2 = df3['_index']
             index2.name = self.index.name
             if isinstance(meta, pd.DataFrame):
@@ -1044,17 +1177,13 @@ class SeriesGroupBy(_GroupBy):
 
     @derived_from(pd.core.groupby.SeriesGroupBy)
     def aggregate(self, arg, split_every=None, split_out=1):
-        # short-circuit 'simple' aggregations
-        if (
-            not isinstance(arg, (list, dict)) and
-            arg in {'sum', 'mean', 'var', 'size', 'std', 'count'}
-        ):
-            return getattr(self, arg)(split_every=split_every,
-                                      split_out=split_out)
-
         result = super(SeriesGroupBy, self).aggregate(arg, split_every=split_every, split_out=split_out)
         if self._slice:
             result = result[self._slice]
+
+        if not isinstance(arg, (list, dict)):
+            result = result[result.columns[0]]
+
         return result
 
     @derived_from(pd.core.groupby.SeriesGroupBy)

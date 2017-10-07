@@ -18,7 +18,7 @@ except ImportError:
 
 from .. import array as da
 from .. import core
-from ..array.core import partial_by_order
+from ..utils import partial_by_order
 from .. import threaded
 from ..compatibility import apply, operator_div, bind_method, PY3
 from ..utils import (random_state_data,
@@ -37,7 +37,7 @@ no_default = '__no_default__'
 
 if PANDAS_VERSION >= '0.20.0':
     from pandas.util import cache_readonly
-    pd.core.computation.expressions.set_use_numexpr(False)
+    pd.set_option('compute.use_numexpr', False)
 else:
     from pandas.util.decorators import cache_readonly
     pd.computation.expressions.set_use_numexpr(False)
@@ -250,6 +250,7 @@ class _Frame(Base):
 
     @property
     def size(self):
+        """ Size of the series """
         return self.reduction(methods.size, np.sum, token='size', meta=int,
                               split_every=False)
 
@@ -352,6 +353,7 @@ Dask Name: {name}, {task} tasks""".format(klass=self.__class__.__name__,
         return len(self.divisions) > 0 and self.divisions[0] is not None
 
     def clear_divisions(self):
+        """ Forget division information """
         divisions = (None,) * (self.npartitions + 1)
         return type(self)(self.dask, self._name, self._meta, divisions)
 
@@ -928,7 +930,8 @@ Dask Name: {name}, {task} tasks""".format(klass=self.__class__.__name__,
 
         See Also
         --------
-            dask.DataFrame.random_split, pd.DataFrame.sample
+        DataFrame.random_split
+        pandas.DataFrame.sample
         """
 
         if random_state is None:
@@ -1564,9 +1567,10 @@ normalize_token.register((Scalar, _Frame), lambda a: a._name)
 
 
 class Series(_Frame):
-    """ Out-of-core Series object
+    """ Parallel Pandas Series
 
-    Mimics ``pandas.Series``.
+    Do not use this class directly.  Instead use functions like
+    ``dd.read_csv``, ``dd.read_parquet``, or ``dd.from_pandas``.
 
     Parameters
     ----------
@@ -1584,7 +1588,6 @@ class Series(_Frame):
 
     See Also
     --------
-
     dask.dataframe.DataFrame
     """
 
@@ -1621,6 +1624,7 @@ class Series(_Frame):
 
     @cache_readonly
     def dt(self):
+        """ Namespace of datetime methods """
         return DatetimeAccessor(self)
 
     @cache_readonly
@@ -1629,6 +1633,7 @@ class Series(_Frame):
 
     @cache_readonly
     def str(self):
+        """ Namespace for string methods """
         return StringAccessor(self)
 
     def __dir__(self):
@@ -1644,6 +1649,7 @@ class Series(_Frame):
 
     @property
     def nbytes(self):
+        """ Number of bytes """
         return self.reduction(methods.nbytes, np.sum, token='nbytes',
                               meta=int, split_every=False)
 
@@ -1826,6 +1832,7 @@ Dask Name: {name}, {task} tasks""".format(klass=self.__class__.__name__,
         return self.map_partitions(M.combine_first, other)
 
     def to_bag(self, index=False):
+        """ Craeate a Dask Bag from a Series """
         from .io import to_bag
         return to_bag(self, index)
 
@@ -2060,11 +2067,13 @@ class Index(Series):
 
 class DataFrame(_Frame):
     """
-    Implements out-of-core DataFrame as a sequence of pandas DataFrames
+    Parallel Pandas DataFrame
+
+    Do not use this class directly.  Instead use functions like
+    ``dd.read_csv``, ``dd.read_parquet``, or ``dd.from_pandas``.
 
     Parameters
     ----------
-
     dask: dict
         The dask graph to compute this DataFrame
     name: str
@@ -2329,7 +2338,9 @@ class DataFrame(_Frame):
         return self.map_partitions(M.rename, None, columns)
 
     def query(self, expr, **kwargs):
-        """ Blocked version of pd.DataFrame.query
+        """ Filter dataframe with complex expression
+
+        Blocked version of pd.DataFrame.query
 
         This is like the sequential version except that this will also happen
         in many threads.  This may conflict with ``numexpr`` which will use
@@ -2339,10 +2350,10 @@ class DataFrame(_Frame):
             import numexpr
             numexpr.set_nthreads(1)
 
-        The original docstring follows below:\n
-        """ + (pd.DataFrame.query.__doc__
-               if pd.DataFrame.query.__doc__ is not None else '')
-
+        See also
+        --------
+        pandas.DataFrame.query
+        """
         name = 'query-%s' % tokenize(self, expr)
         if kwargs:
             name = name + '--' + tokenize(kwargs)
@@ -2359,6 +2370,9 @@ class DataFrame(_Frame):
 
     @derived_from(pd.DataFrame)
     def eval(self, expr, inplace=None, **kwargs):
+        if inplace is None:
+            if PANDAS_VERSION > '0.21.0':
+                inplace = False
         if '=' in expr and inplace in (True, None):
             raise NotImplementedError("Inplace eval not supported."
                                       " Please use inplace=False")
@@ -2744,6 +2758,64 @@ class DataFrame(_Frame):
                                        show_dimensions=False, notebook=True)
         return self._HTML_FMT.format(data=data, name=key_split(self._name),
                                      task=len(self.dask))
+
+    def _select_columns_or_index(self, columns_or_index):
+        """
+        Parameters
+        ----------
+        columns_or_index
+            Column or index name, or a list of these
+
+        Returns
+        -------
+        dd.DataFrame
+            Dask DataFrame with columns corresponding to each column or
+            index level in columns_or_index.  If included, the column
+            corresponding to the index level is named _index
+        """
+
+        # Ensure columns_or_index is a list
+        columns_or_index = (columns_or_index
+                            if isinstance(columns_or_index, list)
+                            else [columns_or_index])
+
+        column_names = [n for n in columns_or_index if self._is_column_label(n)]
+
+        selected_df = self[column_names]
+        if self._contains_index_name(columns_or_index):
+            # Index name was included
+            selected_df = selected_df.assign(_index=self.index)
+
+        return selected_df
+
+    def _is_column_label(self, c):
+        """
+        Test whether a value matches the label of a column in the DataFrame
+        """
+        return (not isinstance(c, Base) and
+                (np.isscalar(c) or isinstance(c, tuple)) and
+                c in self.columns)
+
+    def _is_index_label(self, i):
+        """
+        Test whether a value matches the label of the index of the DataFrame
+        """
+        return (self.index.name is not None and
+                not isinstance(i, Base) and
+                (np.isscalar(i) or isinstance(i, tuple)) and
+                i == self.index.name)
+
+    def _contains_index_name(self, columns_or_index):
+        """
+        Test whether the input contains the label of the index of the DataFrame
+        """
+        if isinstance(columns_or_index, list):
+            return (any(self._is_index_label(n) and
+                        not self._is_column_label(n)
+                        for n in columns_or_index))
+        else:
+            return (self._is_index_label(columns_or_index) and
+                    not self._is_column_label(columns_or_index))
 
 
 # bind operators
@@ -3584,7 +3656,7 @@ def repartition_divisions(a, b, name, out1, out2, force=False):
                 raise ValueError('check for duplicate partitions\nold:\n%s\n\n'
                                  'new:\n%s\n\ncombined:\n%s'
                                  % (pformat(a), pformat(b), pformat(c)))
-            d[(out2, j - 1)] = (pd.concat, tmp)
+            d[(out2, j - 1)] = (methods.concat, tmp)
         j += 1
     return d
 
@@ -3616,10 +3688,10 @@ def repartition_npartitions(df, npartitions):
                                      for new_partition_index in range(npartitions + 1)]
         dsk = {}
         for new_partition_index in range(npartitions):
-            value = (pd.concat, [(df._name, old_partition_index)
-                                 for old_partition_index in
-                                 range(new_partitions_boundaries[new_partition_index],
-                                       new_partitions_boundaries[new_partition_index + 1])])
+            value = (methods.concat,
+                     [(df._name, old_partition_index) for old_partition_index in
+                      range(new_partitions_boundaries[new_partition_index],
+                            new_partitions_boundaries[new_partition_index + 1])])
             dsk[new_name, new_partition_index] = value
         divisions = [df.divisions[new_partition_index]
                      for new_partition_index in new_partitions_boundaries]

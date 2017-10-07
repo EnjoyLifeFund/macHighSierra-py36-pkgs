@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import re
+import six
 
 import html5lib
 from html5lib.filters.base import Filter
@@ -7,8 +8,7 @@ from html5lib.filters.sanitizer import allowed_protocols
 from html5lib.serializer import HTMLSerializer
 
 from bleach import callbacks as linkify_callbacks
-from bleach.encoding import force_unicode
-from bleach.utils import alphabetize_attributes
+from bleach.utils import alphabetize_attributes, force_unicode
 
 
 #: List of default callbacks
@@ -134,7 +134,12 @@ class Linker(object):
 
         :returns: linkified text as unicode
 
+        :raises TypeError: if ``text`` is not a text type
+
         """
+        if not isinstance(text, six.string_types):
+            raise TypeError('argument must be of text type')
+
         text = force_unicode(text)
 
         if not text:
@@ -344,7 +349,17 @@ class LinkifyFilter(Filter):
 
     def handle_links(self, src_iter):
         """Handle links in character tokens"""
+        in_a = False  # happens, if parse_email=True and if a mail was found
         for token in src_iter:
+            if in_a:
+                if token['type'] == 'EndTag' and token['name'] == 'a':
+                    in_a = False
+                yield token
+                continue
+            elif token['type'] == 'StartTag' and token['name'] == 'a':
+                in_a = True
+                yield token
+                continue
             if token['type'] == 'Characters':
                 text = token['data']
                 new_tokens = []

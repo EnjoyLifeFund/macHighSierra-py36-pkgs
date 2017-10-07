@@ -1,14 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
 from itertools import product
-from math import ceil
+import math
 from numbers import Integral, Number
 from operator import add, getitem, itemgetter
 
 import numpy as np
-from toolz import accumulate, memoize, merge, pluck
+from toolz import accumulate, memoize, merge, pluck, concat
 
-from ..base import tokenize
+from .. import core
+from .. import sharedict
+from ..base import tokenize, Base
 
 colon = slice(None, None, None)
 
@@ -55,6 +57,8 @@ def sanitize_index(ind):
                      _sanitize_index_element(ind.step))
     elif isinstance(ind, Number):
         return _sanitize_index_element(ind)
+    elif isinstance(ind, Base):
+        return ind
     index_array = np.asanyarray(ind)
     if index_array.dtype == bool:
         nonzero = np.nonzero(index_array)
@@ -62,7 +66,7 @@ def sanitize_index(ind):
             # If a 1-element tuple, unwrap the element
             nonzero = nonzero[0]
         return np.asanyarray(nonzero)
-    elif np.issubdtype(index_array.dtype, int):
+    elif np.issubdtype(index_array.dtype, np.integer):
         return index_array
     elif np.issubdtype(index_array.dtype, float):
         int_index = index_array.astype(np.intp)
@@ -93,7 +97,6 @@ def slice_array(out_name, in_name, blockdims, index):
 
     Parameters
     ----------
-
     in_name - string
       This is the dask variable name that will be used as input
     out_name - string
@@ -103,7 +106,6 @@ def slice_array(out_name, in_name, blockdims, index):
 
     Returns
     -------
-
     Dict where the keys are tuples of
 
         (out_name, dim_index[, dim_index[, ...]])
@@ -119,7 +121,6 @@ def slice_array(out_name, in_name, blockdims, index):
 
     Examples
     --------
-
     >>> dsk, blockdims = slice_array('y', 'x', [(20, 20, 20, 20, 20)],
     ...                              (slice(10, 35),))  #  doctest: +SKIP
     >>> dsk  # doctest: +SKIP
@@ -130,7 +131,6 @@ def slice_array(out_name, in_name, blockdims, index):
 
     See Also
     --------
-
     This function works by successively unwrapping cases and passing down
     through a sequence of functions.
 
@@ -138,9 +138,6 @@ def slice_array(out_name, in_name, blockdims, index):
     slice_wrap_lists - handle fancy indexing with lists
     slice_slices_and_integers - handle everything else
     """
-    index = replace_ellipsis(len(blockdims), index)
-    index = tuple(map(sanitize_index, index))
-
     blockdims = tuple(map(tuple, blockdims))
 
     # x[:, :, :] - Punt and return old value
@@ -215,17 +212,10 @@ def slice_wrap_lists(out_name, in_name, blockdims, index):
     take - handle slicing with lists ("fancy" indexing)
     slice_slices_and_integers - handle slicing with slices and integers
     """
-    shape = tuple(map(sum, blockdims))
     assert all(isinstance(i, (slice, list, Integral, np.ndarray))
                for i in index)
     if not len(blockdims) == len(index):
         raise IndexError("Too many indices for array")
-
-    for bd_size, i in zip(shape, index):
-        check_index(i, bd_size)
-
-    # Change indices like -1 to 9
-    index2 = posify_index(shape, index)
 
     # Do we have more than one list in the index?
     where_list = [i for i, ind in enumerate(index)
@@ -235,25 +225,25 @@ def slice_wrap_lists(out_name, in_name, blockdims, index):
     # Is the single list an empty list? In this case just treat it as a zero
     # length slice
     if where_list and not index[where_list[0]].size:
-        index2 = list(index2)
-        index2[where_list.pop()] = slice(0, 0, 1)
-        index2 = tuple(index2)
+        index = list(index)
+        index[where_list.pop()] = slice(0, 0, 1)
+        index = tuple(index)
 
     # No lists, hooray! just use slice_slices_and_integers
     if not where_list:
-        return slice_slices_and_integers(out_name, in_name, blockdims, index2)
+        return slice_slices_and_integers(out_name, in_name, blockdims, index)
 
     # Replace all lists with full slices  [3, 1, 0] -> slice(None, None, None)
     index_without_list = tuple(slice(None, None, None)
                                if isinstance(i, np.ndarray) else i
-                               for i in index2)
+                               for i in index)
 
     # lists and full slices.  Just use take
     if all(isinstance(i, np.ndarray) or i == slice(None, None, None)
-            for i in index2):
+            for i in index):
         axis = where_list[0]
         blockdims2, dsk3 = take(out_name, in_name, blockdims,
-                                index2[where_list[0]], axis=axis)
+                                index[where_list[0]], axis=axis)
     # Mixed case. Both slices/integers and lists. slice/integer then take
     else:
         # Do first pass without lists
@@ -262,11 +252,11 @@ def slice_wrap_lists(out_name, in_name, blockdims, index):
 
         # After collapsing some axes due to int indices, adjust axis parameter
         axis = where_list[0]
-        axis2 = axis - sum(1 for i, ind in enumerate(index2)
+        axis2 = axis - sum(1 for i, ind in enumerate(index)
                            if i < axis and isinstance(ind, Integral))
 
         # Do work
-        blockdims2, dsk2 = take(out_name, tmp, blockdims2, index2[axis],
+        blockdims2, dsk2 = take(out_name, tmp, blockdims2, index[axis],
                                 axis=axis2)
         dsk3 = merge(dsk, dsk2)
 
@@ -606,11 +596,11 @@ def posify_index(shape, ind):
     if isinstance(ind, tuple):
         return tuple(map(posify_index, shape, ind))
     if isinstance(ind, Integral):
-        if ind < 0:
+        if ind < 0 and not math.isnan(shape):
             return ind + shape
         else:
             return ind
-    if isinstance(ind, (np.ndarray, list)):
+    if isinstance(ind, (np.ndarray, list)) and not math.isnan(shape):
         ind = np.asanyarray(ind)
         return np.where(ind < 0, ind + shape, ind)
     return ind
@@ -674,7 +664,7 @@ def new_blockdim(dim_shape, lengths, index):
               for i, slc in pairs]
     if isinstance(index, slice) and index.step and index.step < 0:
         slices = slices[::-1]
-    return [int(ceil((1. * slc.stop - slc.start) / slc.step)) for slc in slices]
+    return [int(math.ceil((1. * slc.stop - slc.start) / slc.step)) for slc in slices]
 
 
 def replace_ellipsis(n, index):
@@ -695,6 +685,97 @@ def replace_ellipsis(n, index):
     extra_dimensions = n - (len(index) - sum(i is None for i in index) - 1)
     return (index[:loc] + (slice(None, None, None),) * extra_dimensions +
             index[loc + 1:])
+
+
+def normalize_slice(idx, dim):
+    """ Normalize slices to canonical form
+
+    Parameters
+    ----------
+    idx: slice or other index
+    dim: dimension length
+
+    Examples
+    --------
+    >>> normalize_slice(slice(0, 10, 1), 10)
+    slice(None, None, None)
+    """
+
+    if isinstance(idx, slice):
+        start, stop, step = idx.start, idx.stop, idx.step
+        if start is not None:
+            if start < 0 and not math.isnan(dim):
+                start = max(0, start + dim)
+            elif start > dim:
+                start = dim
+        if stop is not None:
+            if stop < 0 and not math.isnan(dim):
+                stop = max(0, stop + dim)
+            elif stop > dim:
+                stop = dim
+        if start == 0:
+            start = None
+        if stop == dim:
+            stop = None
+        if step == 1:
+            step = None
+        return slice(start, stop, step)
+    return idx
+
+
+def normalize_index(idx, shape):
+    """ Normalize slicing indexes
+
+    1.  Replaces ellipses with many full slices
+    2.  Adds full slices to end of index
+    3.  Checks bounding conditions
+    4.  Replaces numpy arrays with lists
+    5.  Posify's integers and lists
+    6.  Normalizes slices to canonical form
+
+    Examples
+    --------
+    >>> normalize_index(1, (10,))
+    (1,)
+    >>> normalize_index(-1, (10,))
+    (9,)
+    >>> normalize_index([-1], (10,))
+    (array([9]),)
+    >>> normalize_index(slice(-3, 10, 1), (10,))
+    (slice(7, None, None),)
+    >>> normalize_index((Ellipsis, None), (10,))
+    (slice(None, None, None), None)
+    """
+    if not isinstance(idx, tuple):
+        idx = (idx,)
+    idx = replace_ellipsis(len(shape), idx)
+    n_sliced_dims = 0
+    for i in idx:
+        if hasattr(i, 'ndim') and i.ndim >= 1:
+            n_sliced_dims += i.ndim
+        elif i is None:
+            continue
+        else:
+            n_sliced_dims += 1
+    idx = idx + (slice(None),) * (len(shape) - n_sliced_dims)
+    if len([i for i in idx if i is not None]) > len(shape):
+        raise IndexError("Too many indices for array")
+
+    none_shape = []
+    i = 0
+    for ind in idx:
+        if ind is not None:
+            none_shape.append(shape[i])
+            i += 1
+        else:
+            none_shape.append(None)
+
+    for i, d in zip(idx, none_shape):
+        check_index(i, d)
+    idx = tuple(map(sanitize_index, idx))
+    idx = tuple(map(normalize_slice, idx, none_shape))
+    idx = posify_index(none_shape, idx)
+    return idx
 
 
 def check_index(ind, dimension):
@@ -733,6 +814,10 @@ def check_index(ind, dimension):
             raise IndexError("Index out of bounds %s" % dimension)
     elif isinstance(ind, slice):
         return
+    elif isinstance(ind, Base):
+        return
+    elif ind is None:
+        return
 
     elif ind >= dimension:
         raise IndexError("Index is not smaller than dimension %d >= %d" %
@@ -741,3 +826,59 @@ def check_index(ind, dimension):
     elif ind < -dimension:
         msg = "Negative index is not greater than negative dimension %d <= -%d"
         raise IndexError(msg % (ind, dimension))
+
+
+def slice_with_dask_array(x, index):
+    from .core import Array, atop, elemwise
+
+    out_index = [slice(None)
+                 if isinstance(ind, Array) and ind.dtype == bool
+                 else ind
+                 for ind in index]
+
+    if len(index) == 1 and index[0].ndim == x.ndim:
+        y = elemwise(getitem, x, *index, dtype=x.dtype)
+        name = 'getitem-' + tokenize(x, index)
+        dsk = {(name, i): k for i, k in enumerate(core.flatten(y._keys()))}
+        chunks = ((np.nan,) * y.npartitions,)
+        return (Array(sharedict.merge(y.dask, (name, dsk)), name, chunks, x.dtype),
+                out_index)
+
+    if any(isinstance(ind, Array) and ind.dtype == bool and ind.ndim != 1
+            for ind in index):
+        raise NotImplementedError("Slicing with dask.array only permitted when "
+                                  "the indexer has only one dimension or when "
+                                  "it has the same dimension as the sliced "
+                                  "array")
+    indexes = [ind
+               if isinstance(ind, Array) and ind.dtype == bool
+               else slice(None)
+               for ind in index]
+
+    arginds = []
+    i = 0
+    for ind in indexes:
+        if isinstance(ind, Array) and ind.dtype == bool:
+            new = (ind, tuple(range(i, i + ind.ndim)))
+            i += x.ndim
+        else:
+            new = (slice(None), None)
+            i += 1
+        arginds.append(new)
+
+    arginds = list(concat(arginds))
+
+    out = atop(getitem_variadic, tuple(range(x.ndim)), x, tuple(range(x.ndim)), *arginds, dtype=x.dtype)
+
+    chunks = []
+    for ind, chunk in zip(index, out.chunks):
+        if isinstance(ind, Array) and ind.dtype == bool:
+            chunks.append((np.nan,) * len(chunk))
+        else:
+            chunks.append(chunk)
+    out._chunks = tuple(chunks)
+    return out, tuple(out_index)
+
+
+def getitem_variadic(x, *index):
+    return x[index]

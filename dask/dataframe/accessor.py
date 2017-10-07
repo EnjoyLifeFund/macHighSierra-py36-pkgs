@@ -5,6 +5,7 @@ import pandas as pd
 from toolz import partial
 
 from ..utils import derived_from
+from .utils import is_categorical_dtype
 
 
 def maybe_wrap_pandas(obj, x):
@@ -109,9 +110,20 @@ class StringAccessor(Accessor):
     _not_implemented = {'get_dummies'}
 
     def _validate(self, series):
-        if not series.dtype == 'object':
+        if not (series.dtype == 'object' or (
+                is_categorical_dtype(series) and
+                series.cat.categories.dtype == 'object')):
             raise AttributeError("Can only use .str accessor with object dtype")
 
     @derived_from(pd.core.strings.StringMethods)
     def split(self, pat=None, n=-1):
         return self._function_map('split', pat=pat, n=n)
+
+    def __getitem__(self, index):
+        return self._series.map_partitions(str_get, index,
+                                           meta=self._series._meta)
+
+
+def str_get(series, index):
+    """ Implements series.str[index] """
+    return series.str[index]

@@ -208,6 +208,27 @@ def test_append():
         assert_eq(df, ddf3)
 
 
+def test_append_with_partition():
+    with tmpdir() as tmp:
+        df0 = pd.DataFrame({'lat': np.arange(0, 10), 'lon': np.arange(10, 20),
+                            'value': np.arange(100, 110)})
+        df0.index.name = 'index'
+        df1 = pd.DataFrame({'lat': np.arange(10, 20), 'lon': np.arange(10, 20),
+                            'value': np.arange(120, 130)})
+        df1.index.name = 'index'
+        dd_df0 = dd.from_pandas(df0, npartitions=1)
+        dd_df1 = dd.from_pandas(df1, npartitions=1)
+        dd.to_parquet(tmp, dd_df0, partition_on=['lon'])
+        dd.to_parquet(tmp, dd_df1, partition_on=['lon'], append=True,
+                      ignore_divisions=True)
+
+        out = dd.read_parquet(tmp).compute()
+    out['lon'] = out.lon.astype('int64')  # just to pass assert
+    # sort required since partitioning breaks index order
+    assert_eq(out.sort_values('value'), pd.concat([df0, df1])[out.columns],
+              check_index=False)
+
+
 def test_append_wo_index():
     """Test append with write_index=False."""
     with tmpdir() as tmp:
@@ -482,3 +503,52 @@ def test_empty(fn):
     out = dd.read_parquet(fn).compute()
     assert len(out) == 0
     assert_eq(out, df)
+
+
+def test_timestamp96(fn):
+    df = pd.DataFrame({'a': ['now']}, dtype='M8[ns]')
+    ddf = dd.from_pandas(df, 1)
+    ddf.to_parquet(fn, write_index=False, times='int96')
+    pf = fastparquet.ParquetFile(fn)
+    assert pf._schema[1].type == fastparquet.parquet_thrift.Type.INT96
+    out = dd.read_parquet(fn).compute()
+    assert_eq(out, df)
+
+
+def test_drill_scheme(fn):
+    N = 5
+    df1 = pd.DataFrame({c: np.random.random(N)
+                        for i, c in enumerate(['a', 'b', 'c'])})
+    df2 = pd.DataFrame({c: np.random.random(N)
+                        for i, c in enumerate(['a', 'b', 'c'])})
+    files = []
+    for d in ['test_data1', 'test_data2']:
+        dn = os.path.join(fn, d)
+        if not os.path.exists(dn):
+            os.mkdir(dn)
+        files.append(os.path.join(dn, 'data1.parq'))
+
+    fastparquet.write(files[0], df1)
+    fastparquet.write(files[1], df2)
+
+    df = dd.read_parquet(files)
+    assert 'dir0' in df.columns
+    out = df.compute()
+    assert 'dir0' in out
+    assert (np.unique(out.dir0) == ['test_data1', 'test_data2']).all()
+
+
+def test_parquet_select_cats(fn):
+    df = pd.DataFrame({
+        'categories': pd.Series(
+            np.random.choice(['a', 'b', 'c', 'd', 'e', 'f'], size=100),
+            dtype='category'),
+        'ints': pd.Series(list(range(0, 100)), dtype='int'),
+        'floats': pd.Series(list(range(0, 100)), dtype='float')})
+
+    ddf = dd.from_pandas(df, 1)
+    ddf.to_parquet(fn)
+    rddf = dd.read_parquet(fn, columns=['ints'])
+    assert list(rddf.columns) == ['ints']
+    rddf = dd.read_parquet(fn)
+    assert list(rddf.columns) == list(df)

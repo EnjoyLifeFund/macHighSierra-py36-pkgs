@@ -3,14 +3,26 @@
 
 """Tests for the Cython magics extension."""
 
+from __future__ import absolute_import
+
 import os
 import sys
+from contextlib import contextmanager
+from Cython.Build import IpythonMagic
+from Cython.TestUtils import CythonTest
 
 try:
     from IPython.testing.globalipapp import get_ipython
     from IPython.utils import py3compat
 except:
+    # Disable tests and fake helpers for initialisation below.
+    class _py3compat(object):
+        def str_to_unicode(self, s):
+            return s
+
     __test__ = False
+    get_ipython = lambda: None
+    py3compat = _py3compat()
 
 try:
     # disable IPython history thread to avoid having to clean it up
@@ -19,9 +31,9 @@ try:
 except ImportError:
     pass
 
-from Cython.TestUtils import CythonTest
-
+# Initialise IPython after disabling history thread.
 ip = get_ipython()
+
 code = py3compat.str_to_unicode("""\
 def f(x):
     return 2*x
@@ -33,6 +45,12 @@ def f(int x):
 
 def call(x):
     return f(*(x,))
+""")
+
+pgo_cython3_code = cython3_code + py3compat.str_to_unicode("""\
+def main():
+    for _ in range(100): call(5)
+main()
 """)
 
 
@@ -118,6 +136,14 @@ class TestIPythonMagic(CythonTest):
         self.assertEqual(ip.user_ns['h'], 2 // 10)
 
     @skip_win32('Skip on Windows')
+    def test_cython3_pgo(self):
+        # The Cython cell defines the functions f() and call().
+        ip.run_cell_magic('cython', '-3 --pgo', pgo_cython3_code)
+        ip.ex('g = f(10); h = call(10); main()')
+        self.assertEqual(ip.user_ns['g'], 2.0 / 10.0)
+        self.assertEqual(ip.user_ns['h'], 2.0 / 10.0)
+
+    @skip_win32('Skip on Windows')
     def test_extlibs(self):
         code = py3compat.str_to_unicode("""
 from libc.math cimport sin
@@ -126,3 +152,43 @@ x = sin(0.0)
         ip.user_ns['x'] = 1
         ip.run_cell_magic('cython', '-l m', code)
         self.assertEqual(ip.user_ns['x'], 0)
+
+
+    def test_cython_verbose(self):
+        ip.run_cell_magic('cython', '--verbose', code)
+        ip.ex('g = f(10)')
+        self.assertEqual(ip.user_ns['g'], 20.0)
+
+    def test_cython_verbose_thresholds(self):
+        @contextmanager
+        def mock_distutils():
+            class MockLog:
+                DEBUG = 1
+                INFO = 2
+                thresholds = [INFO]
+
+                def set_threshold(self, val):
+                    self.thresholds.append(val)
+                    return self.thresholds[-2]
+
+
+            new_log = MockLog()
+            old_log = IpythonMagic.distutils.log
+            try:
+                IpythonMagic.distutils.log = new_log
+                yield new_log
+            finally:
+                IpythonMagic.distutils.log = old_log
+
+        with mock_distutils() as verbose_log:
+            ip.run_cell_magic('cython', '--verbose', code)
+            ip.ex('g = f(10)')
+        self.assertEqual(ip.user_ns['g'], 20.0)
+        self.assertEquals([verbose_log.INFO, verbose_log.DEBUG, verbose_log.INFO],
+                          verbose_log.thresholds)
+
+        with mock_distutils() as normal_log:
+            ip.run_cell_magic('cython', '', code)
+            ip.ex('g = f(10)')
+        self.assertEqual(ip.user_ns['g'], 20.0)
+        self.assertEquals([normal_log.INFO], normal_log.thresholds)

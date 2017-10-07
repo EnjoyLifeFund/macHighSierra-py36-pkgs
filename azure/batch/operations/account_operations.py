@@ -9,8 +9,8 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.pipeline import ClientRawResponse
 import uuid
+from msrest.pipeline import ClientRawResponse
 
 from .. import models
 
@@ -22,7 +22,7 @@ class AccountOperations(object):
     :param config: Configuration of service client.
     :param serializer: An object model serializer.
     :param deserializer: An objec model deserializer.
-    :ivar api_version: Client API Version. Constant value: "2017-06-01.5.1".
+    :ivar api_version: Client API Version. Constant value: "2017-09-01.6.0".
     """
 
     def __init__(self, client, config, serializer, deserializer):
@@ -30,7 +30,7 @@ class AccountOperations(object):
         self._client = client
         self._serialize = serializer
         self._deserialize = deserializer
-        self.api_version = "2017-06-01.5.1"
+        self.api_version = "2017-09-01.6.0"
 
         self.config = config
 
@@ -48,6 +48,8 @@ class AccountOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: An iterator like instance of :class:`NodeAgentSku
+         <azure.batch.models.NodeAgentSku>`
         :rtype: :class:`NodeAgentSkuPaged
          <azure.batch.models.NodeAgentSkuPaged>`
         :raises:

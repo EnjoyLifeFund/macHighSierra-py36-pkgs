@@ -1,7 +1,6 @@
 import copy
 import numpy
 
-from .neural._classes.feed_forward import FeedForward
 from .neural._classes.model import Model
 from . import check
 from .check import equal_axis
@@ -23,10 +22,56 @@ class FunctionLayer(Model):
         Model.__init__(self)
 
 
-def layerize(begin_update=None, *args, **kwargs):
+def _run_child_hooks(model, X, y):
+    for layer in model._layers:
+        for hook in layer.on_data_hooks:
+            hook(layer, X, y)
+        X = layer(X)
+
+
+@describe.on_data(_run_child_hooks)
+class FeedForward(Model):
+    '''A feed-forward network, that chains multiple Model instances together.'''
+    name = 'feed-forward'
+    def __init__(self, layers, **kwargs):
+        self._layers = []
+        for layer in layers:
+            if isinstance(layer, FeedForward):
+                self._layers.extend(layer._layers)
+            else:
+                self._layers.append(layer)
+        Model.__init__(self, **kwargs)
+
+    @property
+    def input_shape(self):
+        return self._layers[0].input_shape
+
+    @property
+    def output_shape(self):
+        return self._layers[-1].output_shape
+
+    def predict(self, X):
+        for layer in self._layers:
+            X = layer(X)
+        return X
+
+    def begin_update(self, X, drop=0.):
+        callbacks = []
+        for layer in self._layers:
+            X, inc_layer_grad = layer.begin_update(X, drop=drop)
+            callbacks.append(inc_layer_grad)
+        def continue_update(gradient, sgd=None):
+            for callback in reversed(callbacks):
+                if gradient is None or callback == None:
+                    break
+                gradient = callback(gradient, sgd)
+            return gradient
+        return X, continue_update
+
+def layerize(begin_update=None, predict=None, *args, **kwargs):
     '''Wrap a function into a layer'''
     if begin_update is not None:
-        return FunctionLayer(begin_update, *args, **kwargs)
+        return FunctionLayer(begin_update, predict=predict, *args, **kwargs)
     def wrapper(begin_update):
         return FunctionLayer(begin_update, *args, **kwargs)
     return wrapper
@@ -242,7 +287,13 @@ def with_flatten(layer, pad=0, ndim=4):
             else:
                 return layer.ops.unflatten(d_X, lengths, pad=pad)
         return layer.ops.unflatten(X, lengths, pad=pad), finish_update
-    model = layerize(begin_update)
+
+    def predict(seqs_in):
+        lengths = layer.ops.asarray([len(seq) for seq in seqs_in])
+        X = layer(layer.ops.flatten(seqs_in, pad=pad))
+        return layer.ops.unflatten(X, lengths, pad=pad)
+
+    model = layerize(begin_update, predict=predict)
     model._layers.append(layer)
     model.on_data_hooks.append(_with_flatten_on_data)
     model.name = 'flatten'
@@ -334,6 +385,29 @@ def uniqued(layer, column=0):
     return model
 
 
+def foreach(layer, drop_factor=1.0):
+    '''Map a layer across elements in a list'''
+    def foreach_fwd(Xs, drop=0.):
+        drop *= drop_factor
+        ys = []
+        backprops = []
+        for X in Xs:
+            y, bp_y = layer.begin_update(X, drop=drop)
+            ys.append(y)
+            backprops.append(bp_y)
+        def foreach_bwd(d_ys, sgd=None):
+            d_Xs = []
+            for d_y, bp_y in zip(d_ys, backprops):
+                if bp_y is not None and bp_y is not None:
+                    d_Xs.append(d_y, sgd=sgd)
+                else:
+                    d_Xs.append(None)
+            return d_Xs
+        return ys, foreach_bwd
+    model = wrap(foreach_fwd, layer)
+    return model
+
+
 def foreach_sentence(layer, drop_factor=1.0):
     '''Map a layer across sentences (assumes spaCy-esque .sents interface)'''
     def sentence_fwd(docs, drop=0.):
@@ -361,5 +435,3 @@ def foreach_sentence(layer, drop_factor=1.0):
         return output, sentence_bwd
     model = wrap(sentence_fwd, layer)
     return model
-
-

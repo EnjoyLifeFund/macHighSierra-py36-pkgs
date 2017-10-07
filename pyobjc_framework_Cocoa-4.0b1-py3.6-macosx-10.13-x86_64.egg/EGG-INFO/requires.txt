@@ -1,1 +1,0 @@
-pyobjc-core>=4.0b1

@@ -27,7 +27,8 @@ else:
 
 
 def set_index(df, index, npartitions=None, shuffle=None, compute=False,
-              drop=True, upsample=1.0, divisions=None, **kwargs):
+              drop=True, upsample=1.0, divisions=None,
+              partition_size=128e6, **kwargs):
     """ See _Frame.set_index for docstring """
     if (isinstance(index, Series) and index._name == df.index._name):
         return df
@@ -65,7 +66,7 @@ def set_index(df, index, npartitions=None, shuffle=None, compute=False,
 
         if repartition:
             total = sum(sizes)
-            npartitions = max(math.ceil(total / 128e6), 1)
+            npartitions = max(math.ceil(total / partition_size), 1)
             npartitions = min(npartitions, df.npartitions)
             n = len(divisions)
             try:
@@ -211,7 +212,6 @@ def rearrange_by_divisions(df, column, divisions, max_branch=None, shuffle=None)
     df2 = df.assign(_partitions=partitions)
     df3 = rearrange_by_column(df2, '_partitions', max_branch=max_branch,
                               npartitions=len(divisions) - 1, shuffle=shuffle)
-    df4 = df3.drop('_partitions', axis=1)
     df4 = df3.map_partitions(drop_columns, '_partitions', df.columns.dtype)
     return df4
 

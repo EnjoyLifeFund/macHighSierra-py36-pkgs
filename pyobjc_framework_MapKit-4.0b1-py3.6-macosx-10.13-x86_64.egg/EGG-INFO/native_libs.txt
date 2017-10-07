@@ -1,2 +1,0 @@
-MapKit/_MapKit.cpython-36dm-darwin.so
-MapKit/_inlines.cpython-36dm-darwin.so

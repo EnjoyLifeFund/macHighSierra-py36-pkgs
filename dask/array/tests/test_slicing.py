@@ -6,12 +6,12 @@ from toolz import merge
 
 np = pytest.importorskip('numpy')
 
+import dask
 import dask.array as da
 from dask.array.slicing import (_sanitize_index_element, _slice_1d,
                                 new_blockdim, sanitize_index, slice_array,
-                                take)
+                                take, normalize_index)
 from dask.array.utils import assert_eq, same_keys
-from dask.compatibility import skip
 
 
 def test_slice_1d():
@@ -293,7 +293,7 @@ def test_take_sorted():
 
 def test_slice_lists():
     y, chunks = slice_array('y', 'x', ((3, 3, 3, 1), (3, 3, 3, 1)),
-                            ([2, 1, 9], slice(None, None, None)))
+                            (np.array([2, 1, 9]), slice(None, None, None)))
     exp = {('y', 0, i): (getitem, (np.concatenate,
                                    [(getitem, ('x', 0, i),
                                      ([1, 2], slice(None, None, None))),
@@ -307,11 +307,11 @@ def test_slice_lists():
 
 def test_slicing_chunks():
     result, chunks = slice_array('y', 'x', ([5, 5], [5, 5]),
-                                 (1, [2, 0, 3]))
+                                 (1, np.array([2, 0, 3])))
     assert chunks == ((3,), )
 
     result, chunks = slice_array('y', 'x', ([5, 5], [5, 5]),
-                                 (slice(0, 7), [2, 0, 3]))
+                                 (slice(0, 7), np.array([2, 0, 3])))
     assert chunks == ((5, 2), (3, ))
 
     result, chunks = slice_array('y', 'x', ([5, 5], [5, 5]),
@@ -321,7 +321,7 @@ def test_slicing_chunks():
 
 def test_slicing_with_numpy_arrays():
     a, bd1 = slice_array('y', 'x', ((3, 3, 3, 1), (3, 3, 3, 1)),
-                         ([1, 2, 9], slice(None, None, None)))
+                         (np.array([1, 2, 9]), slice(None, None, None)))
     b, bd2 = slice_array('y', 'x', ((3, 3, 3, 1), (3, 3, 3, 1)),
                          (np.array([1, 2, 9]), slice(None, None, None)))
 
@@ -330,8 +330,9 @@ def test_slicing_with_numpy_arrays():
 
     i = [False, True, True, False, False,
          False, False, False, False, True, False]
-    c, bd3 = slice_array('y', 'x', ((3, 3, 3, 1), (3, 3, 3, 1)),
-                         (i, slice(None, None, None)))
+    index = (i, slice(None, None, None))
+    index = normalize_index(index, (10, 10))
+    c, bd3 = slice_array('y', 'x', ((3, 3, 3, 1), (3, 3, 3, 1)), index)
     assert bd1 == bd3
     np.testing.assert_equal(a, c)
 
@@ -362,7 +363,7 @@ class ReturnItem(object):
         return key
 
 
-@skip
+@pytest.mark.skip(reason='really long test')
 def test_slicing_exhaustively():
     x = np.random.rand(6, 7, 8)
     a = da.from_array(x, chunks=(3, 3, 3))
@@ -438,6 +439,20 @@ def test_slicing_consistent_names():
     assert same_keys(a[0], a[0])
     assert same_keys(a[:, [1, 2, 3]], a[:, [1, 2, 3]])
     assert same_keys(a[:, 5:2:-1], a[:, 5:2:-1])
+    assert same_keys(a[0, ...], a[0, ...])
+    assert same_keys(a[...], a[...])
+    assert same_keys(a[[1, 3, 5]], a[[1, 3, 5]])
+    assert same_keys(a[-11:11], a[:])
+    assert same_keys(a[-11:-9], a[:1])
+    assert same_keys(a[-1], a[9])
+
+
+def test_slicing_consistent_names_after_normalization():
+    x = da.zeros(10, chunks=(5,))
+    assert same_keys(x[0:], x[:10])
+    assert same_keys(x[0:], x[0:10])
+    assert same_keys(x[0:], x[0:10:1])
+    assert same_keys(x[:], x[0:10:1])
 
 
 def test_sanitize_index_element():
@@ -483,13 +498,40 @@ def test_oob_check():
     with pytest.raises(IndexError):
         x[[6]]
     with pytest.raises(IndexError):
+        x[-10]
+    with pytest.raises(IndexError):
+        x[[-10]]
+    with pytest.raises(IndexError):
         x[0, 0]
 
 
-def test_index_with_dask_array_errors():
-    x = da.ones((5, 5), chunks=2)
-    with pytest.raises(NotImplementedError):
-        x[0, x > 10]
+def test_index_with_dask_array():
+    x = np.arange(36).reshape((6, 6))
+    d = da.from_array(x, chunks=(3, 3))
+    ind = np.asarray([True, True, False, True, False, False], dtype=bool)
+    ind = da.from_array(ind, chunks=2)
+    for index in [ind, (slice(1, 9, 2), ind), (ind, slice(2, 8, 1))]:
+        x_index = dask.compute(index)[0]
+        assert_eq(x[x_index], d[index])
+
+
+def test_index_with_dask_array_2():
+    x = np.random.random((10, 10, 10))
+    ind = np.random.random(10) > 0.5
+
+    d = da.from_array(x, chunks=(3, 4, 5))
+    dind = da.from_array(ind, chunks=4)
+
+    index = [slice(1, 9, 1), slice(None)]
+
+    for i in range(x.ndim):
+        index2 = index[:]
+        index2.insert(i, dind)
+
+        index3 = index[:]
+        index3.insert(i, ind)
+
+        assert_eq(x[tuple(index3)], d[tuple(index2)])
 
 
 @pytest.mark.xfail
@@ -502,20 +544,22 @@ def test_cull():
 
 
 @pytest.mark.parametrize('shape', [(2,), (2, 3), (2, 3, 5)])
-@pytest.mark.parametrize('slice', [(Ellipsis,),
+@pytest.mark.parametrize('index', [(Ellipsis,),
                                    (None, Ellipsis),
                                    (Ellipsis, None),
                                    (None, Ellipsis, None)])
-def test_slicing_with_Nones(shape, slice):
+def test_slicing_with_Nones(shape, index):
     x = np.random.random(shape)
     d = da.from_array(x, chunks=shape)
 
-    assert_eq(x[slice], d[slice])
+    assert_eq(x[index], d[index])
 
 
 indexers = [Ellipsis, slice(2), 0, 1, -2, -1, slice(-2, None), None]
 
+
 """
+# We comment this out because it is 4096 tests
 @pytest.mark.parametrize('a', indexers)
 @pytest.mark.parametrize('b', indexers)
 @pytest.mark.parametrize('c', indexers)
@@ -531,6 +575,15 @@ def test_slicing_none_int_ellipses(a, b, c, d):
     yy = y[a, b, c, d]
     assert_eq(xx, yy)
 """
+
+
+def test_slicing_integer_no_warnings():
+    # https://github.com/dask/dask/pull/2457/
+    X = da.random.random((100, 2), (2, 2))
+    idx = np.array([0, 0, 1, 1])
+    with pytest.warns(None) as rec:
+        X[idx].compute()
+    assert len(rec) == 0
 
 
 @pytest.mark.slow
@@ -565,3 +618,22 @@ def test_negative_list_slicing():
     dx = da.from_array(x, chunks=2)
     assert_eq(dx[[0, -5]], x[[0, -5]])
     assert_eq(dx[[4, -1]], x[[4, -1]])
+
+
+def test_permit_oob_slices():
+    x = np.arange(5)
+    dx = da.from_array(x, chunks=2)
+
+    assert_eq(x[-102:], dx[-102:])
+    assert_eq(x[102:], dx[102:])
+    assert_eq(x[:102], dx[:102])
+    assert_eq(x[:-102], dx[:-102])
+
+
+def test_normalize_index():
+    assert normalize_index((Ellipsis, None), (10,)) == (slice(None), None)
+    assert normalize_index(5, (np.nan,)) == (5,)
+    assert normalize_index(-5, (np.nan,)) == (-5,)
+    (result,) = normalize_index([-5, -2, 1], (np.nan,))
+    assert result.tolist() == [-5, -2, 1]
+    assert normalize_index(slice(-5, -2), (np.nan,)) == (slice(-5, -2),)

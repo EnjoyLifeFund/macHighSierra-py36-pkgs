@@ -11,10 +11,12 @@
 
 #if CYTHON_FAST_THREAD_STATE
 #define __Pyx_PyThreadState_declare  PyThreadState *$local_tstate_cname;
-#define __Pyx_PyThreadState_assign  $local_tstate_cname = PyThreadState_GET();
+#define __Pyx_PyThreadState_assign  $local_tstate_cname = __Pyx_PyThreadState_Current;
+#define __Pyx_PyErr_Occurred()  $local_tstate_cname->curexc_type
 #else
 #define __Pyx_PyThreadState_declare
 #define __Pyx_PyThreadState_assign
+#define __Pyx_PyErr_Occurred()  PyErr_Occurred()
 #endif
 
 
@@ -31,11 +33,28 @@ static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tsta
 /////////////// PyErrExceptionMatches ///////////////
 
 #if CYTHON_FAST_THREAD_STATE
+static int __Pyx_PyErr_ExceptionMatchesTuple(PyObject *exc_type, PyObject *tuple) {
+    Py_ssize_t i, n;
+    n = PyTuple_GET_SIZE(tuple);
+#if PY_MAJOR_VERSION >= 3
+    // the tighter subtype checking in Py3 allows faster out-of-order comparison
+    for (i=0; i<n; i++) {
+        if (exc_type == PyTuple_GET_ITEM(tuple, i)) return 1;
+    }
+#endif
+    for (i=0; i<n; i++) {
+        if (__Pyx_PyErr_GivenExceptionMatches(exc_type, PyTuple_GET_ITEM(tuple, i))) return 1;
+    }
+    return 0;
+}
+
 static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tstate, PyObject* err) {
     PyObject *exc_type = tstate->curexc_type;
     if (exc_type == err) return 1;
     if (unlikely(!exc_type)) return 0;
-    return PyErr_GivenExceptionMatches(exc_type, err);
+    if (unlikely(PyTuple_Check(err)))
+        return __Pyx_PyErr_ExceptionMatchesTuple(exc_type, err);
+    return __Pyx_PyErr_GivenExceptionMatches(exc_type, err);
 }
 #endif
 
@@ -44,6 +63,7 @@ static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tsta
 //@requires: PyThreadStateGet
 
 #if CYTHON_FAST_THREAD_STATE
+#define __Pyx_PyErr_Clear() __Pyx_ErrRestore(NULL, NULL, NULL)
 #define __Pyx_ErrRestoreWithState(type, value, tb)  __Pyx_ErrRestoreInState(PyThreadState_GET(), type, value, tb)
 #define __Pyx_ErrFetchWithState(type, value, tb)    __Pyx_ErrFetchInState(PyThreadState_GET(), type, value, tb)
 #define __Pyx_ErrRestore(type, value, tb)  __Pyx_ErrRestoreInState($local_tstate_cname, type, value, tb)
@@ -51,7 +71,15 @@ static CYTHON_INLINE int __Pyx_PyErr_ExceptionMatchesInState(PyThreadState* tsta
 static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb); /*proto*/
 static CYTHON_INLINE void __Pyx_ErrFetchInState(PyThreadState *tstate, PyObject **type, PyObject **value, PyObject **tb); /*proto*/
 
+#if CYTHON_COMPILING_IN_CPYTHON
+#define __Pyx_PyErr_SetNone(exc) (Py_INCREF(exc), __Pyx_ErrRestore((exc), NULL, NULL))
 #else
+#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
+#endif
+
+#else
+#define __Pyx_PyErr_Clear() PyErr_Clear()
+#define __Pyx_PyErr_SetNone(exc) PyErr_SetNone(exc)
 #define __Pyx_ErrRestoreWithState(type, value, tb)  PyErr_Restore(type, value, tb)
 #define __Pyx_ErrFetchWithState(type, value, tb)  PyErr_Fetch(type, value, tb)
 #define __Pyx_ErrRestore(type, value, tb)  PyErr_Restore(type, value, tb)
@@ -230,11 +258,7 @@ static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject 
         goto bad;
     }
 
-#if PY_VERSION_HEX >= 0x03030000
     if (cause) {
-#else
-    if (cause && cause != Py_None) {
-#endif
         PyObject *fixed_cause;
         if (cause == Py_None) {
             // raise ... from None
@@ -265,7 +289,7 @@ static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject 
         PyErr_Restore(tmp_type, tmp_value, tb);
         Py_XDECREF(tmp_tb);
 #else
-        PyThreadState *tstate = PyThreadState_GET();
+        PyThreadState *tstate = __Pyx_PyThreadState_Current;
         PyObject* tmp_tb = tstate->curexc_traceback;
         if (tb != tmp_tb) {
             Py_INCREF(tb);
@@ -659,10 +683,10 @@ static void __Pyx_AddTraceback(const char *funcname, int c_line,
         $global_code_object_cache_insert(c_line ? -c_line : py_line, py_code);
     }
     py_frame = PyFrame_New(
-        PyThreadState_GET(), /*PyThreadState *tstate,*/
-        py_code,             /*PyCodeObject *code,*/
-        $moddict_cname,      /*PyObject *globals,*/
-        0                    /*PyObject *locals*/
+        __Pyx_PyThreadState_Current, /*PyThreadState *tstate,*/
+        py_code,                     /*PyCodeObject *code,*/
+        $moddict_cname,              /*PyObject *globals,*/
+        0                            /*PyObject *locals*/
     );
     if (!py_frame) goto bad;
     __Pyx_PyFrame_SetLineNumber(py_frame, py_line);

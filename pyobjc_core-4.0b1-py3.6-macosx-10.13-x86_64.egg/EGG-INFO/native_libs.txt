@@ -1,2 +1,0 @@
-objc/_machsignals.cpython-36dm-darwin.so
-objc/_objc.cpython-36dm-darwin.so

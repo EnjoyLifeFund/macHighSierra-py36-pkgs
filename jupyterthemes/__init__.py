@@ -11,8 +11,8 @@ modules = glob(os.path.dirname(__file__) + "/*.py")
 __all__ = [os.path.basename(f)[:-3] for f in modules]
 
 major = 0
-minor = 17
-patch = 8
+minor = 18
+patch = 2
 
 __version__ = '.'.join([str(v) for v in [major, minor, patch]])
 
@@ -45,7 +45,7 @@ def install_theme(theme=None,
                 altout=False,
                 hideprompt=False,
                 vimext=False,
-                toolbar=True,
+                toolbar=False,
                 nbname=False,
                 dfonts=False):
 
@@ -175,7 +175,7 @@ def main():
         "--mathfontsize",
         action='store',
         default='100',
-        help='mathjax fontsize (in %)')
+        help='mathjax fontsize (in %%)')
     parser.add_argument(
         '-m',
         "--margins",
@@ -234,7 +234,7 @@ def main():
         '-T',
         "--toolbar",
         action='store_true',
-        default=True,
+        default=False,
         help="make toolbar visible")
     parser.add_argument(
         '-N',

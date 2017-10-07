@@ -1,2 +1,0 @@
-SceneKit/_SceneKit.cpython-36dm-darwin.so
-SceneKit/_inlines.cpython-36dm-darwin.so

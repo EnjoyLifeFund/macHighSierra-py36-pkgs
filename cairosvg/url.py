@@ -26,7 +26,6 @@ from urllib.request import Request, urlopen
 
 from . import __version__
 
-
 HTTP_HEADERS = {'User-Agent': 'CairoSVG {}'.format(__version__)}
 
 URL = re.compile(r'url\((.+)\)')
@@ -81,6 +80,7 @@ def parse_url(url, base=None):
             elif parsed_url.scheme in ('', parsed_base.scheme):
                 # `urljoin` automatically uses the "folder" part of `base`
                 url = urljoin(base, url)
+        url = url.strip('\'"')
     return urlparse(url or '')
 
 

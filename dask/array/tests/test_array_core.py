@@ -29,11 +29,10 @@ from dask.array import chunk
 from dask.array.core import (getem, getter, top, dotmany, concatenate3,
                              broadcast_dimensions, Array, stack, concatenate,
                              from_array, elemwise, broadcast_shapes,
-                             partial_by_order, broadcast_to,
-                             blockdims_from_blockshape, store, optimize,
-                             from_func, normalize_chunks, broadcast_chunks,
-                             atop, from_delayed, concatenate_axes,
-                             common_blockdim)
+                             broadcast_to, blockdims_from_blockshape, store,
+                             optimize, from_func, normalize_chunks,
+                             broadcast_chunks, atop, from_delayed,
+                             concatenate_axes, common_blockdim)
 from dask.array.utils import assert_eq, same_keys
 
 # temporary until numpy functions migrated
@@ -90,6 +89,26 @@ def test_top_supports_broadcasting_rules():
          ('z', 0, 1): (add, ('x', 0, 1), ('y', 0, 0)),
          ('z', 1, 0): (add, ('x', 0, 0), ('y', 1, 0)),
          ('z', 1, 1): (add, ('x', 0, 1), ('y', 1, 0))}
+
+
+def test_top_literals():
+    assert top(add, 'z', 'ij', 'x', 'ij', 123, None, numblocks={'x': (2, 2)}) == \
+        {('z', 0, 0): (add, ('x', 0, 0), 123),
+         ('z', 0, 1): (add, ('x', 0, 1), 123),
+         ('z', 1, 0): (add, ('x', 1, 0), 123),
+         ('z', 1, 1): (add, ('x', 1, 1), 123)}
+
+
+def test_atop_literals():
+    x = da.ones((10, 10), chunks=(5, 5))
+    z = atop(add, 'ij', x, 'ij', 100, None, dtype=x.dtype)
+    assert_eq(z, x + 100)
+
+    z = atop(lambda x, y, z: x * y + z, 'ij', 2, None,  x, 'ij', 100, None, dtype=x.dtype)
+    assert_eq(z, 2 * x + 100)
+
+    z = atop(getitem, 'ij', x, 'ij', slice(None), None, dtype=x.dtype)
+    assert_eq(z, x)
 
 
 def test_concatenate3_on_scalars():
@@ -410,10 +429,6 @@ def test_elemwise_on_scalars():
     assert_eq((x.sum() * y).astype(np.int64), result)
 
 
-def test_partial_by_order():
-    assert partial_by_order(5, function=add, other=[(1, 20)]) == 25
-
-
 def test_elemwise_with_ndarrays():
     x = np.arange(3)
     y = np.arange(12).reshape(4, 3)
@@ -538,6 +553,7 @@ def test_T():
 
 def test_norm():
     a = np.arange(200, dtype='f8').reshape((20, 10))
+    a = a + (a.max() - a) * 1j
     b = from_array(a, chunks=(5, 5))
 
     assert_eq(b.vnorm(), np.linalg.norm(a))
@@ -1398,6 +1414,13 @@ def test_from_array_getitem():
     assert_eq(x, y)
 
 
+def test_from_array_minus_one():
+    x = np.arange(10)
+    y = da.from_array(x, -1)
+    assert y.chunks == ((10,),)
+    assert_eq(x, y)
+
+
 def test_asarray():
     assert_eq(da.asarray([1, 2, 3]), np.asarray([1, 2, 3]))
 
@@ -1610,6 +1633,28 @@ def test_slice_with_floats():
         d[[1, 1.5]]
 
 
+def test_slice_with_integer_types():
+    x = np.arange(10)
+    dx = da.from_array(x, chunks=5)
+    inds = np.array([0, 3, 6], dtype='u8')
+    assert_eq(dx[inds], x[inds])
+    assert_eq(dx[inds.astype('u4')], x[inds.astype('u4')])
+
+    inds = np.array([0, 3, 6], dtype=np.int64)
+    assert_eq(dx[inds], x[inds])
+    assert_eq(dx[inds.astype('u4')], x[inds.astype('u4')])
+
+
+def test_index_with_integer_types():
+    x = np.arange(10)
+    dx = da.from_array(x, chunks=5)
+    inds = int(3)
+    assert_eq(dx[inds], x[inds])
+
+    inds = np.int64(3)
+    assert_eq(dx[inds], x[inds])
+
+
 def test_vindex_basic():
     x = np.arange(56).reshape((7, 8))
     d = da.from_array(x, chunks=(3, 4))
@@ -1685,11 +1730,12 @@ def test_to_npy_stack():
     d = da.from_array(x, chunks=(2, 4, 4))
 
     with tmpdir() as dirname:
-        da.to_npy_stack(dirname, d, axis=0)
-        assert os.path.exists(os.path.join(dirname, '0.npy'))
-        assert (np.load(os.path.join(dirname, '1.npy')) == x[2:4]).all()
+        stackdir = os.path.join(dirname, 'test')
+        da.to_npy_stack(stackdir, d, axis=0)
+        assert os.path.exists(os.path.join(stackdir, '0.npy'))
+        assert (np.load(os.path.join(stackdir, '1.npy')) == x[2:4]).all()
 
-        e = da.from_npy_stack(dirname)
+        e = da.from_npy_stack(stackdir)
         assert_eq(d, e)
 
 
@@ -2326,6 +2372,19 @@ def test_index_array_with_array_2d():
             sorted(dx[dx > 6].compute().tolist()))
 
 
+@pytest.mark.xfail(reason='Chunking does not align well')
+def test_index_array_with_array_3d_2d():
+    x = np.arange(4**3).reshape((4, 4, 4))
+    dx = da.from_array(x, chunks=(2, 2, 2))
+
+    ind = np.random.random((4, 4)) > 0.5
+    ind = np.arange(4 ** 2).reshape((4, 4)) % 2 == 0
+    dind = da.from_array(ind, (2, 2))
+
+    assert_eq(x[ind], dx[dind])
+    assert_eq(x[:, ind], dx[:, dind])
+
+
 def test_setitem_1d():
     x = np.arange(10)
     dx = da.from_array(x.copy(), chunks=(5,))
@@ -2413,9 +2472,9 @@ def test_broadcast_against_zero_shape():
     assert_eq(da.ones((5, 5), chunks=(2, 3))[:0] + 0.1,
               np.ones((5, 5))[:0] + 0.1)
     assert_eq(da.ones((5, 5), chunks=(2, 3))[:, :0] + 0,
-              np.ones((5, 5))[:0] + 0)
+              np.ones((5, 5))[:, :0] + 0)
     assert_eq(da.ones((5, 5), chunks=(2, 3))[:, :0] + 0.1,
-              np.ones((5, 5))[:0] + 0.1)
+              np.ones((5, 5))[:, :0] + 0.1)
 
 
 def test_fast_from_array():

@@ -370,6 +370,23 @@ def test_foldby():
     assert set(c) == set(reduceby(iseven, lambda acc, x: acc + x, L, 0).items())
 
 
+def test_foldby_tree_reduction():
+    dsk = list()
+    for n in [1, 7, 32]:
+        b = db.from_sequence(range(100), npartitions=n)
+        c = b.foldby(iseven, add)
+        dsk += [c]
+        for m in [False, None, 2, 3]:
+            d = b.foldby(iseven, add, split_every=m)
+            e = b.foldby(iseven, add, 0, split_every=m)
+            f = b.foldby(iseven, add, 0, add, split_every=m)
+            g = b.foldby(iseven, add, 0, add, 0, split_every=m)
+            dsk += [d,e,f,g]
+    results = dask.compute(dsk)
+    first = results[0]
+    assert all([r == first for r in results])
+
+
 def test_map_partitions():
     assert list(b.map_partitions(len)) == [5, 5, 5]
     assert b.map_partitions(len).name == b.map_partitions(len).name
@@ -1246,3 +1263,10 @@ def test_empty_bag():
     assert not b.map(inc).any().compute(get=dask.get)
     assert not b.map(inc).sum().compute(get=dask.get)
     assert not b.map(inc).count().compute(get=dask.get)
+
+
+def test_bag_paths():
+    b = db.from_sequence(['abc', '123', 'xyz'], npartitions=2)
+    assert b.to_textfiles('foo*') == ['foo0', 'foo1']
+    os.remove('foo0')
+    os.remove('foo1')

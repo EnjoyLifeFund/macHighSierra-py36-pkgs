@@ -9,8 +9,8 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.pipeline import ClientRawResponse
 import uuid
+from msrest.pipeline import ClientRawResponse
 
 from .. import models
 
@@ -22,7 +22,7 @@ class CertificateOperations(object):
     :param config: Configuration of service client.
     :param serializer: An object model serializer.
     :param deserializer: An objec model deserializer.
-    :ivar api_version: Client API Version. Constant value: "2017-06-01.5.1".
+    :ivar api_version: Client API Version. Constant value: "2017-09-01.6.0".
     """
 
     def __init__(self, client, config, serializer, deserializer):
@@ -30,7 +30,7 @@ class CertificateOperations(object):
         self._client = client
         self._serialize = serializer
         self._deserialize = deserializer
-        self.api_version = "2017-06-01.5.1"
+        self.api_version = "2017-09-01.6.0"
 
         self.config = config
 
@@ -50,9 +50,11 @@ class CertificateOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -130,6 +132,8 @@ class CertificateOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: An iterator like instance of :class:`Certificate
+         <azure.batch.models.Certificate>`
         :rtype: :class:`CertificatePaged
          <azure.batch.models.CertificatePaged>`
         :raises:
@@ -243,9 +247,11 @@ class CertificateOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -340,9 +346,11 @@ class CertificateOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -424,9 +432,11 @@ class CertificateOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`Certificate <azure.batch.models.Certificate>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: :class:`Certificate <azure.batch.models.Certificate>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: :class:`Certificate <azure.batch.models.Certificate>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """

@@ -63,9 +63,30 @@ static CYTHON_INLINE int __Pyx_BytesContains(PyObject* bytes, char character) {
 //////////////////// PyUCS4InUnicode.proto ////////////////////
 
 static CYTHON_INLINE int __Pyx_UnicodeContainsUCS4(PyObject* unicode, Py_UCS4 character); /*proto*/
-static CYTHON_INLINE int __Pyx_PyUnicodeBufferContainsUCS4(Py_UNICODE* buffer, Py_ssize_t length, Py_UCS4 character); /*proto*/
 
 //////////////////// PyUCS4InUnicode ////////////////////
+
+static int __Pyx_PyUnicodeBufferContainsUCS4_SP(Py_UNICODE* buffer, Py_ssize_t length, Py_UCS4 character) {
+    /* handle surrogate pairs for Py_UNICODE buffers in 16bit Unicode builds */
+    Py_UNICODE high_val, low_val;
+    Py_UNICODE* pos;
+    high_val = (Py_UNICODE) (0xD800 | (((character - 0x10000) >> 10) & ((1<<10)-1)));
+    low_val  = (Py_UNICODE) (0xDC00 | ( (character - 0x10000)        & ((1<<10)-1)));
+    for (pos=buffer; pos < buffer+length-1; pos++) {
+        if (unlikely((high_val == pos[0]) & (low_val == pos[1]))) return 1;
+    }
+    return 0;
+}
+
+static int __Pyx_PyUnicodeBufferContainsUCS4_BMP(Py_UNICODE* buffer, Py_ssize_t length, Py_UCS4 character) {
+    Py_UNICODE uchar;
+    Py_UNICODE* pos;
+    uchar = (Py_UNICODE) character;
+    for (pos=buffer; pos < buffer+length; pos++) {
+        if (unlikely(uchar == pos[0])) return 1;
+    }
+    return 0;
+}
 
 static CYTHON_INLINE int __Pyx_UnicodeContainsUCS4(PyObject* unicode, Py_UCS4 character) {
 #if CYTHON_PEP393_ENABLED
@@ -80,32 +101,18 @@ static CYTHON_INLINE int __Pyx_UnicodeContainsUCS4(PyObject* unicode, Py_UCS4 ch
         return 0;
     }
 #endif
-    return __Pyx_PyUnicodeBufferContainsUCS4(
-        PyUnicode_AS_UNICODE(unicode),
-        PyUnicode_GET_SIZE(unicode),
-        character);
-}
+    if (Py_UNICODE_SIZE == 2 && unlikely(character > 65535)) {
+        return __Pyx_PyUnicodeBufferContainsUCS4_SP(
+            PyUnicode_AS_UNICODE(unicode),
+            PyUnicode_GET_SIZE(unicode),
+            character);
+    } else {
+        return __Pyx_PyUnicodeBufferContainsUCS4_BMP(
+            PyUnicode_AS_UNICODE(unicode),
+            PyUnicode_GET_SIZE(unicode),
+            character);
 
-static CYTHON_INLINE int __Pyx_PyUnicodeBufferContainsUCS4(Py_UNICODE* buffer, Py_ssize_t length, Py_UCS4 character) {
-    Py_UNICODE uchar;
-    Py_UNICODE* pos;
-    #if Py_UNICODE_SIZE == 2
-    if (character > 65535) {
-        /* handle surrogate pairs for Py_UNICODE buffers in 16bit Unicode builds */
-        Py_UNICODE high_val, low_val;
-        high_val = (Py_UNICODE) (0xD800 | (((character - 0x10000) >> 10) & ((1<<10)-1)));
-        low_val  = (Py_UNICODE) (0xDC00 | ( (character - 0x10000)        & ((1<<10)-1)));
-        for (pos=buffer; pos < buffer+length-1; pos++) {
-            if (unlikely(high_val == pos[0]) & unlikely(low_val == pos[1])) return 1;
-        }
-        return 0;
     }
-    #endif
-    uchar = (Py_UNICODE) character;
-    for (pos=buffer; pos < buffer+length; pos++) {
-        if (unlikely(uchar == pos[0])) return 1;
-    }
-    return 0;
 }
 
 
@@ -577,9 +584,8 @@ static CYTHON_INLINE int __Pyx_Py_UNICODE_ISTITLE(Py_UCS4 uchar)
 
 /////////////// unicode_tailmatch.proto ///////////////
 
-static int __Pyx_PyUnicode_Tailmatch(PyObject* s, PyObject* substr,
-                                     Py_ssize_t start, Py_ssize_t end, int direction); /*proto*/
-
+static int __Pyx_PyUnicode_Tailmatch(
+    PyObject* s, PyObject* substr, Py_ssize_t start, Py_ssize_t end, int direction); /*proto*/
 
 /////////////// unicode_tailmatch ///////////////
 
@@ -587,26 +593,31 @@ static int __Pyx_PyUnicode_Tailmatch(PyObject* s, PyObject* substr,
 // tuple of prefixes/suffixes, whereas it's much more common to
 // test for a single unicode string.
 
+static int __Pyx_PyUnicode_TailmatchTuple(PyObject* s, PyObject* substrings,
+                                          Py_ssize_t start, Py_ssize_t end, int direction) {
+    Py_ssize_t i, count = PyTuple_GET_SIZE(substrings);
+    for (i = 0; i < count; i++) {
+        Py_ssize_t result;
+#if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        result = PyUnicode_Tailmatch(s, PyTuple_GET_ITEM(substrings, i),
+                                     start, end, direction);
+#else
+        PyObject* sub = PySequence_ITEM(substrings, i);
+        if (unlikely(!sub)) return -1;
+        result = PyUnicode_Tailmatch(s, sub, start, end, direction);
+        Py_DECREF(sub);
+#endif
+        if (result) {
+            return (int) result;
+        }
+    }
+    return 0;
+}
+
 static int __Pyx_PyUnicode_Tailmatch(PyObject* s, PyObject* substr,
                                      Py_ssize_t start, Py_ssize_t end, int direction) {
     if (unlikely(PyTuple_Check(substr))) {
-        Py_ssize_t i, count = PyTuple_GET_SIZE(substr);
-        for (i = 0; i < count; i++) {
-            Py_ssize_t result;
-#if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-            result = PyUnicode_Tailmatch(s, PyTuple_GET_ITEM(substr, i),
-                                         start, end, direction);
-#else
-            PyObject* sub = PySequence_ITEM(substr, i);
-            if (unlikely(!sub)) return -1;
-            result = PyUnicode_Tailmatch(s, sub, start, end, direction);
-            Py_DECREF(sub);
-#endif
-            if (result) {
-                return (int) result;
-            }
-        }
-        return 0;
+        return __Pyx_PyUnicode_TailmatchTuple(s, substr, start, end, direction);
     }
     return (int) PyUnicode_Tailmatch(s, substr, start, end, direction);
 }
@@ -677,26 +688,31 @@ static int __Pyx_PyBytes_SingleTailmatch(PyObject* self, PyObject* arg,
     return retval;
 }
 
+static int __Pyx_PyBytes_TailmatchTuple(PyObject* self, PyObject* substrings,
+                                        Py_ssize_t start, Py_ssize_t end, int direction) {
+    Py_ssize_t i, count = PyTuple_GET_SIZE(substrings);
+    for (i = 0; i < count; i++) {
+        int result;
+#if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        result = __Pyx_PyBytes_SingleTailmatch(self, PyTuple_GET_ITEM(substrings, i),
+                                               start, end, direction);
+#else
+        PyObject* sub = PySequence_ITEM(substrings, i);
+        if (unlikely(!sub)) return -1;
+        result = __Pyx_PyBytes_SingleTailmatch(self, sub, start, end, direction);
+        Py_DECREF(sub);
+#endif
+        if (result) {
+            return result;
+        }
+    }
+    return 0;
+}
+
 static int __Pyx_PyBytes_Tailmatch(PyObject* self, PyObject* substr,
                                    Py_ssize_t start, Py_ssize_t end, int direction) {
     if (unlikely(PyTuple_Check(substr))) {
-        Py_ssize_t i, count = PyTuple_GET_SIZE(substr);
-        for (i = 0; i < count; i++) {
-            int result;
-#if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-            result = __Pyx_PyBytes_SingleTailmatch(self, PyTuple_GET_ITEM(substr, i),
-                                                   start, end, direction);
-#else
-            PyObject* sub = PySequence_ITEM(substr, i);
-            if (unlikely(!sub)) return -1;
-            result = __Pyx_PyBytes_SingleTailmatch(self, sub, start, end, direction);
-            Py_DECREF(sub);
-#endif
-            if (result) {
-                return result;
-            }
-        }
-        return 0;
+        return __Pyx_PyBytes_TailmatchTuple(self, substr, start, end, direction);
     }
 
     return __Pyx_PyBytes_SingleTailmatch(self, substr, start, end, direction);
@@ -824,7 +840,7 @@ static PyObject* __Pyx_PyUnicode_Join(PyObject* value_tuple, Py_ssize_t value_co
         if (!CYTHON_PEP393_ENABLED || ukind == result_ukind) {
             memcpy((char *)result_udata + char_pos * result_ukind, udata, ulength * result_ukind);
         } else {
-            #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030300F0
+            #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030300F0 || defined(_PyUnicode_FastCopyCharacters)
             _PyUnicode_FastCopyCharacters(result_uval, char_pos, uval, 0, ulength);
             #else
             Py_ssize_t j;

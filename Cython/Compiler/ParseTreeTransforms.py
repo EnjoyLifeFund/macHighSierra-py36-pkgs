@@ -192,7 +192,7 @@ class PostParse(ScopeTrackingTransform):
         # unpack a lambda expression into the corresponding DefNode
         collector = YieldNodeCollector()
         collector.visitchildren(node.result_expr)
-        if collector.yields or collector.awaits or isinstance(node.result_expr, ExprNodes.YieldExprNode):
+        if collector.has_yield or collector.has_await or isinstance(node.result_expr, ExprNodes.YieldExprNode):
             body = Nodes.ExprStatNode(
                 node.result_expr.pos, expr=node.result_expr)
         else:
@@ -208,11 +208,22 @@ class PostParse(ScopeTrackingTransform):
 
     def visit_GeneratorExpressionNode(self, node):
         # unpack a generator expression into the corresponding DefNode
-        node.def_node = Nodes.DefNode(node.pos, name=node.name,
-                                      doc=None,
-                                      args=[], star_arg=None,
-                                      starstar_arg=None,
-                                      body=node.loop)
+        collector = YieldNodeCollector()
+        collector.visitchildren(node.loop)
+        node.def_node = Nodes.DefNode(
+            node.pos, name=node.name, doc=None,
+            args=[], star_arg=None, starstar_arg=None,
+            body=node.loop, is_async_def=collector.has_await)
+        self.visitchildren(node)
+        return node
+
+    def visit_ComprehensionNode(self, node):
+        # enforce local scope also in Py2 for async generators (seriously, that's a Py3.6 feature...)
+        if not node.has_local_scope:
+            collector = YieldNodeCollector()
+            collector.visitchildren(node.loop)
+            if collector.has_await:
+                node.has_local_scope = True
         self.visitchildren(node)
         return node
 
@@ -600,9 +611,11 @@ class PxdPostParse(CythonTransform, SkipDeclarations):
         else:
             return node
 
-class TrackNumpyAttributes(CythonTransform, SkipDeclarations):
-    def __init__(self, context):
-        super(TrackNumpyAttributes, self).__init__(context)
+
+class TrackNumpyAttributes(VisitorTransform, SkipDeclarations):
+    # TODO: Make name handling as good as in InterpretCompilerDirectives() below - probably best to merge the two.
+    def __init__(self):
+        super(TrackNumpyAttributes, self).__init__()
         self.numpy_module_names = set()
 
     def visit_CImportStatNode(self, node):
@@ -615,6 +628,9 @@ class TrackNumpyAttributes(CythonTransform, SkipDeclarations):
         if node.obj.is_name and node.obj.name in self.numpy_module_names:
             node.is_numpy_attribute = True
         return node
+
+    visit_Node = VisitorTransform.recurse_to_children
+
 
 class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
     """
@@ -836,7 +852,9 @@ class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
         if node.name in self.cython_module_names:
             node.is_cython_module = True
         else:
-            node.cython_attribute = self.directive_names.get(node.name)
+            directive = self.directive_names.get(node.name)
+            if directive is not None:
+                node.cython_attribute = directive
         return node
 
     def try_to_parse_directives(self, node):
@@ -884,9 +902,26 @@ class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
         return None
 
     def try_to_parse_directive(self, optname, args, kwds, pos):
-        directivetype = Options.directive_types.get(optname)
         if optname == 'np_pythran' and not self.context.cpp:
             raise PostParseError(pos, 'The %s directive can only be used in C++ mode.' % optname)
+        elif optname == 'exceptval':
+            # default: exceptval(None, check=True)
+            arg_error = len(args) > 1
+            check = True
+            if kwds and kwds.key_value_pairs:
+                kw = kwds.key_value_pairs[0]
+                if (len(kwds.key_value_pairs) == 1 and
+                        kw.key.is_string_literal and kw.key.value == 'check' and
+                        isinstance(kw.value, ExprNodes.BoolNode)):
+                    check = kw.value.value
+                else:
+                    arg_error = True
+            if arg_error:
+                raise PostParseError(
+                    pos, 'The exceptval directive takes 0 or 1 positional arguments and the boolean keyword "check"')
+            return ('exceptval', (args[0] if args else None, check))
+
+        directivetype = Options.directive_types.get(optname)
         if len(args) == 1 and isinstance(args[0], ExprNodes.NoneNode):
             return optname, Options.get_directive_defaults()[optname]
         elif directivetype is bool:
@@ -916,7 +951,7 @@ class InterpretCompilerDirectives(CythonTransform, SkipDeclarations):
                     'The %s directive takes no prepositional arguments' % optname)
             return optname, dict([(key.value, value) for key, value in kwds.key_value_pairs])
         elif directivetype is list:
-            if kwds and len(kwds) != 0:
+            if kwds and len(kwds.key_value_pairs) != 0:
                 raise PostParseError(pos,
                     'The %s directive takes no keyword arguments' % optname)
             return optname, [ str(arg.value) for arg in args ]
@@ -1500,6 +1535,13 @@ class ForwardDeclareTypes(CythonTransform):
     def visit_CClassDefNode(self, node):
         if node.class_name not in self.module_scope.entries:
             node.declare(self.module_scope)
+        # Expand fused methods of .pxd declared types to construct the final vtable order.
+        type = self.module_scope.entries[node.class_name].type
+        if type is not None and type.is_extension_type and not type.is_builtin_type and type.scope:
+            scope = type.scope
+            for entry in scope.cfunc_entries:
+                if entry.type and entry.type.is_fused:
+                    entry.type.get_all_specialized_function_types()
         return node
 
 
@@ -2306,16 +2348,28 @@ class AdjustDefByDirectives(CythonTransform, SkipDeclarations):
         modifiers = []
         if 'inline' in self.directives:
             modifiers.append('inline')
+        except_val = self.directives.get('exceptval')
+        return_type_node = self.directives.get('returns')
+        if return_type_node is None and self.directives['annotation_typing']:
+            return_type_node = node.return_type_annotation
+            # for Python anntations, prefer safe exception handling by default
+            if return_type_node is not None and except_val is None:
+                except_val = (None, True)  # except *
+        elif except_val is None:
+            # backward compatible default: no exception check
+            except_val = (None, False)
         if 'ccall' in self.directives:
             node = node.as_cfunction(
-                overridable=True, returns=self.directives.get('returns'), modifiers=modifiers)
+                overridable=True, modifiers=modifiers,
+                returns=return_type_node, except_val=except_val)
             return self.visit(node)
         if 'cfunc' in self.directives:
             if self.in_py_class:
                 error(node.pos, "cfunc directive is not allowed here")
             else:
                 node = node.as_cfunction(
-                    overridable=False, returns=self.directives.get('returns'), modifiers=modifiers)
+                    overridable=False, modifiers=modifiers,
+                    returns=return_type_node, except_val=except_val)
                 return self.visit(node)
         if 'inline' in modifiers:
             error(node.pos, "Python functions cannot be declared 'inline'")
@@ -2457,19 +2511,24 @@ class YieldNodeCollector(TreeVisitor):
     def __init__(self):
         super(YieldNodeCollector, self).__init__()
         self.yields = []
-        self.awaits = []
         self.returns = []
+        self.finallys = []
+        self.excepts = []
         self.has_return_value = False
+        self.has_yield = False
+        self.has_await = False
 
     def visit_Node(self, node):
         self.visitchildren(node)
 
     def visit_YieldExprNode(self, node):
         self.yields.append(node)
+        self.has_yield = True
         self.visitchildren(node)
 
     def visit_AwaitExprNode(self, node):
-        self.awaits.append(node)
+        self.yields.append(node)
+        self.has_await = True
         self.visitchildren(node)
 
     def visit_ReturnStatNode(self, node):
@@ -2477,6 +2536,14 @@ class YieldNodeCollector(TreeVisitor):
         if node.value:
             self.has_return_value = True
         self.returns.append(node)
+
+    def visit_TryFinallyStatNode(self, node):
+        self.visitchildren(node)
+        self.finallys.append(node)
+
+    def visit_TryExceptStatNode(self, node):
+        self.visitchildren(node)
+        self.excepts.append(node)
 
     def visit_ClassDefNode(self, node):
         pass
@@ -2513,24 +2580,28 @@ class MarkClosureVisitor(CythonTransform):
         collector.visitchildren(node)
 
         if node.is_async_def:
-            if collector.yields:
-                error(collector.yields[0].pos, "'yield' not allowed in async coroutines (use 'await')")
-            yields = collector.awaits
-        elif collector.yields:
-            if collector.awaits:
-                error(collector.yields[0].pos, "'await' not allowed in generators (use 'yield')")
-            yields = collector.yields
+            coroutine_type = Nodes.AsyncGenNode if collector.has_yield else Nodes.AsyncDefNode
+            if collector.has_yield:
+                for yield_expr in collector.yields + collector.returns:
+                    yield_expr.in_async_gen = True
+        elif collector.has_await:
+            found = next(y for y in collector.yields if y.is_await)
+            error(found.pos, "'await' not allowed in generators (use 'yield')")
+            return node
+        elif collector.has_yield:
+            coroutine_type = Nodes.GeneratorDefNode
         else:
             return node
 
-        for i, yield_expr in enumerate(yields, 1):
+        for i, yield_expr in enumerate(collector.yields, 1):
             yield_expr.label_num = i
-        for retnode in collector.returns:
+        for retnode in collector.returns + collector.finallys + collector.excepts:
             retnode.in_generator = True
 
         gbody = Nodes.GeneratorBodyDefNode(
-            pos=node.pos, name=node.name, body=node.body)
-        coroutine = (Nodes.AsyncDefNode if node.is_async_def else Nodes.GeneratorDefNode)(
+            pos=node.pos, name=node.name, body=node.body,
+            is_async_gen_body=node.is_async_def and collector.has_yield)
+        coroutine = coroutine_type(
             pos=node.pos, name=node.name, args=node.args,
             star_arg=node.star_arg, starstar_arg=node.starstar_arg,
             doc=node.doc, decorators=node.decorators,
@@ -2576,24 +2647,28 @@ class CreateClosureClasses(CythonTransform):
     def find_entries_used_in_closures(self, node):
         from_closure = []
         in_closure = []
-        for name, entry in node.local_scope.entries.items():
-            if entry.from_closure:
-                from_closure.append((name, entry))
-            elif entry.in_closure:
-                in_closure.append((name, entry))
+        for scope in node.local_scope.iter_local_scopes():
+            for name, entry in scope.entries.items():
+                if not name:
+                    continue
+                if entry.from_closure:
+                    from_closure.append((name, entry))
+                elif entry.in_closure:
+                    in_closure.append((name, entry))
         return from_closure, in_closure
 
     def create_class_from_scope(self, node, target_module_scope, inner_node=None):
         # move local variables into closure
         if node.is_generator:
-            for entry in node.local_scope.entries.values():
-                if not entry.from_closure:
-                    entry.in_closure = True
+            for scope in node.local_scope.iter_local_scopes():
+                for entry in scope.entries.values():
+                    if not entry.from_closure:
+                        entry.in_closure = True
 
         from_closure, in_closure = self.find_entries_used_in_closures(node)
         in_closure.sort()
 
-        # Now from the begining
+        # Now from the beginning
         node.needs_closure = False
         node.needs_outer_scope = False
 
@@ -2633,6 +2708,9 @@ class CreateClosureClasses(CythonTransform):
         class_scope = entry.type.scope
         class_scope.is_internal = True
         class_scope.is_closure_class_scope = True
+        if node.is_async_def or node.is_generator:
+            # Generators need their closure intact during cleanup as they resume to handle GeneratorExit
+            class_scope.directives['no_gc_clear'] = True
         if Options.closure_freelist_size:
             class_scope.directives['freelist'] = Options.closure_freelist_size
 
@@ -2645,11 +2723,12 @@ class CreateClosureClasses(CythonTransform):
                                     is_cdef=True)
             node.needs_outer_scope = True
         for name, entry in in_closure:
-            closure_entry = class_scope.declare_var(pos=entry.pos,
-                                    name=entry.name,
-                                    cname=entry.cname,
-                                    type=entry.type,
-                                    is_cdef=True)
+            closure_entry = class_scope.declare_var(
+                pos=entry.pos,
+                name=entry.name if not entry.in_subscope else None,
+                cname=entry.cname,
+                type=entry.type,
+                is_cdef=True)
             if entry.is_declared_generic:
                 closure_entry.is_declared_generic = 1
         node.needs_closure = True

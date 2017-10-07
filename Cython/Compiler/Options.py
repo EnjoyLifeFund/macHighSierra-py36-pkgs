@@ -143,6 +143,7 @@ _directive_defaults = {
     'initializedcheck' : True,
     'embedsignature' : False,
     'locals' : {},
+    'exceptval' : None,  # (except value=None, check=True)
     'auto_cpdef': False,
     'auto_pickle': None,
     'cdivision': False, # was True before 0.12
@@ -161,7 +162,7 @@ _directive_defaults = {
     'no_gc': False,
     'linetrace': False,
     'emit_code_comments': True,  # copy original source code into C code comments
-    'annotation_typing': False,  # read type declarations from Python function annotations
+    'annotation_typing': True,   # read type declarations from Python function annotations
     'infer_types': None,
     'infer_types.verbose': False,
     'autotestdict': True,
@@ -292,6 +293,9 @@ directive_scopes = { # defaults to available everywhere
     'auto_pickle': ('module', 'cclass'),
     'final' : ('cclass', 'function'),
     'inline' : ('function',),
+    'returns' : ('function',),
+    'exceptval' : ('function',),
+    'locals' : ('function',),
     'staticmethod' : ('function',),  # FIXME: analysis currently lacks more specific function scope
     'no_gc_clear' : ('cclass',),
     'no_gc' : ('cclass',),

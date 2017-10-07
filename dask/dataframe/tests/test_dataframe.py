@@ -12,7 +12,7 @@ from dask.utils import ignoring, put_lines
 import dask.dataframe as dd
 
 from dask.dataframe.core import repartition_divisions, aca, _concat, Scalar
-from dask.dataframe.methods import boundary_slice
+from dask.dataframe import methods
 from dask.dataframe.utils import (assert_eq, make_meta, assert_max_deps,
                                   PANDAS_VERSION)
 
@@ -1103,17 +1103,17 @@ def test_repartition():
 
 def test_repartition_divisions():
     result = repartition_divisions([0, 6], [0, 6, 6], 'a', 'b', 'c')
-    assert result == {('b', 0): (boundary_slice, ('a', 0), 0, 6, False),
-                      ('b', 1): (boundary_slice, ('a', 0), 6, 6, True),
+    assert result == {('b', 0): (methods.boundary_slice, ('a', 0), 0, 6, False),
+                      ('b', 1): (methods.boundary_slice, ('a', 0), 6, 6, True),
                       ('c', 0): ('b', 0),
                       ('c', 1): ('b', 1)}
 
     result = repartition_divisions([1, 3, 7], [1, 4, 6, 7], 'a', 'b', 'c')
-    assert result == {('b', 0): (boundary_slice, ('a', 0), 1, 3, False),
-                      ('b', 1): (boundary_slice, ('a', 1), 3, 4, False),
-                      ('b', 2): (boundary_slice, ('a', 1), 4, 6, False),
-                      ('b', 3): (boundary_slice, ('a', 1), 6, 7, True),
-                      ('c', 0): (pd.concat, [('b', 0), ('b', 1)]),
+    assert result == {('b', 0): (methods.boundary_slice, ('a', 0), 1, 3, False),
+                      ('b', 1): (methods.boundary_slice, ('a', 1), 3, 4, False),
+                      ('b', 2): (methods.boundary_slice, ('a', 1), 4, 6, False),
+                      ('b', 3): (methods.boundary_slice, ('a', 1), 6, 7, True),
+                      ('c', 0): (methods.concat, [('b', 0), ('b', 1)]),
                       ('c', 1): ('b', 2),
                       ('c', 2): ('b', 3)}
 
@@ -1339,7 +1339,7 @@ def test_datetime_accessor():
 
 
 def test_str_accessor():
-    df = pd.DataFrame({'x': ['a', 'b', 'c', 'D'], 'y': [1, 2, 3, 4]},
+    df = pd.DataFrame({'x': ['abc', 'bcd', 'cdef', 'DEFG'], 'y': [1, 2, 3, 4]},
                       index=['e', 'f', 'g', 'H'])
 
     a = dd.from_pandas(df, 2, sort=False)
@@ -1376,6 +1376,9 @@ def test_str_accessor():
         assert_eq(a.x.str.contains('a', regex=regex), df.x.str.contains('a', regex=regex))
         assert set(a.x.str.contains('a', regex=regex).dask) == set(a.x.str.contains('a', regex=regex).dask)
 
+    assert_eq(df.x.str[:2], df.x.str[:2])
+    assert_eq(a.x.str[1], a.x.str[1])
+
 
 def test_empty_max():
     meta = make_meta({'x': 'i8'})
@@ -1405,9 +1408,10 @@ def test_eval():
 
         # catch FutureWarning from pandas about assignment in eval
         with pytest.warns(None):
-            if p.eval('z = x + y', inplace=None) is None:
-                with pytest.raises(NotImplementedError):
-                    d.eval('z = x + y', inplace=None)
+            if PANDAS_VERSION < '0.21.0':
+                if p.eval('z = x + y', inplace=None) is None:
+                    with pytest.raises(NotImplementedError):
+                        d.eval('z = x + y', inplace=None)
 
 
 @pytest.mark.parametrize('include, exclude', [
@@ -2195,13 +2199,23 @@ def test_categorize_info():
     # Verbose=False
     buf = StringIO()
     ddf.info(buf=buf, verbose=True)
-    assert buf.getvalue() == unicode("<class 'dask.dataframe.core.DataFrame'>\n"
-                                     "Int64Index: 4 entries, 0 to 3\n"
-                                     "Data columns (total 3 columns):\n"
-                                     "x    4 non-null int64\n"
-                                     "y    4 non-null category\n"
-                                     "z    4 non-null object\n"
-                                     "dtypes: category(1), object(1), int64(1)")
+    if PANDAS_VERSION > '0.21.0':
+        expected = unicode("<class 'dask.dataframe.core.DataFrame'>\n"
+                           "Int64Index: 4 entries, 0 to 3\n"
+                           "Data columns (total 3 columns):\n"
+                           "x    4 non-null int64\n"
+                           "y    4 non-null CategoricalDtype(categories=['a', 'b', 'c'], ordered=False)\n"  # noqa
+                           "z    4 non-null object\n"
+                           "dtypes: CategoricalDtype(categories=['a', 'b', 'c'], ordered=False)(1), object(1), int64(1)")  # noqa
+    else:
+        expected = unicode("<class 'dask.dataframe.core.DataFrame'>\n"
+                           "Int64Index: 4 entries, 0 to 3\n"
+                           "Data columns (total 3 columns):\n"
+                           "x    4 non-null int64\n"
+                           "y    4 non-null category\n"
+                           "z    4 non-null object\n"
+                           "dtypes: category(1), object(1), int64(1)")
+    assert buf.getvalue() == expected
 
 
 def test_gh_1301():
@@ -2251,6 +2265,13 @@ def test_attribute_assignment():
 
     ddf.y = ddf.x + ddf.y
     assert_eq(ddf, df.assign(y=df.x + df.y))
+
+
+def test_setitem_triggering_realign():
+    a = dd.from_pandas(pd.DataFrame({"A": range(12)}), npartitions=3)
+    b = dd.from_pandas(pd.Series(range(12), name='B'), npartitions=4)
+    a['C'] = b
+    assert len(a) == 12
 
 
 def test_inplace_operators():
@@ -2634,23 +2655,23 @@ def test_slice_on_filtered_boundary(drop):
 def test_boundary_slice_nonmonotonic():
     x = np.array([-1, -2, 2, 4, 3])
     df = pd.DataFrame({"B": range(len(x))}, index=x)
-    result = boundary_slice(df, 0, 4)
+    result = methods.boundary_slice(df, 0, 4)
     expected = df.iloc[2:]
     tm.assert_frame_equal(result, expected)
 
-    result = boundary_slice(df, -1, 4)
+    result = methods.boundary_slice(df, -1, 4)
     expected = df.drop(-2)
     tm.assert_frame_equal(result, expected)
 
-    result = boundary_slice(df, -2, 3)
+    result = methods.boundary_slice(df, -2, 3)
     expected = df.drop(4)
     tm.assert_frame_equal(result, expected)
 
-    result = boundary_slice(df, -2, 3.5)
+    result = methods.boundary_slice(df, -2, 3.5)
     expected = df.drop(4)
     tm.assert_frame_equal(result, expected)
 
-    result = boundary_slice(df, -2, 4)
+    result = methods.boundary_slice(df, -2, 4)
     expected = df
     tm.assert_frame_equal(result, expected)
 
@@ -2671,7 +2692,7 @@ def test_boundary_slice_nonmonotonic():
 def test_with_boundary(start, stop, right_boundary, left_boundary, drop):
     x = np.array([-1, -2, 2, 4, 3])
     df = pd.DataFrame({"B": range(len(x))}, index=x)
-    result = boundary_slice(df, start, stop, right_boundary, left_boundary)
+    result = methods.boundary_slice(df, start, stop, right_boundary, left_boundary)
     expected = df.drop(drop)
     tm.assert_frame_equal(result, expected)
 
@@ -2692,7 +2713,7 @@ def test_with_boundary(start, stop, right_boundary, left_boundary, drop):
 ])
 def test_boundary_slice_same(index, left, right):
     df = pd.DataFrame({"A": range(len(index))}, index=index)
-    result = boundary_slice(df, left, right)
+    result = methods.boundary_slice(df, left, right)
     tm.assert_frame_equal(result, df)
 
 

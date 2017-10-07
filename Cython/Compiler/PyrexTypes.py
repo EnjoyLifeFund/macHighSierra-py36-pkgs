@@ -716,10 +716,9 @@ class MemoryViewSliceType(PyrexType):
 
         elif attribute in ("is_c_contig", "is_f_contig"):
             # is_c_contig and is_f_contig functions
-            for (c_or_f, cython_name) in (('c', 'is_c_contig'), ('f', 'is_f_contig')):
+            for (c_or_f, cython_name) in (('C', 'is_c_contig'), ('F', 'is_f_contig')):
 
-                is_contig_name = \
-                        MemoryView.get_is_contig_func_name(c_or_f, self.ndim)
+                is_contig_name = MemoryView.get_is_contig_func_name(c_or_f, self.ndim)
 
                 cfunctype = CFuncType(
                         return_type=c_bint_type,
@@ -733,8 +732,7 @@ class MemoryViewSliceType(PyrexType):
                             defining=1,
                             cname=is_contig_name)
 
-                entry.utility_code_definition = MemoryView.get_is_contig_utility(
-                                            attribute == 'is_c_contig', self.ndim)
+                entry.utility_code_definition = MemoryView.get_is_contig_utility(c_or_f, self.ndim)
 
         return True
 
@@ -856,7 +854,6 @@ class MemoryViewSliceType(PyrexType):
             return TempitaUtilityCode.load(
                 "ObjectToMemviewSlice", "MemoryView_C.c", context=context)
 
-        env.use_utility_code(Buffer.acquire_utility_code)
         env.use_utility_code(MemoryView.memviewslice_init_code)
         env.use_utility_code(LazyUtilityCode(lazy_utility_callback))
 
@@ -2630,7 +2627,11 @@ class CFuncType(CType):
         return self.same_c_signature_as_resolved_type(
             other_type.resolve(), as_cmethod)
 
-    def same_c_signature_as_resolved_type(self, other_type, as_cmethod = 0, as_pxd_definition = 0):
+    def same_c_signature_as_resolved_type(self, other_type, as_cmethod=False, as_pxd_definition=False,
+                                          exact_semantics=True):
+        # If 'exact_semantics' is false, allow any equivalent C signatures
+        # if the Cython semantics are compatible, i.e. the same or wider for 'other_type'.
+
         #print "CFuncType.same_c_signature_as_resolved_type:", \
         #    self, other_type, "as_cmethod =", as_cmethod ###
         if other_type is error_type:
@@ -2661,9 +2662,12 @@ class CFuncType(CType):
                 return 0
         if not self.same_calling_convention_as(other_type):
             return 0
-        if self.exception_check != other_type.exception_check:
-            return 0
-        if not self._same_exception_value(other_type.exception_value):
+        if exact_semantics:
+            if self.exception_check != other_type.exception_check:
+                return 0
+            if not self._same_exception_value(other_type.exception_value):
+                return 0
+        elif not self._is_exception_compatible_with(other_type):
             return 0
         return 1
 
@@ -2715,12 +2719,23 @@ class CFuncType(CType):
             return 0
         if self.nogil != other_type.nogil:
             return 0
-        if not self.exception_check and other_type.exception_check:
-            # a redundant exception check doesn't make functions incompatible, but a missing one does
-            return 0
-        if not self._same_exception_value(other_type.exception_value):
+        if not self._is_exception_compatible_with(other_type):
             return 0
         self.original_sig = other_type.original_sig or other_type
+        return 1
+
+    def _is_exception_compatible_with(self, other_type):
+        # narrower exception checks are ok, but prevent mismatches
+        if self.exception_check == '+' and other_type.exception_check != '+':
+            # must catch C++ exceptions if we raise them
+            return 0
+        if not other_type.exception_check or other_type.exception_value is not None:
+            # if other does not *always* check exceptions, self must comply
+            if not self._same_exception_value(other_type.exception_value):
+                return 0
+            if self.exception_check and self.exception_check != other_type.exception_check:
+                # a redundant exception check doesn't make functions incompatible, but a missing one does
+                return 0
         return 1
 
     def narrower_c_signature_than(self, other_type, as_cmethod = 0):
@@ -2767,13 +2782,18 @@ class CFuncType(CType):
         sc2 = other.calling_convention == '__stdcall'
         return sc1 == sc2
 
-    def same_as_resolved_type(self, other_type, as_cmethod = 0):
-        return self.same_c_signature_as_resolved_type(other_type, as_cmethod) \
+    def same_as_resolved_type(self, other_type, as_cmethod=False):
+        return self.same_c_signature_as_resolved_type(other_type, as_cmethod=as_cmethod) \
             and self.nogil == other_type.nogil
 
-    def pointer_assignable_from_resolved_type(self, other_type):
-        return self.same_c_signature_as_resolved_type(other_type) \
-            and not (self.nogil and not other_type.nogil)
+    def pointer_assignable_from_resolved_type(self, rhs_type):
+        # Accept compatible exception/nogil declarations for the RHS.
+        if rhs_type is error_type:
+            return 1
+        if not rhs_type.is_cfunction:
+            return 0
+        return rhs_type.same_c_signature_as_resolved_type(self, exact_semantics=False) \
+            and not (self.nogil and not rhs_type.nogil)
 
     def declaration_code(self, entity_code,
                          for_display = 0, dll_linkage = None, pyrex = 0,
@@ -2885,12 +2905,10 @@ class CFuncType(CType):
         elif self.cached_specialized_types is not None:
             return self.cached_specialized_types
 
-        cfunc_entries = self.entry.scope.cfunc_entries
-        cfunc_entries.remove(self.entry)
-
         result = []
         permutations = self.get_all_specialized_permutations()
 
+        new_cfunc_entries = []
         for cname, fused_to_specific in permutations:
             new_func_type = self.entry.type.specialize(fused_to_specific)
 
@@ -2905,7 +2923,15 @@ class CFuncType(CType):
             new_func_type.entry = new_entry
             result.append(new_func_type)
 
-            cfunc_entries.append(new_entry)
+            new_cfunc_entries.append(new_entry)
+
+        cfunc_entries = self.entry.scope.cfunc_entries
+        try:
+            cindex = cfunc_entries.index(self.entry)
+        except ValueError:
+            cfunc_entries.extend(new_cfunc_entries)
+        else:
+            cfunc_entries[cindex:cindex+1] = new_cfunc_entries
 
         self.cached_specialized_types = result
 
@@ -3168,7 +3194,8 @@ class ToPyStructUtilityCode(object):
         code.putln("%s {" % self.header)
         code.putln("PyObject* res;")
         code.putln("PyObject* member;")
-        code.putln("res = PyDict_New(); if (unlikely(!res)) return NULL;")
+        code.putln("res = __Pyx_PyDict_NewPresized(%d); if (unlikely(!res)) return NULL;" %
+                   len(self.type.scope.var_entries))
         for member in self.type.scope.var_entries:
             nameconst_cname = code.get_py_string_const(member.name, identifier=True)
             code.putln("%s; if (unlikely(!member)) goto bad;" % (
@@ -3425,13 +3452,17 @@ class CppClassType(CType):
             return ''
 
     def can_coerce_from_pyobject(self, env):
-        if self.cname in builtin_cpp_conversions or self.cname in cpp_string_conversions:
+        if self.cname in builtin_cpp_conversions:
+            template_count = builtin_cpp_conversions[self.cname]
             for ix, T in enumerate(self.templates or []):
-                if ix >= builtin_cpp_conversions[self.cname]:
+                if ix >= template_count:
                     break
                 if T.is_pyobject or not T.can_coerce_from_pyobject(env):
                     return False
             return True
+        elif self.cname in cpp_string_conversions:
+            return True
+        return False
 
     def create_from_py_utility_code(self, env):
         if self.from_py_function is not None:
@@ -3666,8 +3697,11 @@ class CppClassType(CType):
         if other_type.is_cpp_class:
             if self == other_type:
                 return 1
+            # This messy logic is needed due to GH Issue #1852.
             elif (self.cname == other_type.cname and
-                  self.template_type and other_type.template_type):
+                  (self.template_type and other_type.template_type
+                   or self.templates
+                   or other_type.templates)):
                 if self.templates == other_type.templates:
                     return 1
                 for t1, t2 in zip(self.templates, other_type.templates):

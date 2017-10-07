@@ -877,8 +877,7 @@ class PrettyLazyMap(LazyMap):
             length += len(pieces[-1]) + 2
             if length > self._MAX_REPR_SIZE and len(pieces) > 2:
                 return "[%s, ...]" % text_type(', ').join(pieces[:-1])
-        else:
-            return "[%s]" % text_type(', ').join(pieces)
+        return "[%s]" % text_type(', ').join(pieces)
 
 @python_2_unicode_compatible
 class PrettyLazyIteratorList(LazyIteratorList):
@@ -900,8 +899,7 @@ class PrettyLazyIteratorList(LazyIteratorList):
             length += len(pieces[-1]) + 2
             if length > self._MAX_REPR_SIZE and len(pieces) > 2:
                 return "[%s, ...]" % text_type(', ').join(pieces[:-1])
-        else:
-            return "[%s]" % text_type(', ').join(pieces)
+        return "[%s]" % text_type(', ').join(pieces)
 
 @python_2_unicode_compatible
 class PrettyLazyConcatenation(LazyConcatenation):
@@ -923,8 +921,7 @@ class PrettyLazyConcatenation(LazyConcatenation):
             length += len(pieces[-1]) + 2
             if length > self._MAX_REPR_SIZE and len(pieces) > 2:
                 return "[%s, ...]" % text_type(', ').join(pieces[:-1])
-        else:
-            return "[%s]" % text_type(', ').join(pieces)
+        return "[%s]" % text_type(', ').join(pieces)
 
     def __add__(self, other):
         """Return a list concatenating self with other."""
@@ -1003,6 +1000,10 @@ class FramenetCorpusReader(XMLCorpusReader):
 
 
         msg = """
+Citation: Nathan Schneider and Chuck Wooters (2017), 
+"The NLTK FrameNet API: Designing for Discoverability with a Rich Linguistic Resource". 
+Proceedings of EMNLP: System Demonstrations. https://arxiv.org/abs/1703.07438
+
 Use the following methods to access data in FrameNet.
 Provide a method name to `help()` for more information.
 
@@ -1023,7 +1024,7 @@ fes() to get frame elements (a.k.a. roles) matching a name pattern, optionally c
 LEXICAL UNITS
 =============
 
-lu() to look up a frame by its ID
+lu() to look up an LU by its ID
 lus() to get lexical units matching a name pattern, optionally constrained by frame
 lu_ids_and_names() to get a mapping from LU IDs to names
 

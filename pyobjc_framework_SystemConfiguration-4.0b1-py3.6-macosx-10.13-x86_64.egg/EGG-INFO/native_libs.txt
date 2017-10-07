@@ -1,1 +1,0 @@
-SystemConfiguration/_manual.cpython-36dm-darwin.so

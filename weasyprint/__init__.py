@@ -21,7 +21,7 @@ import cssselect2
 import tinycss2
 
 
-VERSION = '0.40'
+VERSION = '0.41'
 __version__ = VERSION
 
 # Used for 'User-Agent' in HTTP and 'Creator' in PDF
@@ -111,7 +111,7 @@ class HTML(object):
         return get_html_metadata(self.wrapper_element, self.base_url)
 
     def render(self, stylesheets=None, enable_hinting=False,
-               presentational_hints=False):
+               presentational_hints=False, font_config=None):
         """Lay out and paginate the document, but do not (yet) export it
         to PDF or another format.
 
@@ -133,14 +133,18 @@ class HTML(object):
         :type presentational_hints: bool
         :param presentational_hints: Whether HTML presentational hints are
             followed.
+        :type font_config: :class:`~fonts.FontConfiguration`
+        :param font_config: A font configuration handling @font-face rules.
         :returns: A :class:`~document.Document` object.
 
         """
         return Document._render(
-            self, stylesheets, enable_hinting, presentational_hints)
+            self, stylesheets, enable_hinting, presentational_hints,
+            font_config)
 
     def write_pdf(self, target=None, stylesheets=None, zoom=1,
-                  attachments=None, presentational_hints=False):
+                  attachments=None, presentational_hints=False,
+                  font_config=None):
         """Render the document to a PDF file.
 
         This is a shortcut for calling :meth:`render`, then
@@ -164,6 +168,8 @@ class HTML(object):
         :type presentational_hints: bool
         :param presentational_hints: Whether HTML presentational hints are
             followed.
+        :type font_config: :class:`~fonts.FontConfiguration`
+        :param font_config: A font configuration handling @font-face rules.
         :returns:
             The PDF as byte string if :obj:`target` is not provided or
             :obj:`None`, otherwise :obj:`None` (the PDF is written to
@@ -172,19 +178,21 @@ class HTML(object):
         """
         return self.render(
             stylesheets, enable_hinting=False,
-            presentational_hints=presentational_hints).write_pdf(
+            presentational_hints=presentational_hints,
+            font_config=font_config).write_pdf(
                 target, zoom, attachments)
 
     def write_image_surface(self, stylesheets=None, resolution=96,
-                            presentational_hints=False):
+                            presentational_hints=False, font_config=None):
         surface, _width, _height = (
             self.render(stylesheets, enable_hinting=True,
-                        presentational_hints=presentational_hints)
+                        presentational_hints=presentational_hints,
+                        font_config=font_config)
             .write_image_surface(resolution))
         return surface
 
     def write_png(self, target=None, stylesheets=None, resolution=96,
-                  presentational_hints=False):
+                  presentational_hints=False, font_config=None):
         """Paint the pages vertically to a single PNG image.
 
         There is no decoration around pages other than those specified in CSS
@@ -207,6 +215,8 @@ class HTML(object):
         :type presentational_hints: bool
         :param presentational_hints: Whether HTML presentational hints are
             followed.
+        :type font_config: :class:`~fonts.FontConfiguration`
+        :param font_config: A font configuration handling @font-face rules.
         :returns:
             The image as byte string if :obj:`target` is not provided or
             :obj:`None`, otherwise :obj:`None` (the image is written to
@@ -215,7 +225,8 @@ class HTML(object):
         """
         png_bytes, _width, _height = (
             self.render(stylesheets, enable_hinting=True,
-                        presentational_hints=presentational_hints)
+                        presentational_hints=presentational_hints,
+                        font_config=font_config)
             .write_png(target, resolution))
         return png_bytes
 
@@ -299,9 +310,14 @@ def _select_source(guess=None, filename=None, url=None, file_obj=None,
     if base_url is not None:
         base_url = ensure_url(base_url)
 
-    nones = [
-        param is None for param in (guess, filename, url, file_obj, string)]
-    if nones == [False, True, True, True, True]:
+    selected_params = [
+        param for param in (guess, filename, url, file_obj, string) if
+        param is not None]
+    if len(selected_params) != 1:
+        raise TypeError('Expected exactly one source, got ' + (
+            ', '.join(selected_params) or 'nothing'
+        ))
+    elif guess is not None:
         if hasattr(guess, 'read'):
             type_ = 'file_obj'
         elif url_is_absolute(guess):
@@ -316,12 +332,12 @@ def _select_source(guess=None, filename=None, url=None, file_obj=None,
             **{str(type_): guess})
         with result as result:
             yield result
-    elif nones == [True, False, True, True, True]:
+    elif filename is not None:
         if base_url is None:
             base_url = path2url(filename)
         with open(filename, 'rb') as file_obj:
             yield 'file_obj', file_obj, base_url, None
-    elif nones == [True, True, False, True, True]:
+    elif url is not None:
         with fetch(url_fetcher, url) as result:
             if check_css_mime_type and result['mime_type'] != 'text/css':
                 LOGGER.error(
@@ -338,7 +354,7 @@ def _select_source(guess=None, filename=None, url=None, file_obj=None,
                     yield (
                         'file_obj', result['file_obj'], base_url,
                         proto_encoding)
-    elif nones == [True, True, True, False, True]:
+    elif file_obj is not None:
         if base_url is None:
             # filesystem file-like objects have a 'name' attribute.
             name = getattr(file_obj, 'name', None)
@@ -346,16 +362,14 @@ def _select_source(guess=None, filename=None, url=None, file_obj=None,
             if name and not name.startswith('<'):
                 base_url = ensure_url(name)
         yield 'file_obj', file_obj, base_url, None
-    elif nones == [True, True, True, True, False]:
+    elif string is not None:
         yield 'string', string, base_url, None
     else:
-        raise TypeError('Expected exactly one source, got ' + (
-            ', '.join(
-                name for i, name in enumerate(
-                    ('guess', 'filename', 'url', 'file_obj', 'string'))
-                if not nones[i]
-            ) or 'nothing'
-        ))
+        sources = dict(locals())
+        sources_names = ', '.join(
+            name for name in ('guess', 'filename', 'url', 'file_obj', 'string')
+            if sources[name] is not None) or 'nothing'
+        raise TypeError('Expected exactly one source, got ' + sources_names)
 
 # Work around circular imports.
 from .css import preprocess_stylesheet  # noqa

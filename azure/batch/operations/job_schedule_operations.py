@@ -9,8 +9,8 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.pipeline import ClientRawResponse
 import uuid
+from msrest.pipeline import ClientRawResponse
 
 from .. import models
 
@@ -22,7 +22,7 @@ class JobScheduleOperations(object):
     :param config: Configuration of service client.
     :param serializer: An object model serializer.
     :param deserializer: An objec model deserializer.
-    :ivar api_version: Client API Version. Constant value: "2017-06-01.5.1".
+    :ivar api_version: Client API Version. Constant value: "2017-09-01.6.0".
     """
 
     def __init__(self, client, config, serializer, deserializer):
@@ -30,7 +30,7 @@ class JobScheduleOperations(object):
         self._client = client
         self._serialize = serializer
         self._deserialize = deserializer
-        self.api_version = "2017-06-01.5.1"
+        self.api_version = "2017-09-01.6.0"
 
         self.config = config
 
@@ -50,9 +50,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: bool
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: bool or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: bool or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -159,9 +161,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -257,10 +261,13 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: :class:`CloudJobSchedule
+         <azure.batch.models.CloudJobSchedule>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
         :rtype: :class:`CloudJobSchedule
-         <azure.batch.models.CloudJobSchedule>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+         <azure.batch.models.CloudJobSchedule>` or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -387,9 +394,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -503,9 +512,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -610,9 +621,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -711,9 +724,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -813,9 +828,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -915,9 +932,11 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+         raw=true
+        :rtype: None or
+         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
         :raises:
          :class:`BatchErrorException<azure.batch.models.BatchErrorException>`
         """
@@ -994,6 +1013,8 @@ class JobScheduleOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
+        :return: An iterator like instance of :class:`CloudJobSchedule
+         <azure.batch.models.CloudJobSchedule>`
         :rtype: :class:`CloudJobSchedulePaged
          <azure.batch.models.CloudJobSchedulePaged>`
         :raises:

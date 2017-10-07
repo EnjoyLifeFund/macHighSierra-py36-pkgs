@@ -4,8 +4,9 @@
 
 from __future__ import absolute_import
 
-import copy
 import re
+import copy
+import operator
 
 try:
     import __builtin__ as builtins
@@ -17,9 +18,9 @@ from .StringEncoding import EncodedString
 from . import Options, Naming
 from . import PyrexTypes
 from .PyrexTypes import py_object_type, unspecified_type
-from .TypeSlots import \
-    pyfunction_signature, pymethod_signature, \
-    get_special_method_signature, get_property_accessor_signature
+from .TypeSlots import (
+    pyfunction_signature, pymethod_signature, richcmp_special_methods,
+    get_special_method_signature, get_property_accessor_signature)
 
 from . import Code
 
@@ -88,6 +89,7 @@ class Entry(object):
     # is_arg           boolean    Is the arg of a method
     # is_local         boolean    Is a local variable
     # in_closure       boolean    Is referenced in an inner scope
+    # in_subscope      boolean    Belongs to a generator expression scope
     # is_readonly      boolean    Can't be assigned to
     # func_cname       string     C func implementing Python func
     # func_modifiers   [string]   C function modifiers ('inline')
@@ -163,6 +165,7 @@ class Entry(object):
     is_local = 0
     in_closure = 0
     from_closure = 0
+    in_subscope = 0
     is_declared_generic = 0
     is_readonly = 0
     pyfunc_cname = None
@@ -299,6 +302,7 @@ class Scope(object):
     is_py_class_scope = 0
     is_c_class_scope = 0
     is_closure_scope = 0
+    is_genexpr_scope = 0
     is_passthrough = 0
     is_cpp_class_scope = 0
     is_property_scope = 0
@@ -308,6 +312,7 @@ class Scope(object):
     in_cinclude = 0
     nogil = 0
     fused_to_specific = None
+    return_type = None
 
     def __init__(self, name, outer_scope, parent_scope):
         # The outer_scope is the next scope in the lookup chain.
@@ -324,6 +329,7 @@ class Scope(object):
             self.qualified_name = EncodedString(name)
             self.scope_prefix = mangled_name
         self.entries = {}
+        self.subscopes = set()
         self.const_entries = []
         self.type_entries = []
         self.sue_entries = []
@@ -341,7 +347,6 @@ class Scope(object):
         self.obj_to_entry = {}
         self.buffer_entries = []
         self.lambda_defs = []
-        self.return_type = None
         self.id_counters = {}
 
     def __deepcopy__(self, memo):
@@ -418,6 +423,12 @@ class Scope(object):
     def builtin_scope(self):
         """ Return the module-level scope containing this scope. """
         return self.outer_scope.builtin_scope()
+
+    def iter_local_scopes(self):
+        yield self
+        if self.subscopes:
+            for scope in sorted(self.subscopes, key=operator.attrgetter('scope_prefix')):
+                yield scope
 
     def declare(self, name, cname, type, pos, visibility, shadow = 0, is_type = 0, create_wrapper = 0):
         # Create new entry, and add to dictionary if
@@ -760,6 +771,10 @@ class Scope(object):
                     else:
                         warning(pos, "Function signature does not match previous declaration", 1)
                         entry.type = type
+                elif not in_pxd and entry.defined_in_pxd and type.compatible_signature_with(entry.type):
+                    # TODO: check that this was done by a signature optimisation and not a user error.
+                    #warning(pos, "Function signature does not match previous declaration", 1)
+                    entry.type = type
                 else:
                     error(pos, "Function signature does not match previous declaration")
         else:
@@ -789,13 +804,23 @@ class Scope(object):
         type.entry = entry
         return entry
 
-    def add_cfunction(self, name, type, pos, cname, visibility, modifiers):
+    def add_cfunction(self, name, type, pos, cname, visibility, modifiers, inherited=False):
         # Add a C function entry without giving it a func_cname.
         entry = self.declare(name, cname, type, pos, visibility)
         entry.is_cfunction = 1
         if modifiers:
             entry.func_modifiers = modifiers
-        self.cfunc_entries.append(entry)
+        if inherited or type.is_fused:
+            self.cfunc_entries.append(entry)
+        else:
+            # For backwards compatibility reasons, we must keep all non-fused methods
+            # before all fused methods, but separately for each type.
+            i = len(self.cfunc_entries)
+            for cfunc_entry in reversed(self.cfunc_entries):
+                if cfunc_entry.is_inherited or not cfunc_entry.type.is_fused:
+                    break
+                i -= 1
+            self.cfunc_entries.insert(i, entry)
         return entry
 
     def find(self, name, pos):
@@ -876,15 +901,17 @@ class Scope(object):
     def use_entry_utility_code(self, entry):
         self.global_scope().use_entry_utility_code(entry)
 
-    def generate_library_function_declarations(self, code):
-        # Generate extern decls for C library funcs used.
-        pass
-
     def defines_any(self, names):
-        # Test whether any of the given names are
-        # defined in this scope.
+        # Test whether any of the given names are defined in this scope.
         for name in names:
             if name in self.entries:
+                return 1
+        return 0
+
+    def defines_any_special(self, names):
+        # Test whether any of the given names are defined as special methods in this scope.
+        for name in names:
+            if name in self.entries and self.entries[name].is_special:
                 return 1
         return 0
 
@@ -1095,7 +1122,8 @@ class ModuleScope(Scope):
         self.undeclared_cached_builtins = []
         self.namespace_cname = self.module_cname
         self._cached_tuple_types = {}
-        for var_name in ['__builtins__', '__name__', '__file__', '__doc__', '__path__']:
+        for var_name in ['__builtins__', '__name__', '__file__', '__doc__', '__path__',
+                         '__spec__', '__loader__', '__package__', '__cached__']:
             self.declare_var(EncodedString(var_name), py_object_type, None)
 
     def qualifying_scope(self):
@@ -1207,10 +1235,6 @@ class ModuleScope(Scope):
         if submodule:
             scope = scope.find_submodule(submodule)
         return scope
-
-    def generate_library_function_declarations(self, code):
-        if self.directives['np_pythran']:
-            code.putln("import_array();")
 
     def lookup_submodule(self, name):
         # Return scope for submodule of this module, or None.
@@ -1693,18 +1717,19 @@ class LocalScope(Scope):
         return entry
 
     def mangle_closure_cnames(self, outer_scope_cname):
-        for entry in self.entries.values():
-            if entry.from_closure:
-                cname = entry.outer_entry.cname
-                if self.is_passthrough:
-                    entry.cname = cname
-                else:
-                    if cname.startswith(Naming.cur_scope_cname):
-                        cname = cname[len(Naming.cur_scope_cname)+2:]
-                    entry.cname = "%s->%s" % (outer_scope_cname, cname)
-            elif entry.in_closure:
-                entry.original_cname = entry.cname
-                entry.cname = "%s->%s" % (Naming.cur_scope_cname, entry.cname)
+        for scope in self.iter_local_scopes():
+            for entry in scope.entries.values():
+                if entry.from_closure:
+                    cname = entry.outer_entry.cname
+                    if self.is_passthrough:
+                        entry.cname = cname
+                    else:
+                        if cname.startswith(Naming.cur_scope_cname):
+                            cname = cname[len(Naming.cur_scope_cname)+2:]
+                        entry.cname = "%s->%s" % (outer_scope_cname, cname)
+                elif entry.in_closure:
+                    entry.original_cname = entry.cname
+                    entry.cname = "%s->%s" % (Naming.cur_scope_cname, entry.cname)
 
 
 class GeneratorExpressionScope(Scope):
@@ -1712,11 +1737,20 @@ class GeneratorExpressionScope(Scope):
     to generators, these can be easily inlined in some cases, so all
     we really need is a scope that holds the loop variable(s).
     """
+    is_genexpr_scope = True
+
     def __init__(self, outer_scope):
         name = outer_scope.global_scope().next_id(Naming.genexpr_id_ref)
         Scope.__init__(self, name, outer_scope, outer_scope)
         self.directives = outer_scope.directives
         self.genexp_prefix = "%s%d%s" % (Naming.pyrex_prefix, len(name), name)
+
+        # Class/ExtType scopes are filled at class creation time, i.e. from the
+        # module init function or surrounding function.
+        while outer_scope.is_genexpr_scope or outer_scope.is_c_class_scope or outer_scope.is_py_class_scope:
+            outer_scope = outer_scope.outer_scope
+        self.var_entries = outer_scope.var_entries  # keep declarations outside
+        outer_scope.subscopes.add(self)
 
     def mangle(self, prefix, name):
         return '%s%s' % (self.genexp_prefix, self.parent_scope.mangle(prefix, name))
@@ -1733,8 +1767,9 @@ class GeneratorExpressionScope(Scope):
         # this scope must hold its name exclusively
         cname = '%s%s' % (self.genexp_prefix, self.parent_scope.mangle(Naming.var_prefix, name or self.next_id()))
         entry = self.declare(name, cname, type, pos, visibility)
-        entry.is_variable = 1
-        entry.is_local = 1
+        entry.is_variable = True
+        entry.is_local = True
+        entry.in_subscope = True
         self.var_entries.append(entry)
         self.entries[name] = entry
         return entry
@@ -2039,8 +2074,13 @@ class CClassScope(ClassScope):
 
     def declare_pyfunction(self, name, pos, allow_redefine=False):
         # Add an entry for a method.
-        if name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
-            error(pos, "Special method %s must be implemented via __richcmp__" % name)
+        if name in richcmp_special_methods:
+            if self.lookup_here('__richcmp__'):
+                error(pos, "Cannot define both % and __richcmp__" % name)
+        elif name == '__richcmp__':
+            for n in richcmp_special_methods:
+                if self.lookup_here(n):
+                    error(pos, "Cannot define both % and __richcmp__" % n)
         if name == "__new__":
             error(pos, "__new__ method of extension type will change semantics "
                 "in a future version of Pyrex and Cython. Use __cinit__ instead.")
@@ -2134,11 +2174,11 @@ class CClassScope(ClassScope):
 
         return entry
 
-    def add_cfunction(self, name, type, pos, cname, visibility, modifiers):
+    def add_cfunction(self, name, type, pos, cname, visibility, modifiers, inherited=False):
         # Add a cfunction entry without giving it a func_cname.
         prev_entry = self.lookup_here(name)
         entry = ClassScope.add_cfunction(self, name, type, pos, cname,
-                                         visibility, modifiers)
+                                         visibility, modifiers, inherited=inherited)
         entry.is_cmethod = 1
         entry.prev_entry = prev_entry
         return entry
@@ -2199,7 +2239,7 @@ class CClassScope(ClassScope):
                 cname = adapt(cname)
             entry = self.add_cfunction(base_entry.name, base_entry.type,
                                        base_entry.pos, cname,
-                                       base_entry.visibility, base_entry.func_modifiers)
+                                       base_entry.visibility, base_entry.func_modifiers, inherited=True)
             entry.is_inherited = 1
             if base_entry.is_final_cmethod:
                 entry.is_final_cmethod = True
@@ -2234,8 +2274,7 @@ class CppClassScope(Scope):
 
     def declare_var(self, name, type, pos,
                     cname = None, visibility = 'extern',
-                    api = 0, in_pxd = 0, is_cdef = 0,
-                    allow_pyobject = 0, defining = 0):
+                    api = 0, in_pxd = 0, is_cdef = 0, defining = 0):
         # Add an entry for an attribute.
         if not cname:
             cname = name
@@ -2244,6 +2283,8 @@ class CppClassScope(Scope):
             if entry.type.same_as(type):
                 # Fix with_gil vs nogil.
                 entry.type = entry.type.with_with_gil(type.with_gil)
+            elif type.is_cfunction and type.compatible_signature_with(entry.type):
+                entry.type = type
             else:
                 error(pos, "Function signature does not match previous declaration")
         else:
@@ -2254,22 +2295,30 @@ class CppClassScope(Scope):
                 entry.func_cname = "%s::%s" % (self.type.empty_declaration_code(), cname)
         if name != "this" and (defining or name != "<init>"):
             self.var_entries.append(entry)
-        if type.is_pyobject and not allow_pyobject:
-            error(pos,
-                "C++ class member cannot be a Python object")
         return entry
 
     def declare_cfunction(self, name, type, pos,
                           cname=None, visibility='extern', api=0, in_pxd=0,
                           defining=0, modifiers=(), utility_code=None, overridable=False):
-        if name in (self.name.split('::')[-1], '__init__') and cname is None:
-            cname = self.type.cname
+        class_name = self.name.split('::')[-1]
+        if name in (class_name, '__init__') and cname is None:
+            cname = "%s__init__%s" % (Naming.func_prefix, class_name)
             name = '<init>'
-            type.return_type = PyrexTypes.InvisibleVoidType()
+            type.return_type = PyrexTypes.CVoidType()
+            # This is called by the actual constructor, but need to support
+            # arguments that cannot by called by value.
+            type.original_args = type.args
+            def maybe_ref(arg):
+                if arg.type.is_cpp_class and not arg.type.is_reference:
+                    return PyrexTypes.CFuncTypeArg(
+                        arg.name, PyrexTypes.c_ref_type(arg.type), arg.pos)
+                else:
+                    return arg
+            type.args = [maybe_ref(arg) for arg in type.args]
         elif name == '__dealloc__' and cname is None:
-            cname = "~%s" % self.type.cname
+            cname = "%s__dealloc__%s" % (Naming.func_prefix, class_name)
             name = '<del>'
-            type.return_type = PyrexTypes.InvisibleVoidType()
+            type.return_type = PyrexTypes.CVoidType()
         prev_entry = self.lookup_here(name)
         entry = self.declare_var(name, type, pos,
                                  defining=defining,
@@ -2294,8 +2343,8 @@ class CppClassScope(Scope):
         # to work with this type.
         for base_entry in \
             base_scope.inherited_var_entries + base_scope.var_entries:
-                #contructor is not inherited
-                if base_entry.name == "<init>":
+                #contructor/destructor is not inherited
+                if base_entry.name in ("<init>", "<del>"):
                     continue
                 #print base_entry.name, self.entries
                 if base_entry.name in self.entries:
@@ -2303,6 +2352,7 @@ class CppClassScope(Scope):
                 entry = self.declare(base_entry.name, base_entry.cname,
                     base_entry.type, None, 'extern')
                 entry.is_variable = 1
+                entry.is_inherited = 1
                 self.inherited_var_entries.append(entry)
         for base_entry in base_scope.cfunc_entries:
             entry = self.declare_cfunction(base_entry.name, base_entry.type,

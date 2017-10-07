@@ -202,7 +202,7 @@ def test_categorize_index():
 @pytest.mark.parametrize('shuffle', ['disk', 'tasks'])
 def test_categorical_set_index(shuffle):
     df = pd.DataFrame({'x': [1, 2, 3, 4], 'y': ['a', 'b', 'b', 'c']})
-    df['y'] = df.y.astype('category', ordered=True)
+    df['y'] = pd.Categorical(df['y'], categories=['a', 'b', 'c'], ordered=True)
     a = dd.from_pandas(df, npartitions=2)
 
     with dask.set_options(get=dask.get, shuffle=shuffle):
@@ -221,6 +221,19 @@ def test_categorical_set_index(shuffle):
         d1, d2 = b.get_partition(0), b.get_partition(1)
         assert list(d1.index.compute()) == ['a']
         assert list(sorted(d2.index.compute())) == ['b', 'b', 'c']
+
+
+@pytest.mark.parametrize('npartitions', [1, 4])
+def test_repartition_on_categoricals(npartitions):
+    df = pd.DataFrame({'x': range(10), 'y': list('abababcbcb')})
+    ddf = dd.from_pandas(df, npartitions=2)
+    ddf['y'] = ddf['y'].astype('category')
+    ddf2 = ddf.repartition(npartitions=npartitions)
+
+    df = df.copy()
+    df['y'] = df['y'].astype('category')
+    assert_eq(df, ddf)
+    assert_eq(df, ddf2)
 
 
 def test_categorical_accessor_presence():
@@ -329,3 +342,16 @@ class TestCategoricalAccessor:
         res = db.compute()
         tm.assert_index_equal(db.cat.categories, get_cat(res).categories)
         assert_array_index_eq(db.cat.codes, get_cat(res).codes)
+
+    def test_categorical_string_ops(self):
+        a = pd.Series(['a', 'a', 'b'], dtype='category')
+        da = dd.from_pandas(a, 2)
+        result = da.str.upper()
+        expected = a.str.upper()
+        assert_eq(result, expected)
+
+    def test_categorical_non_string_raises(self):
+        a = pd.Series([1, 2, 3], dtype='category')
+        da = dd.from_pandas(a, 2)
+        with pytest.raises(AttributeError):
+            da.str.upper()

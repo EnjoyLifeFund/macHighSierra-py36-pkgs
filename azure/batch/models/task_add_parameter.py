@@ -34,6 +34,16 @@ class TaskAddParameter(Model):
      shell in the command line, for example using "cmd /c MyCommand" in Windows
      or "/bin/sh -c MyCommand" in Linux.
     :type command_line: str
+    :param container_settings: The settings for the container under which the
+     task runs. If the pool that will run this task has containerConfiguration
+     set, this must be set as well. If the pool that will run this task doesn't
+     have containerConfiguration set, this must not be set. When this is
+     specified, all directories recursively below the AZ_BATCH_NODE_ROOT_DIR
+     (the root of Azure Batch directories on the node) are mapped into the
+     container, all task environment variables are mapped into the container,
+     and the task command line is executed in the container.
+    :type container_settings: :class:`TaskContainerSettings
+     <azure.batch.models.TaskContainerSettings>`
     :param exit_conditions: How the Batch service should respond when the task
      completes.
     :type exit_conditions: :class:`ExitConditions
@@ -83,7 +93,12 @@ class TaskAddParameter(Model):
      <azure.batch.models.TaskDependencies>`
     :param application_package_references: A list of application packages that
      the Batch service will deploy to the compute node before running the
-     command line.
+     command line. Application packages are downloaded and deployed to a shared
+     directory, not the task working directory. Therefore, if a referenced
+     package is already on the compute node, and is up to date, then it is not
+     re-downloaded; the existing copy on the compute node is used. If a
+     referenced application package cannot be installed, for example because
+     the package has been deleted or because download failed, the task fails.
     :type application_package_references: list of
      :class:`ApplicationPackageReference
      <azure.batch.models.ApplicationPackageReference>`
@@ -109,6 +124,7 @@ class TaskAddParameter(Model):
         'id': {'key': 'id', 'type': 'str'},
         'display_name': {'key': 'displayName', 'type': 'str'},
         'command_line': {'key': 'commandLine', 'type': 'str'},
+        'container_settings': {'key': 'containerSettings', 'type': 'TaskContainerSettings'},
         'exit_conditions': {'key': 'exitConditions', 'type': 'ExitConditions'},
         'resource_files': {'key': 'resourceFiles', 'type': '[ResourceFile]'},
         'output_files': {'key': 'outputFiles', 'type': '[OutputFile]'},
@@ -122,10 +138,11 @@ class TaskAddParameter(Model):
         'authentication_token_settings': {'key': 'authenticationTokenSettings', 'type': 'AuthenticationTokenSettings'},
     }
 
-    def __init__(self, id, command_line, display_name=None, exit_conditions=None, resource_files=None, output_files=None, environment_settings=None, affinity_info=None, constraints=None, user_identity=None, multi_instance_settings=None, depends_on=None, application_package_references=None, authentication_token_settings=None):
+    def __init__(self, id, command_line, display_name=None, container_settings=None, exit_conditions=None, resource_files=None, output_files=None, environment_settings=None, affinity_info=None, constraints=None, user_identity=None, multi_instance_settings=None, depends_on=None, application_package_references=None, authentication_token_settings=None):
         self.id = id
         self.display_name = display_name
         self.command_line = command_line
+        self.container_settings = container_settings
         self.exit_conditions = exit_conditions
         self.resource_files = resource_files
         self.output_files = output_files

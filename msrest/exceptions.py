@@ -27,8 +27,6 @@
 import logging
 import sys
 
-from requests import RequestException
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +75,7 @@ class TokenExpiredError(ClientException):
 class ValidationError(ClientException):
     """Request parameter validation failed."""
 
-    messages = {
+    _messages = {
         "min_length": "must have length greater than {!r}.",
         "max_length": "must have length less than {!r}.",
         "minimum": "must be greater than {!r}.",
@@ -96,7 +94,7 @@ class ValidationError(ClientException):
         self.rule = rule
         self.target = target
         message = "Parameter {!r} ".format(target)
-        reason = self.messages.get(
+        reason = self._messages.get(
             rule, "failed to meet validation requirement.")
         message += reason.format(value)
         super(ValidationError, self).__init__(message, *args, **kwargs)
@@ -136,14 +134,27 @@ class HttpOperationError(ClientException):
                 self.error = deserialize(resp_type, response)
                 if self.error is None:
                     self.error = deserialize.dependencies[resp_type]()
-                self.message = self.error.message
+                # ARM uses OData v4, try that by default
+                # http://docs.oasis-open.org/odata/odata-json-format/v4.0/os/odata-json-format-v4.0-os.html#_Toc372793091
+                # Code and Message are REQUIRED
+                try:
+                    self.message = "({}) {}".format(
+                        self.error.error.code,
+                        self.error.error.message
+                    )
+                except AttributeError:
+                    # Try the default for Autorest if not available (compat)
+                    self.message = self.error.message
         except (DeserializationError, AttributeError, KeyError):
             pass
 
         if not self.error or not self.message:
             try:
                 response.raise_for_status()
-            except RequestException as err:
+            # Two possible raises here:
+            # - Attribute error if response is not requests.RequestException. Do not catch.
+            # - requests.RequestException. Catch base class IOError to avoid explicit import of requests here.
+            except IOError as err:
                 if not self.error:
                     self.error = err
 

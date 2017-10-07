@@ -350,6 +350,7 @@ class Serializer(object):
             }
         self.dependencies = dict(classes) if classes else {}
         self.key_transformer = full_restapi_key_transformer
+        self.client_side_validation = True
 
     def _serialize(self, target_obj, data_type=None, **kwargs):
         """Serialize data into a string according to type.
@@ -440,9 +441,10 @@ class Serializer(object):
                 raise_with_traceback(
                     SerializationError, "Unable to build a model: "+str(err), err)
 
-        errors = _recursive_validate(data_type, data)
-        if errors:
-            raise errors[0]
+        if self.client_side_validation:
+            errors = _recursive_validate(data_type, data)
+            if errors:
+                raise errors[0]
         return self._serialize(data, data_type, **kwargs)
 
     def url(self, name, data, data_type, **kwargs):
@@ -454,7 +456,8 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        data = self.validate(data, name, required=True, **kwargs)
+        if self.client_side_validation:
+            data = self.validate(data, name, required=True, **kwargs)
         try:
             output = self.serialize_data(data, data_type, **kwargs)
             if data_type == 'bool':
@@ -478,7 +481,8 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        data = self.validate(data, name, required=True, **kwargs)
+        if self.client_side_validation:
+            data = self.validate(data, name, required=True, **kwargs)
         try:
             if data_type in ['[str]']:
                 data = ["" if d is None else d for d in data]
@@ -504,7 +508,8 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        data = self.validate(data, name, required=True, **kwargs)
+        if self.client_side_validation:
+            data = self.validate(data, name, required=True, **kwargs)
         try:
             if data_type in ['[str]']:
                 data = ["" if d is None else d for d in data]
@@ -618,6 +623,8 @@ class Serializer(object):
          in the iterable into a combined string. Default is 'None'.
         :rtype: list, str
         """
+        if isinstance(data, str):
+            raise SerializationError("Refuse str type as a valid iter type.")
         serialized = []
         for d in data:
             try:
@@ -926,11 +933,12 @@ class Deserializer(object):
             rest_key_extractor
         ]
 
-    def __call__(self, target_obj, response_data):
+    def __call__(self, target_obj, response_data, content_type=None):
         """Call the deserializer to process a REST response.
 
         :param str target_obj: Target data type to deserialize to.
         :param requests.Response response_data: REST response object.
+        :param str content_type: Swagger "produces" if available.
         :raises: DeserializationError if deserialization fails.
         :return: Deserialized object.
         """
@@ -958,7 +966,7 @@ class Deserializer(object):
             except AttributeError:
                 return
 
-        data = self._unpack_content(response_data)
+        data = self._unpack_content(response_data, content_type)
         response, class_name = self._classify_target(target_obj, data)
 
         if isinstance(response, basestring):
@@ -1012,25 +1020,56 @@ class Deserializer(object):
             pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
-    def _unpack_content(self, raw_data):
+    JSON_MIMETYPES = [
+        'application/json',
+        'text/json' # Because we're open minded people...
+    ]
+
+    @staticmethod
+    def _unpack_content(raw_data, content_type=None):
         """Extract data from the body of a REST response object.
 
-        :param raw_data: Data to be processed. This could be a
-         requests.Response object, in which case the json content will be
-         be returned.
+        If raw_data is a requests.Response object, follow Content-Type
+        to parse (ignore content_type parameter).
+        If bytes is given, decode using UTF8 first. 
+        If content_type is given, try to parse.
+        Otherwise, return initial data.
+        We assume everything is UTF8 (BOM acceptable).
+
+        :param raw_data: Data to be processed.
+        :param content_type: How to parse if raw_data is a string/bytes.
+        :raises JSONDecodeError: If JSON is requested and parsing is impossible.
+        :raises UnicodeDecodeError: If bytes is not UTF8
         """
-        if raw_data and isinstance(raw_data, bytes):
-            data = raw_data.decode(encoding='utf-8')
+
+        if hasattr(raw_data, 'text'): # Our requests.Response test
+            # Try to use content-type from headers if available
+            if 'content-type' in raw_data.headers:
+                content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
+            # Ouch, this server did not declare what it sent...
+            # Use Swagger "produces", which will be passed to "content_type" here
+            # If "content_type" also is empty, this means that it's an old version
+            # of Autorest for Python, let's guess it's JSON...
+            # Also, since Autorest was considering that an empty body was a valid JSON,
+            # need that test as well....
+            elif not content_type:
+                if not raw_data.text:
+                    return None
+                content_type = "application/json"
+            # Whatever content type, data is readable (not bytes). Get it as a string.
+            data = raw_data.text
+        elif raw_data and isinstance(raw_data, bytes):
+            data = raw_data.decode(encoding='utf-8-sig')
         else:
             data = raw_data
 
-        try:
-            # This is a requests.Response, json valid if nothing fail
-            if not raw_data.text:
-                return None
-            return json.loads(raw_data.text)
-        except (ValueError, TypeError, AttributeError):
-            pass
+        if content_type in Deserializer.JSON_MIMETYPES:
+            try:
+                return json.loads(data)
+            except ValueError as err:
+                raise DeserializationError("JSON is invalid: {}".format(err), err)
+        elif "xml" in (content_type or []):
+            raise DeserializationError("Do not support XML right now")
         return data
 
     def _instantiate_model(self, response, attrs):
@@ -1110,8 +1149,13 @@ class Deserializer(object):
         :param str iter_type: The type of object in the iterable.
         :rtype: list
         """
-        if not attr and not isinstance(attr, list):
+        if attr is None:
             return None
+        if not isinstance(attr, (list, set)):
+            raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
+                iter_type,
+                type(attr)
+            ))
         return [self.deserialize_data(a, iter_type) for a in attr]
 
     def deserialize_dict(self, attr, dict_type):

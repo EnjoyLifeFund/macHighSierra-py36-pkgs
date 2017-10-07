@@ -9,14 +9,9 @@ import datetime
 import multiprocessing
 import os.path
 import pickle
+import signal
 import sys
 import threading
-
-# We import matplotlib in the functions that need it because
-# upgrading it while using it leads to segfault. And we upgrade
-# it via devlpr, that uses ActionTree.
-import graphviz
-
 
 libc = ctypes.CDLL(None)
 try:
@@ -27,9 +22,6 @@ try:
     stderr = ctypes.c_void_p.in_dll(libc, "stderr")
 except ValueError:  # Not unittested: Not doctested: specific to macOS
     stderr = ctypes.c_void_p.in_dll(libc, "__stderrp")
-
-
-# @todo Evaluate https://pypi.python.org/pypi/PyContracts
 
 
 def execute(action, cpu_cores=None, keep_going=False, do_raise=True, hooks=None):
@@ -82,21 +74,17 @@ class Action(object):
 
     def __init__(self, label, dependencies=[], resources_required={}, accept_failed_dependencies=False):
         """
-        :param label:
-            @todo Insist on label being a str or None.
-            Add a note saying how it's used in GanttChart and DependencyGraph.
-            whatever you want to attach to the action.
-            ``str(label)`` must succeed and return a string.
-            Can be retrieved by :attr:`label`.
+        :param label: A string used to represent the action in :class:`GanttChart` and
+            :class:`DependencyGraph`. Can be retrieved by :attr:`label`.
+        :type label: str or None
         :param list(Action) dependencies:
             see :meth:`~.Action.add_dependency`
         :param resources_required:
             see :meth:`~.Action.require_resource`
         :type resources_required: dict(Resource, int)
         :param bool accept_failed_dependencies:
-            it ``True``, then the action will execute even if some of its dependencies failed.
+            if ``True``, then the action will execute even after some of its dependencies failed.
         """
-        str(label)
         self.__label = label
         self.__dependencies = list(dependencies)
         self.__resources_required = {CPU_CORE: 1}
@@ -256,13 +244,13 @@ class Hooks(object):
         :param Action action: the action.
         """
 
-    def action_printed(self, time, action, text):
+    def action_printed(self, time, action, data):
         """
         Called when an action prints something.
 
-        :param datetime.datetime time: the time at which the action printed the text.
+        :param datetime.datetime time: the time at which the action printed the data.
         :param Action action: the action.
-        :param str text: the text printed.
+        :param str data: the data printed.
         """
 
     def action_successful(self, time, action, return_value):
@@ -293,7 +281,7 @@ class DependencyCycleException(Exception):  # Not doctested: implementation deta
         super(DependencyCycleException, self).__init__("Dependency cycle")
 
 
-class CompoundException(Exception):  # Not doctested: @todo
+class CompoundException(Exception):  # Not doctested: @todoc
     """
     Exception thrown by :func:`.execute` when dependencies raise exceptions.
     """
@@ -353,15 +341,15 @@ class ExecutionReport(object):
         def _set_success(self, success_time, return_value):
             self.__success_time = success_time
             self.__return_value = return_value
-            self._add_output("")
+            self._add_output(b"")
 
         def _set_failure(self, failure_time, exception):
             self.__failure_time = failure_time
             self.__exception = exception
-            self._add_output("")
+            self._add_output(b"")
 
         def _add_output(self, output):
-            self.__output = (self.__output or "") + output
+            self.__output = (self.__output or b"") + output
 
         @property
         def status(self):
@@ -388,7 +376,7 @@ class ExecutionReport(object):
 
             :rtype: datetime.datetime
             """
-            return self.__pending_time  # Not doctested: @todo
+            return self.__pending_time  # Not doctested: @todoc
 
         @property
         def ready_time(self):
@@ -436,7 +424,7 @@ class ExecutionReport(object):
             The value returned by this action
             (``None`` if it failed or was never started).
             """
-            return self.__return_value  # Not doctested: @todo
+            return self.__return_value  # Not doctested: @todoc
 
         @property
         def failure_time(self):
@@ -454,7 +442,7 @@ class ExecutionReport(object):
             The exception raised by this action
             (``None`` if it succeeded or was never started).
             """
-            return self.__exception  # Not doctested: @todo
+            return self.__exception  # Not doctested: @todoc
 
         @property
         def output(self):
@@ -464,7 +452,7 @@ class ExecutionReport(object):
 
             :rtype: str or None
             """
-            return self.__output  # Not doctested: @todo
+            return self.__output  # Not doctested: @todoc
 
     def __init__(self, root_action, actions, now):
         self._root_action = root_action
@@ -521,6 +509,7 @@ class DependencyGraph(object):
     """
 
     def __init__(self, action):
+        import graphviz
         self.__graphviz_graph = graphviz.Digraph("action", node_attr={"shape": "box"})
         nodes = {}
         for (i, action) in enumerate(action.get_possible_execution_order()):
@@ -529,7 +518,7 @@ class DependencyGraph(object):
             if action.label is None:  # Not doctested: implementation detail
                 self.__graphviz_graph.node(node, shape="point")
             else:
-                self.__graphviz_graph.node(node, str(action.label))
+                self.__graphviz_graph.node(node, action.label)
             for dependency in action.dependencies:
                 assert dependency in nodes  # Because we are iterating a possible execution order
                 self.__graphviz_graph.edge(node, nodes[dependency])
@@ -623,7 +612,7 @@ class GanttChart(object):  # Not unittested: too difficult
             # @todo Make sure the text is not outside the plot on the right
             if self.__label is not None:
                 ax.annotate(
-                    str(self.__label),
+                    self.__label,
                     xy=(self.__start_time, ordinate), xytext=(0, 3), textcoords="offset points",
                 )
             for d in self.__dependencies:
@@ -655,7 +644,7 @@ class GanttChart(object):  # Not unittested: too difficult
             )
             if self.__label is not None:
                 ax.annotate(
-                    str(self.__label),
+                    self.__label,
                     xy=(self.__start_time, ordinate), xytext=(0, 3), textcoords="offset points",
                 )
             for d in self.__dependencies:
@@ -683,7 +672,7 @@ class GanttChart(object):  # Not unittested: too difficult
                 ax.plot([self.__ready_time, self.__cancel_time], [ordinate, ordinate], color="grey", lw=1)
             if self.__label is not None:
                 ax.annotate(
-                    str(self.__label),
+                    self.__label,
                     xy=(self.__cancel_time, ordinate), xytext=(0, 3), textcoords="offset points",
                     color="grey",
                 )
@@ -818,6 +807,21 @@ class _Execute(object):
             if not action.dependencies:
                 self._prepare_action(action, now)
 
+        self.interrupted = False
+        default_handler = signal.getsignal(signal.SIGINT)
+        pid = os.getpid()
+
+        def handler(sig, stackframe):
+            if os.getpid() == pid:
+                signal.signal(signal.SIGINT, default_handler)
+                # @todo Is this thread safe? Where are signal handler run?
+                self.interrupted = True
+                self.keep_going = False
+            else:
+                default_handler(sig, stackframe)
+
+        signal.signal(signal.SIGINT, handler)
+
         # Execute
         while self.pending or self.ready or self.running:
             self._progress(now)
@@ -826,7 +830,9 @@ class _Execute(object):
         for w in multiprocessing.active_children():
             w.join()
 
-        if self.do_raise and self.exceptions:  # Not doctested: @todo
+        signal.signal(signal.SIGINT, default_handler)
+
+        if self.do_raise and self.exceptions:  # Not doctested: @todoc
             raise CompoundException(self.exceptions, self.report)
         else:
             return self.report
@@ -860,13 +866,14 @@ class _Execute(object):
         self._change_status(action, self.pending, self.ready)
 
     def _progress(self, now):
-        # @todo Should we tweak the scheduling?
-        # We could prioritize the actions that use many resources,
-        # hoping that this would avoid idle CPU cores at the end of the execution.
-        # Scheduling is a hard problem, we may just want to keep the current, random, behavior.
-        for action in set(self.ready):
-            if self._allocate_resources(action):
-                self._start_action(action, now)
+        if not self.interrupted:
+            # @todo Should we tweak the scheduling?
+            # We could prioritize the actions that use many resources,
+            # hoping that this would avoid idle CPU cores at the end of the execution.
+            # Scheduling is a hard problem, we may just want to keep the current, random, behavior.
+            for action in set(self.ready):
+                if self._allocate_resources(action):
+                    self._start_action(action, now)
         self._handle_next_event()
 
     def _allocate_resources(self, action):
@@ -965,10 +972,8 @@ class _Execute(object):
         self._deallocate_resources(action)
 
     def _handle_printed_event(self, action, print_time, data):
-        text = data.decode("utf8")  # @todo DO NOT decode.
-        # We have no way to know the encoding used. Give bytes back to client and let them decode.
-        self.report.get_action_status(action)._add_output(text)
-        self.hooks.action_printed(print_time, action, text)
+        self.report.get_action_status(action)._add_output(data)
+        self.hooks.action_printed(print_time, action, data)
 
     def _handle_failed_event(self, action, failure_time, exception):
         self.report.get_action_status(action)._set_failure(failure_time, exception)

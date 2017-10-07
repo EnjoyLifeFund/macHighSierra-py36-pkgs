@@ -490,8 +490,9 @@ def block_container_layout(context, box, max_position_y, skip_stack,
                     if over_orphans < 0 and not page_is_empty:
                         # Reached the bottom of the page before we had
                         # enough lines for orphans, cancel the whole box.
+                        page = child.page_values()[0]
                         return (
-                            None, None, {'break': 'any', 'page': None}, [],
+                            None, None, {'break': 'any', 'page': page}, [],
                             False)
                     # How many lines we need on the next page to satisfy widows
                     # -1 for the current line.
@@ -503,8 +504,9 @@ def block_container_layout(context, box, max_position_y, skip_stack,
                                 break
                     if needed > over_orphans and not page_is_empty:
                         # Total number of lines < orphans + widows
+                        page = child.page_values()[0]
                         return (
-                            None, None, {'break': 'any', 'page': None}, [],
+                            None, None, {'break': 'any', 'page': page}, [],
                             False)
                     if needed and needed <= over_orphans:
                         # Remove lines to keep them for the next page
@@ -548,6 +550,7 @@ def block_container_layout(context, box, max_position_y, skip_stack,
                     elif page_break not in ('left', 'right', 'recto', 'verso'):
                         assert page_name
                         page_break = 'any'
+                    page_name = child.page_values()[0]
                     next_page = {'break': page_break, 'page': page_name}
                     resume_at = (index, None)
                     break
@@ -661,8 +664,9 @@ def block_container_layout(context, box, max_position_y, skip_stack,
                             # The page has content *before* this block:
                             # cancel the block and try to find a break
                             # in the parent.
+                            page = child.page_values()[0]
                             return (
-                                None, None, {'break': 'any', 'page': None}, [],
+                                None, None, {'break': 'any', 'page': page}, [],
                                 False)
                         # else:
                         # ignore this 'avoid' and break anyway.
@@ -673,8 +677,9 @@ def block_container_layout(context, box, max_position_y, skip_stack,
                 else:
                     # This was the first child of this box, cancel the box
                     # completly
+                    page = child.page_values()[0]
                     return (
-                        None, None, {'break': 'any', 'page': None}, [], False)
+                        None, None, {'break': 'any', 'page': page}, [], False)
 
             # Bottom borders may overflow here
             # TODO: back-track somehow when all lines fit but not borders
@@ -855,6 +860,16 @@ def find_earlier_page_break(children, absolute_boxes, fixed_boxes):
 
     previous_in_flow = None
     for index, child in reversed_enumerate(children):
+        if child.is_in_normal_flow():
+            if previous_in_flow is not None and (
+                    block_level_page_break(child, previous_in_flow) not in
+                    ('avoid', 'avoid-page')):
+                index += 1  # break after child
+                new_children = children[:index]
+                # Get the index in the original parent
+                resume_at = (children[index].index, None)
+                break
+            previous_in_flow = child
         if child.is_in_normal_flow() and (
                 child.style.break_inside not in ('avoid', 'avoid-page')):
             if isinstance(child, boxes.BlockBox):
@@ -870,16 +885,6 @@ def find_earlier_page_break(children, absolute_boxes, fixed_boxes):
                     break
             elif isinstance(child, boxes.TableBox):
                 pass  # TODO: find an earlier break between table rows.
-        if child.is_in_normal_flow():
-            if previous_in_flow is not None and (
-                    block_level_page_break(child, previous_in_flow) not in
-                    ('avoid', 'avoid-page')):
-                index += 1  # break after child
-                new_children = children[:index]
-                # Get the index in the original parent
-                resume_at = (children[index].index, None)
-                break
-            previous_in_flow = child
     else:
         return None
 

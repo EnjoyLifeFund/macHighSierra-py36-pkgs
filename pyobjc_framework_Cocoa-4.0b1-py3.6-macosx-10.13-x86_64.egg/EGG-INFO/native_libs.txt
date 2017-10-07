@@ -1,6 +1,0 @@
-AppKit/_AppKit.cpython-36dm-darwin.so
-AppKit/_inlines.cpython-36dm-darwin.so
-CoreFoundation/_CoreFoundation.cpython-36dm-darwin.so
-CoreFoundation/_inlines.cpython-36dm-darwin.so
-Foundation/_Foundation.cpython-36dm-darwin.so
-Foundation/_inlines.cpython-36dm-darwin.so

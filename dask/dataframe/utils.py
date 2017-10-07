@@ -454,6 +454,13 @@ def check_meta(x, meta, funcname=None, numeric_equal=True):
             return False
         if (a is '-' or b is '-'):
             return False
+        if is_categorical_dtype(a) and is_categorical_dtype(b):
+            # Pandas 0.21 CategoricalDtype compat
+            if (PANDAS_VERSION >= '0.21.0' and
+                    (UNKNOWN_CATEGORIES in a.categories or
+                     UNKNOWN_CATEGORIES in b.categories)):
+                return True
+            return a == b
         return (a.kind in eq_types and b.kind in eq_types) or (a == b)
 
     if not isinstance(meta, (pd.Series, pd.Index, pd.DataFrame)):
@@ -596,9 +603,8 @@ def assert_dask_graph(dask, label):
             k = k[0]
         if k.startswith(label):
             return True
-    else:
-        msg = "given dask graph doesn't contan label: {0}"
-        raise AssertionError(msg.format(label))
+    raise AssertionError("given dask graph doesn't contain label: {label}"
+                         .format(label=label))
 
 
 def assert_divisions(ddf):
@@ -609,7 +615,9 @@ def assert_divisions(ddf):
     if not ddf.known_divisions:
         return
 
-    index = lambda x: x if isinstance(x, pd.Index) else x.index
+    def index(x):
+        return (x if isinstance(x, pd.Index)
+                else x.index.get_level_values(0))
 
     results = get_sync(ddf.dask, ddf._keys())
     for i, df in enumerate(results[:-1]):

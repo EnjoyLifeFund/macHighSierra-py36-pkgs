@@ -1,7 +1,6 @@
-# cython: profile=True
-# cython: cdivision=True
-# cython: infer_types=True
+# cython: profile=True, cdivision=True, infer_types=True
 cimport cython
+cimport cython.parallel
 from libc.string cimport memcpy, memset
 from libc.math cimport exp, tanh, sqrt, isnan
 from libc.stdlib cimport srand, rand
@@ -31,15 +30,12 @@ try:
     import cupy.cuda
     from cupy.cuda.function import Function
     from cupy.cuda.compiler import compile_with_cache
-    from chainer.cuda import elementwise
-    # TODO; Seems there's more to do this. Getting errors if using
-    # cupy directly, without chainer.
     # This is important -- without setting these global pools, we're
     # *very* slow -- 5x slower on mnist.
-    #memory_pool = cupy.cuda.MemoryPool()
-    #cupy.cuda.set_allocator(memory_pool.malloc)
-    #pinned_memory_pool = cupy.cuda.PinnedMemoryPool()
-    #cupy.cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
+    memory_pool = cupy.cuda.MemoryPool()
+    cupy.cuda.set_allocator(memory_pool.malloc)
+    pinned_memory_pool = cupy.cuda.PinnedMemoryPool()
+    cupy.cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
 except ImportError:
     cupy = None
 
@@ -166,7 +162,7 @@ class Ops(object):
             return self.xp.array(data)
 
     def batch_dot(self, x, y):
-        return self.xp.tensordot(x, y, axes=[[1], [1]])
+        return self.xp.dot(x, y.T)
 
     def batch_outer(self, x, y):
         return self.xp.tensordot(x, y, axes=[[0], [0]])
@@ -558,7 +554,7 @@ class NumpyOps(Ops):
             float learn_rate, float mod_rate=1.):
         _adam(&weights[0], &gradient[0], &mom1[0], &mom2[0],
             weights.shape[0], beta1, beta2, eps, learn_rate)
-    
+
     def ngrams(self, int n, uint64_t[::1] keys_):
         keys = <uint64_t*>&keys_[0]
         cdef np.ndarray output_ = self.allocate((keys_.shape[0]-n,), dtype='uint64')
@@ -714,7 +710,7 @@ class CupyOps(Ops):
 
     def adam(self, weights, gradient, mom1, mom2, beta1, beta2, eps,
                    learn_rate, mod_rate=1.):
-        elementwise(
+        cupy.ElementwiseKernel(
             'T grad, T lr, T one_minus_beta1, T one_minus_beta2, T eps',
             'T param, T m, T v',
             '''m += one_minus_beta1 * (grad - m);
@@ -943,7 +939,9 @@ cdef inline float dtanh(float y) nogil:
 
 cdef void cpu_lstm_gates_fwd(float* output, float* cells, float* gates,
         const float* prev, int N) nogil:
-    for i in range(N):
+    cdef float hf, hi, ho, hc
+    cdef int i
+    for i in cython.parallel.prange(N):
         hf = sigmoid(gates[i*4+0])
         hi = sigmoid(gates[i*4+1])
         ho = sigmoid(gates[i*4+2])
@@ -959,6 +957,8 @@ cdef void cpu_lstm_gates_fwd(float* output, float* cells, float* gates,
 cdef void cpu_lstm_gates_bwd(float* d_cells, float* d_prev, float* d_gates,
         const float* d_output, const float* gates, const float* cells,
         const float* prev, int N) nogil:
+    cdef float hf, hi, ho, hc, c, ct, dh, dho, dc, dhf, dhi, dhc, dprev
+    cdef int i
     for i in range(N):
         hf = gates[i*4+0]
         hi = gates[i*4+1]

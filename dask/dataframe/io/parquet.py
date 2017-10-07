@@ -91,8 +91,9 @@ def _read_fastparquet(fs, paths, myopen, columns=None, filters=None,
                              dtypes)
 
     for cat in categories:
-        meta[cat] = pd.Series(pd.Categorical([],
-                              categories=[UNKNOWN_CATEGORIES]))
+        if cat in meta:
+            meta[cat] = pd.Series(pd.Categorical([],
+                                  categories=[UNKNOWN_CATEGORIES]))
 
     if index_col:
         meta = meta.set_index(index_col)
@@ -103,7 +104,8 @@ def _read_fastparquet(fs, paths, myopen, columns=None, filters=None,
 
     dsk = {(name, i): (_read_parquet_row_group, myopen, pf.row_group_filename(rg),
                        index_col, all_columns, rg, out_type == Series,
-                       categories, pf.schema, pf.cats, pf.dtypes)
+                       categories, pf.schema, pf.cats, pf.dtypes,
+                       pf.file_scheme)
            for i, rg in enumerate(rgs)}
 
     if not dsk:
@@ -131,7 +133,7 @@ def _read_fastparquet(fs, paths, myopen, columns=None, filters=None,
 
 
 def _read_parquet_row_group(open, fn, index, columns, rg, series, categories,
-                            schema, cs, dt, *args):
+                            schema, cs, dt, scheme, *args):
     if not isinstance(columns, (tuple, list)):
         columns = (columns,)
         series = True
@@ -139,7 +141,7 @@ def _read_parquet_row_group(open, fn, index, columns, rg, series, categories,
         columns = columns + type(columns)([index])
     df, views = _pre_allocate(rg.num_rows, columns, categories, index, cs, dt)
     read_row_group_file(fn, rg, columns, categories, schema, cs,
-                        open=open, assign=views)
+                        open=open, assign=views, scheme=scheme)
 
     if series:
         return df[df.columns[0]]
@@ -155,10 +157,10 @@ def _read_pyarrow(fs, paths, file_opener, columns=None, filters=None,
     api = pyarrow_parquet
 
     if filters is not None:
-        raise NotImplemented("Predicate pushdown not implemented")
+        raise NotImplementedError("Predicate pushdown not implemented")
 
     if categories is not None:
-        raise NotImplemented("Categorical reads not yet implemented")
+        raise NotImplementedError("Categorical reads not yet implemented")
 
     if isinstance(columns, tuple):
         columns = list(columns)
@@ -298,7 +300,7 @@ def read_parquet(path, columns=None, filters=None, categories=None, index=None,
 def to_parquet(path, df, compression=None, write_index=None, has_nulls=True,
                fixed_text=None, object_encoding=None, storage_options=None,
                append=False, ignore_divisions=False, partition_on=None,
-               compute=True):
+               compute=True, times='int64'):
     """Store Dask.dataframe to Parquet files
 
     Notes
@@ -343,6 +345,11 @@ def to_parquet(path, df, compression=None, write_index=None, has_nulls=True,
         Construct directory-based partitioning by splitting on these fields'
         values. Each dask partition will result in one or more datafiles,
         there will be no global groupby.
+    times: 'int64' (default), or 'int96':
+        In "int64" mode, datetimes are written as 8-byte integers, us
+        resolution; in "int96" mode, they are written as 12-byte blocks, with
+        the first 8 bytes as ns within the day, the next 4 bytes the julian day.
+        'int96' mode is included only for compatibility.
     compute: bool (True)
         If true (default) then we compute immediately.
         If False then we return a dask.delayed object for future computation.
@@ -386,39 +393,42 @@ def to_parquet(path, df, compression=None, write_index=None, has_nulls=True,
     fmd = fastparquet.writer.make_metadata(
         df._meta, has_nulls=has_nulls, fixed_text=fixed_text,
         object_encoding=object_encoding, index_cols=[index_col],
-        ignore_columns=partition_on)
+        ignore_columns=partition_on, times=times)
 
     if append:
         pf = fastparquet.api.ParquetFile(path, open_with=myopen, sep=sep)
-        if pf.file_scheme != 'hive':
+        if pf.file_scheme not in ['hive', 'empty', 'flat']:
             raise ValueError('Requested file scheme is hive, '
                              'but existing file scheme is not.')
-        elif set(pf.columns) != set(df.columns):
+        elif ((set(pf.columns) != set(df.columns) - set(partition_on)) or
+              (set(partition_on) != set(pf.cats))):
             raise ValueError('Appended columns not the same.\n'
                              'New: {} | Previous: {}'
                              .format(pf.columns, list(df.columns)))
-        elif set(pf.dtypes.items()) != set(df.dtypes.iteritems()):
+        elif set(pf.dtypes[c] for c in pf.columns) != set(df[pf.columns].dtypes):
             raise ValueError('Appended dtypes differ.\n{}'
                              .format(set(pf.dtypes.items()) ^
                                      set(df.dtypes.iteritems())))
         # elif fmd.schema != pf.fmd.schema:
         #    raise ValueError('Appended schema differs.')
         else:
-            df = df[pf.columns]
+            df = df[pf.columns + partition_on]
 
         fmd = pf.fmd
         i_offset = fastparquet.writer.find_max_part(fmd.row_groups)
 
         if not ignore_divisions:
             minmax = fastparquet.api.sorted_partitioned_columns(pf)
-            divisions = list(minmax[index_col]['min']) + [
-                minmax[index_col]['max'][-1]]
+            if index_col in minmax:
 
-            if new_divisions[0] < divisions[-1]:
-                raise ValueError(
-                    'Appended divisions overlapping with the previous ones.\n'
-                    'New: {} | Previous: {}'
-                    .format(divisions[-1], new_divisions[0]))
+                divisions = list(minmax[index_col]['min']) + [
+                    minmax[index_col]['max'][-1]]
+
+                if new_divisions[0] < divisions[-1]:
+                    raise ValueError(
+                        'Appended divisions overlapping with the previous ones.'
+                        '\nNew: {} | Previous: {}'
+                        .format(divisions[-1], new_divisions[0]))
     else:
         i_offset = 0
 
