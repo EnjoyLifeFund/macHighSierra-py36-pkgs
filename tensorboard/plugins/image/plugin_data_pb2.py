@@ -21,7 +21,6 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_pb=_b('\n+tensorboard/plugins/image/plugin_data.proto\x12\x0btensorboard\"\"\n\x0fImagePluginData\x12\x0f\n\x07version\x18\x01 \x01(\x05\x62\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -57,6 +56,7 @@ _IMAGEPLUGINDATA = _descriptor.Descriptor(
 )
 
 DESCRIPTOR.message_types_by_name['ImagePluginData'] = _IMAGEPLUGINDATA
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 ImagePluginData = _reflection.GeneratedProtocolMessageType('ImagePluginData', (_message.Message,), dict(
   DESCRIPTOR = _IMAGEPLUGINDATA,

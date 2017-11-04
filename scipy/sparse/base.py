@@ -6,6 +6,7 @@ import sys
 import numpy as np
 
 from scipy._lib.six import xrange
+from scipy._lib._numpy_compat import broadcast_to
 from .sputils import (isdense, isscalarlike, isintlike,
                       get_sum_dtype, validateaxis)
 
@@ -127,17 +128,36 @@ class spmatrix(object):
         raise NotImplementedError("Reshaping not implemented for %s." %
                                   self.__class__.__name__)
 
-    def astype(self, t):
+    def astype(self, dtype, casting='unsafe', copy=True):
         """Cast the matrix elements to a specified type.
-
-        The data will be copied.
 
         Parameters
         ----------
-        t : string or numpy dtype
+        dtype : string or numpy dtype
             Typecode or data-type to which to cast the data.
+        casting : {'no', 'equiv', 'safe', 'same_kind', 'unsafe'}, optional
+            Controls what kind of data casting may occur.
+            Defaults to 'unsafe' for backwards compatibility.
+            'no' means the data types should not be cast at all.
+            'equiv' means only byte-order changes are allowed.
+            'safe' means only casts which can preserve values are allowed.
+            'same_kind' means only safe casts or casts within a kind,
+            like float64 to float32, are allowed.
+            'unsafe' means any data conversions may be done.
+        copy : bool, optional
+            If `copy` is `False`, the result might share some memory with this
+            matrix. If `copy` is `True`, it is guaranteed that the result and
+            this matrix do not share any memory.
         """
-        return self.tocsr().astype(t).asformat(self.format)
+
+        dtype = np.dtype(dtype)
+        if self.dtype != dtype:
+            return self.tocsr().astype(
+                dtype, casting=casting, copy=copy).asformat(self.format)
+        elif copy:
+            return self.copy()
+        else:
+            return self
 
     def asfptype(self):
         """Upcast matrix to a floating point format (if necessary)"""
@@ -326,18 +346,69 @@ class spmatrix(object):
     def __abs__(self):
         return abs(self.tocsr())
 
-    def __add__(self, other):   # self + other
-        return self.tocsr().__add__(other)
+    def _add_sparse(self, other):
+        return self.tocsr()._add_sparse(other)
 
-    def __radd__(self, other):  # other + self
-        return self.tocsr().__radd__(other)
+    def _add_dense(self, other):
+        return self.tocoo()._add_dense(other)
 
-    def __sub__(self, other):   # self - other
-        # note: this can't be replaced by self + (-other) for unsigned types
-        return self.tocsr().__sub__(other)
+    def _sub_sparse(self, other):
+        return self.tocsr()._sub_sparse(other)
 
-    def __rsub__(self, other):  # other - self
-        return self.tocsr().__rsub__(other)
+    def _sub_dense(self, other):
+        return self.todense() - other
+
+    def _rsub_dense(self, other):
+        # note: this can't be replaced by other + (-self) for unsigned types
+        return other - self.todense()
+
+    def __add__(self, other):  # self + other
+        if isscalarlike(other):
+            if other == 0:
+                return self.copy()
+            # Now we would add this scalar to every element.
+            raise NotImplementedError('adding a nonzero scalar to a '
+                                      'sparse matrix is not supported')
+        elif isspmatrix(other):
+            if other.shape != self.shape:
+                raise ValueError("inconsistent shapes")
+            return self._add_sparse(other)
+        elif isdense(other):
+            other = broadcast_to(other, self.shape)
+            return self._add_dense(other)
+        else:
+            return NotImplemented
+
+    def __radd__(self,other):  # other + self
+        return self.__add__(other)
+
+    def __sub__(self, other):  # self - other
+        if isscalarlike(other):
+            if other == 0:
+                return self.copy()
+            raise NotImplementedError('subtracting a nonzero scalar from a '
+                                      'sparse matrix is not supported')
+        elif isspmatrix(other):
+            if other.shape != self.shape:
+                raise ValueError("inconsistent shapes")
+            return self._sub_sparse(other)
+        elif isdense(other):
+            other = broadcast_to(other, self.shape)
+            return self._sub_dense(other)
+        else:
+            return NotImplemented
+
+    def __rsub__(self,other):  # other - self
+        if isscalarlike(other):
+            if other == 0:
+                return -self.copy()
+            raise NotImplementedError('subtracting a sparse matrix from a '
+                                      'nonzero scalar is not supported')
+        elif isdense(other):
+            other = broadcast_to(other, self.shape)
+            return self._rsub_dense(other)
+        else:
+            return NotImplemented
 
     def __mul__(self, other):
         """interpret other and call one of the following
@@ -967,11 +1038,31 @@ class spmatrix(object):
             return (inter_self * (1.0 / self.shape[1])).sum(
                 axis=1, dtype=res_dtype, out=out)
 
-    def diagonal(self):
-        """Returns the main diagonal of the matrix
+    def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Parameters
+        ----------
+        k : int, optional
+            Which diagonal to set, corresponding to elements a[i, i+k].
+            Default: 0 (the main diagonal).
+
+            .. versionadded: 1.0
+
+        See also
+        --------
+        numpy.diagonal : Equivalent numpy function.
+
+        Examples
+        --------
+        >>> from scipy.sparse import csr_matrix
+        >>> A = csr_matrix([[1, 2, 0], [0, 0, 3], [4, 0, 5]])
+        >>> A.diagonal()
+        array([1, 0, 5])
+        >>> A.diagonal(k=1)
+        array([2, 3])
         """
-        # TODO support k != 0
-        return self.tocsr().diagonal()
+        return self.tocsr().diagonal(k=k)
 
     def setdiag(self, values, k=0):
         """
@@ -1109,6 +1200,32 @@ class spmatrix(object):
 
 
 def isspmatrix(x):
+    """Is x of a sparse matrix type?
+
+    Parameters
+    ----------
+    x
+        object to check for being a sparse matrix
+
+    Returns
+    -------
+    bool
+        True if x is a sparse matrix, False otherwise
+
+    Notes
+    -----
+    issparse and isspmatrix are aliases for the same function.
+
+    Examples
+    --------
+    >>> from scipy.sparse import csr_matrix, isspmatrix
+    >>> isspmatrix(csr_matrix([[5]]))
+    True
+
+    >>> from scipy.sparse import isspmatrix
+    >>> isspmatrix(5)
+    False
+    """
     return isinstance(x, spmatrix)
 
 issparse = isspmatrix

@@ -13,27 +13,27 @@ UNICODE_CATEGORIES = {
     'Cn': None,
     'Lm': None,
     'Mn': None,
-    'Mc': ' ',
+    'Mc': WS,
     'Me': None,
-    'Zs': ' ',
-    'Zl': ' ',
-    'Zp': ' ',
+    'Zs': WS,
+    'Zl': WS,
+    'Zp': WS,
     'Pc': None,
-    'Pd': ' ',
-    'Ps': ' ',
-    'Pe': ' ',
-    'Pi': ' ',
-    'Pf': ' ',
-    'Po': ' ',
+    'Pd': WS,
+    'Ps': WS,
+    'Pe': WS,
+    'Pi': WS,
+    'Pf': WS,
+    'Po': WS,
     'Sc': None,
     'Sk': None,
     'So': None
 }
 
 CONTROL_CODES = {
-    'Cc': None,
-    'Cf': None,
-    'Cs': None,
-    'Co': None,
-    'Cn': None
+    'Cc': WS,
+    'Cf': WS,
+    'Cs': WS,
+    'Co': WS,
+    'Cn': WS
 }

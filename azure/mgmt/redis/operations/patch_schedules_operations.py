@@ -9,9 +9,9 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
-import uuid
 
 from .. import models
 
@@ -45,17 +45,15 @@ class PatchSchedulesOperations(object):
         :param name: The name of the Redis cache.
         :type name: str
         :param schedule_entries: List of patch schedules for a Redis cache.
-        :type schedule_entries: list of :class:`ScheduleEntry
-         <azure.mgmt.redis.models.ScheduleEntry>`
+        :type schedule_entries: list[~azure.mgmt.redis.models.ScheduleEntry]
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisPatchSchedule
-         <azure.mgmt.redis.models.RedisPatchSchedule>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisPatchSchedule or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisPatchSchedule or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         parameters = models.RedisPatchSchedule(schedule_entries=schedule_entries)
@@ -122,9 +120,8 @@ class PatchSchedulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or ClientRawResponse if raw=true
+        :rtype: None or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -176,10 +173,9 @@ class PatchSchedulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisPatchSchedule
-         <azure.mgmt.redis.models.RedisPatchSchedule>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisPatchSchedule or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisPatchSchedule or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL

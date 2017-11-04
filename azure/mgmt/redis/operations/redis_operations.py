@@ -9,10 +9,10 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
 from msrestazure.azure_operation import AzureOperationPoller
-import uuid
 
 from .. import models
 
@@ -46,17 +46,15 @@ class RedisOperations(object):
         :param name: The name of the Redis cache.
         :type name: str
         :param parameters: Parameters supplied to the Create Redis operation.
-        :type parameters: :class:`RedisCreateParameters
-         <azure.mgmt.redis.models.RedisCreateParameters>`
+        :type parameters: ~azure.mgmt.redis.models.RedisCreateParameters
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
+        :return: An instance of AzureOperationPoller that returns
+         RedisResource or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`RedisResource
-         <azure.mgmt.redis.models.RedisResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.redis.models.RedisResource]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -140,16 +138,15 @@ class RedisOperations(object):
         :param name: The name of the Redis cache.
         :type name: str
         :param parameters: Parameters supplied to the Update Redis operation.
-        :type parameters: :class:`RedisUpdateParameters
-         <azure.mgmt.redis.models.RedisUpdateParameters>`
+        :type parameters: ~azure.mgmt.redis.models.RedisUpdateParameters
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisResource <azure.mgmt.redis.models.RedisResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -210,11 +207,10 @@ class RedisOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -289,9 +285,9 @@ class RedisOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisResource <azure.mgmt.redis.models.RedisResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -348,8 +344,9 @@ class RedisOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisResourcePaged
-         <azure.mgmt.redis.models.RedisResourcePaged>`
+        :return: An iterator like instance of RedisResource
+        :rtype:
+         ~azure.mgmt.redis.models.RedisResourcePaged[~azure.mgmt.redis.models.RedisResource]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -412,8 +409,9 @@ class RedisOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisResourcePaged
-         <azure.mgmt.redis.models.RedisResourcePaged>`
+        :return: An iterator like instance of RedisResource
+        :rtype:
+         ~azure.mgmt.redis.models.RedisResourcePaged[~azure.mgmt.redis.models.RedisResource]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -480,10 +478,9 @@ class RedisOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisAccessKeys
-         <azure.mgmt.redis.models.RedisAccessKeys>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisAccessKeys or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisAccessKeys or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -540,17 +537,15 @@ class RedisOperations(object):
         :type name: str
         :param key_type: The Redis access key to regenerate. Possible values
          include: 'Primary', 'Secondary'
-        :type key_type: str or :class:`RedisKeyType
-         <azure.mgmt.redis.models.RedisKeyType>`
+        :type key_type: str or ~azure.mgmt.redis.models.RedisKeyType
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisAccessKeys
-         <azure.mgmt.redis.models.RedisAccessKeys>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisAccessKeys or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisAccessKeys or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         parameters = models.RedisRegenerateKeyParameters(key_type=key_type)
@@ -614,8 +609,7 @@ class RedisOperations(object):
         :param reboot_type: Which Redis node(s) to reboot. Depending on this
          value data loss is possible. Possible values include: 'PrimaryNode',
          'SecondaryNode', 'AllNodes'
-        :type reboot_type: str or :class:`RebootType
-         <azure.mgmt.redis.models.RebootType>`
+        :type reboot_type: str or ~azure.mgmt.redis.models.RebootType
         :param shard_id: If clustering is enabled, the ID of the shard to be
          rebooted.
         :type shard_id: int
@@ -624,10 +618,9 @@ class RedisOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`RedisForceRebootResponse
-         <azure.mgmt.redis.models.RedisForceRebootResponse>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: RedisForceRebootResponse or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.redis.models.RedisForceRebootResponse or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         parameters = models.RedisRebootParameters(reboot_type=reboot_type, shard_id=shard_id)
@@ -688,17 +681,16 @@ class RedisOperations(object):
         :param name: The name of the Redis cache.
         :type name: str
         :param files: files to import.
-        :type files: list of str
+        :type files: list[str]
         :param format: File format.
         :type format: str
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         parameters = models.ImportRDBParameters(format=format, files=files)
@@ -775,16 +767,14 @@ class RedisOperations(object):
         :param name: The name of the Redis cache.
         :type name: str
         :param parameters: Parameters for Redis export operation.
-        :type parameters: :class:`ExportRDBParameters
-         <azure.mgmt.redis.models.ExportRDBParameters>`
+        :type parameters: ~azure.mgmt.redis.models.ExportRDBParameters
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL

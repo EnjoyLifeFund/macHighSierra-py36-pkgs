@@ -14,6 +14,9 @@
 
 """Imports objects from music modules into the top-level music namespace."""
 
+from magenta.music.abc_parser import parse_abc_tunebook
+from magenta.music.abc_parser import parse_abc_tunebook_file
+
 from magenta.music.chord_symbols_lib import chord_symbol_bass
 from magenta.music.chord_symbols_lib import chord_symbol_pitches
 from magenta.music.chord_symbols_lib import chord_symbol_quality
@@ -47,6 +50,7 @@ from magenta.music.encoder_decoder import LookbackEventSequenceEncoderDecoder
 from magenta.music.encoder_decoder import MultipleEventSequenceEncoder
 from magenta.music.encoder_decoder import OneHotEncoding
 from magenta.music.encoder_decoder import OneHotEventSequenceEncoderDecoder
+from magenta.music.encoder_decoder import OptionalEventSequenceEncoder
 
 from magenta.music.events_lib import NonIntegerStepsPerBarException
 

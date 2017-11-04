@@ -19,9 +19,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='magenta/protobuf/generator.proto',
   package='tensorflow.magenta',
   syntax='proto3',
-  serialized_pb=_b('\n magenta/protobuf/generator.proto\x12\x12tensorflow.magenta\"3\n\x10GeneratorDetails\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\"\xf0\x03\n\x10GeneratorOptions\x12L\n\x0einput_sections\x18\x01 \x03(\x0b\x32\x34.tensorflow.magenta.GeneratorOptions.SequenceSection\x12O\n\x11generate_sections\x18\x02 \x03(\x0b\x32\x34.tensorflow.magenta.GeneratorOptions.SequenceSection\x12<\n\x04\x61rgs\x18\x03 \x03(\x0b\x32..tensorflow.magenta.GeneratorOptions.ArgsEntry\x1a\x37\n\x0fSequenceSection\x12\x12\n\nstart_time\x18\x01 \x01(\x01\x12\x10\n\x08\x65nd_time\x18\x02 \x01(\x01\x1aj\n\x08\x41rgValue\x12\x14\n\nbyte_value\x18\x01 \x01(\x0cH\x00\x12\x13\n\tint_value\x18\x02 \x01(\x05H\x00\x12\x15\n\x0b\x66loat_value\x18\x03 \x01(\x01H\x00\x12\x14\n\nbool_value\x18\x04 \x01(\x08H\x00\x42\x06\n\x04kind\x1aZ\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12<\n\x05value\x18\x02 \x01(\x0b\x32-.tensorflow.magenta.GeneratorOptions.ArgValue:\x02\x38\x01\"\xf4\x01\n\x0fGeneratorBundle\x12?\n\x11generator_details\x18\x01 \x01(\x0b\x32$.tensorflow.magenta.GeneratorDetails\x12I\n\x0e\x62undle_details\x18\x04 \x01(\x0b\x32\x31.tensorflow.magenta.GeneratorBundle.BundleDetails\x12\x17\n\x0f\x63heckpoint_file\x18\x02 \x03(\x0c\x12\x16\n\x0emetagraph_file\x18\x03 \x01(\x0c\x1a$\n\rBundleDetails\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\tb\x06proto3')
+  serialized_pb=_b('\n magenta/protobuf/generator.proto\x12\x12tensorflow.magenta\"3\n\x10GeneratorDetails\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\"\x89\x04\n\x10GeneratorOptions\x12L\n\x0einput_sections\x18\x01 \x03(\x0b\x32\x34.tensorflow.magenta.GeneratorOptions.SequenceSection\x12O\n\x11generate_sections\x18\x02 \x03(\x0b\x32\x34.tensorflow.magenta.GeneratorOptions.SequenceSection\x12<\n\x04\x61rgs\x18\x03 \x03(\x0b\x32..tensorflow.magenta.GeneratorOptions.ArgsEntry\x1a\x37\n\x0fSequenceSection\x12\x12\n\nstart_time\x18\x01 \x01(\x01\x12\x10\n\x08\x65nd_time\x18\x02 \x01(\x01\x1a\x82\x01\n\x08\x41rgValue\x12\x14\n\nbyte_value\x18\x01 \x01(\x0cH\x00\x12\x13\n\tint_value\x18\x02 \x01(\x05H\x00\x12\x15\n\x0b\x66loat_value\x18\x03 \x01(\x01H\x00\x12\x14\n\nbool_value\x18\x04 \x01(\x08H\x00\x12\x16\n\x0cstring_value\x18\x05 \x01(\tH\x00\x42\x06\n\x04kind\x1aZ\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12<\n\x05value\x18\x02 \x01(\x0b\x32-.tensorflow.magenta.GeneratorOptions.ArgValue:\x02\x38\x01\"\xf4\x01\n\x0fGeneratorBundle\x12?\n\x11generator_details\x18\x01 \x01(\x0b\x32$.tensorflow.magenta.GeneratorDetails\x12I\n\x0e\x62undle_details\x18\x04 \x01(\x0b\x32\x31.tensorflow.magenta.GeneratorBundle.BundleDetails\x12\x17\n\x0f\x63heckpoint_file\x18\x02 \x03(\x0c\x12\x16\n\x0emetagraph_file\x18\x03 \x01(\x0c\x1a$\n\rBundleDetails\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\tb\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -136,6 +135,13 @@ _GENERATOROPTIONS_ARGVALUE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='string_value', full_name='tensorflow.magenta.GeneratorOptions.ArgValue.string_value', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -151,8 +157,8 @@ _GENERATOROPTIONS_ARGVALUE = _descriptor.Descriptor(
       name='kind', full_name='tensorflow.magenta.GeneratorOptions.ArgValue.kind',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=408,
-  serialized_end=514,
+  serialized_start=409,
+  serialized_end=539,
 )
 
 _GENERATOROPTIONS_ARGSENTRY = _descriptor.Descriptor(
@@ -188,8 +194,8 @@ _GENERATOROPTIONS_ARGSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=516,
-  serialized_end=606,
+  serialized_start=541,
+  serialized_end=631,
 )
 
 _GENERATOROPTIONS = _descriptor.Descriptor(
@@ -233,7 +239,7 @@ _GENERATOROPTIONS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=110,
-  serialized_end=606,
+  serialized_end=631,
 )
 
 
@@ -263,8 +269,8 @@ _GENERATORBUNDLE_BUNDLEDETAILS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=817,
-  serialized_end=853,
+  serialized_start=842,
+  serialized_end=878,
 )
 
 _GENERATORBUNDLE = _descriptor.Descriptor(
@@ -314,8 +320,8 @@ _GENERATORBUNDLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=609,
-  serialized_end=853,
+  serialized_start=634,
+  serialized_end=878,
 )
 
 _GENERATOROPTIONS_SEQUENCESECTION.containing_type = _GENERATOROPTIONS
@@ -332,6 +338,9 @@ _GENERATOROPTIONS_ARGVALUE.fields_by_name['float_value'].containing_oneof = _GEN
 _GENERATOROPTIONS_ARGVALUE.oneofs_by_name['kind'].fields.append(
   _GENERATOROPTIONS_ARGVALUE.fields_by_name['bool_value'])
 _GENERATOROPTIONS_ARGVALUE.fields_by_name['bool_value'].containing_oneof = _GENERATOROPTIONS_ARGVALUE.oneofs_by_name['kind']
+_GENERATOROPTIONS_ARGVALUE.oneofs_by_name['kind'].fields.append(
+  _GENERATOROPTIONS_ARGVALUE.fields_by_name['string_value'])
+_GENERATOROPTIONS_ARGVALUE.fields_by_name['string_value'].containing_oneof = _GENERATOROPTIONS_ARGVALUE.oneofs_by_name['kind']
 _GENERATOROPTIONS_ARGSENTRY.fields_by_name['value'].message_type = _GENERATOROPTIONS_ARGVALUE
 _GENERATOROPTIONS_ARGSENTRY.containing_type = _GENERATOROPTIONS
 _GENERATOROPTIONS.fields_by_name['input_sections'].message_type = _GENERATOROPTIONS_SEQUENCESECTION
@@ -343,6 +352,7 @@ _GENERATORBUNDLE.fields_by_name['bundle_details'].message_type = _GENERATORBUNDL
 DESCRIPTOR.message_types_by_name['GeneratorDetails'] = _GENERATORDETAILS
 DESCRIPTOR.message_types_by_name['GeneratorOptions'] = _GENERATOROPTIONS
 DESCRIPTOR.message_types_by_name['GeneratorBundle'] = _GENERATORBUNDLE
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 GeneratorDetails = _reflection.GeneratedProtocolMessageType('GeneratorDetails', (_message.Message,), dict(
   DESCRIPTOR = _GENERATORDETAILS,

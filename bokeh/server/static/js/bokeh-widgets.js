@@ -937,7 +937,7 @@ exports.DatePickerView = function (superClass) {
         return this;
     };
     DatePickerView.prototype._on_select = function (date) {
-        this.model.value = date.toString();
+        this.model.value = date.toDateString();
         return this.change_input();
     };
     return DatePickerView;
@@ -1010,7 +1010,7 @@ exports.DateRangeSlider = function (superClass) {
         false
     ];
     DateRangeSlider.prototype._formatter = tz;
-    DateRangeSlider.override({ format: '%d %b %G' });
+    DateRangeSlider.override({ format: '%d %b %Y' });
     return DateRangeSlider;
 }(abstract_slider_1.AbstractSlider);    
 },
@@ -1065,7 +1065,7 @@ exports.DateSlider = function (superClass) {
         false
     ];
     DateSlider.prototype._formatter = tz;
-    DateSlider.override({ format: '%d %b %G' });
+    DateSlider.override({ format: '%d %b %Y' });
     return DateSlider;
 }(abstract_slider_1.AbstractSlider);    
 },
@@ -2191,7 +2191,11 @@ exports.SliderView = function (superClass) {
     SliderView.prototype._calc_from = function (arg) {
         var value;
         value = arg[0];
-        return value;
+        if (Number.isInteger(this.model.start) && Number.isInteger(this.model.end) && Number.isInteger(this.model.step)) {
+            return value | 0;
+        } else {
+            return value;
+        }
     };
     return SliderView;
 }(abstract_slider_1.AbstractSliderView);

@@ -12,27 +12,28 @@ from Cython.Build import IpythonMagic
 from Cython.TestUtils import CythonTest
 
 try:
-    from IPython.testing.globalipapp import get_ipython
+    import IPython.testing.globalipapp
     from IPython.utils import py3compat
-except:
+except ImportError:
     # Disable tests and fake helpers for initialisation below.
     class _py3compat(object):
         def str_to_unicode(self, s):
             return s
 
-    __test__ = False
-    get_ipython = lambda: None
     py3compat = _py3compat()
 
+    def skip_if_not_installed(_):
+        return None
+else:
+    def skip_if_not_installed(c):
+        return c
+
 try:
-    # disable IPython history thread to avoid having to clean it up
+    # disable IPython history thread before it gets started to avoid having to clean it up
     from IPython.core.history import HistoryManager
     HistoryManager.enabled = False
 except ImportError:
     pass
-
-# Initialise IPython after disabling history thread.
-ip = get_ipython()
 
 code = py3compat.str_to_unicode("""\
 def f(x):
@@ -73,19 +74,27 @@ else:
         return _skip_win32
 
 
+@skip_if_not_installed
 class TestIPythonMagic(CythonTest):
+
+    @classmethod
+    def setUpClass(cls):
+        CythonTest.setUpClass()
+        cls._ip = IPython.testing.globalipapp.get_ipython()
 
     def setUp(self):
         CythonTest.setUp(self)
-        ip.extension_manager.load_extension('cython')
+        self._ip.extension_manager.load_extension('cython')
 
     def test_cython_inline(self):
+        ip = self._ip
         ip.ex('a=10; b=20')
         result = ip.run_cell_magic('cython_inline', '', 'return a+b')
         self.assertEqual(result, 30)
 
     @skip_win32('Skip on Windows')
     def test_cython_pyximport(self):
+        ip = self._ip
         module_name = '_test_cython_pyximport'
         ip.run_cell_magic('cython_pyximport', module_name, code)
         ip.ex('g = f(10)')
@@ -99,12 +108,14 @@ class TestIPythonMagic(CythonTest):
             pass
 
     def test_cython(self):
+        ip = self._ip
         ip.run_cell_magic('cython', '', code)
         ip.ex('g = f(10)')
         self.assertEqual(ip.user_ns['g'], 20.0)
 
     def test_cython_name(self):
         # The Cython module named 'mymodule' defines the function f.
+        ip = self._ip
         ip.run_cell_magic('cython', '--name=mymodule', code)
         # This module can now be imported in the interactive namespace.
         ip.ex('import mymodule; g = mymodule.f(10)')
@@ -112,6 +123,7 @@ class TestIPythonMagic(CythonTest):
 
     def test_cython_language_level(self):
         # The Cython cell defines the functions f() and call().
+        ip = self._ip
         ip.run_cell_magic('cython', '', cython3_code)
         ip.ex('g = f(10); h = call(10)')
         if sys.version_info[0] < 3:
@@ -123,6 +135,7 @@ class TestIPythonMagic(CythonTest):
 
     def test_cython3(self):
         # The Cython cell defines the functions f() and call().
+        ip = self._ip
         ip.run_cell_magic('cython', '-3', cython3_code)
         ip.ex('g = f(10); h = call(10)')
         self.assertEqual(ip.user_ns['g'], 2.0 / 10.0)
@@ -130,6 +143,7 @@ class TestIPythonMagic(CythonTest):
 
     def test_cython2(self):
         # The Cython cell defines the functions f() and call().
+        ip = self._ip
         ip.run_cell_magic('cython', '-2', cython3_code)
         ip.ex('g = f(10); h = call(10)')
         self.assertEqual(ip.user_ns['g'], 2 // 10)
@@ -138,6 +152,7 @@ class TestIPythonMagic(CythonTest):
     @skip_win32('Skip on Windows')
     def test_cython3_pgo(self):
         # The Cython cell defines the functions f() and call().
+        ip = self._ip
         ip.run_cell_magic('cython', '-3 --pgo', pgo_cython3_code)
         ip.ex('g = f(10); h = call(10); main()')
         self.assertEqual(ip.user_ns['g'], 2.0 / 10.0)
@@ -145,6 +160,7 @@ class TestIPythonMagic(CythonTest):
 
     @skip_win32('Skip on Windows')
     def test_extlibs(self):
+        ip = self._ip
         code = py3compat.str_to_unicode("""
 from libc.math cimport sin
 x = sin(0.0)
@@ -155,6 +171,7 @@ x = sin(0.0)
 
 
     def test_cython_verbose(self):
+        ip = self._ip
         ip.run_cell_magic('cython', '--verbose', code)
         ip.ex('g = f(10)')
         self.assertEqual(ip.user_ns['g'], 20.0)
@@ -180,6 +197,7 @@ x = sin(0.0)
             finally:
                 IpythonMagic.distutils.log = old_log
 
+        ip = self._ip
         with mock_distutils() as verbose_log:
             ip.run_cell_magic('cython', '--verbose', code)
             ip.ex('g = f(10)')

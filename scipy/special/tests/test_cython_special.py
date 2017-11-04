@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 from itertools import product
 
 from numpy.testing import assert_allclose
-from numpy.testing.noseclasses import KnownFailureTest
+import pytest
 
 from scipy import special
 from scipy.special import cython_special
@@ -46,6 +46,7 @@ def _generate_test_points(typecodes):
 
 def test_cython_api():
     params = [
+        (special.agm, cython_special.agm, ('dd',), None),
         (special.airy, cython_special._airy_pywrap, ('d', 'D'), None),
         (special.airye, cython_special._airye_pywrap, ('d', 'D'), None),
         (special.bdtr, cython_special.bdtr, ('lld', 'ddd'), None),
@@ -134,6 +135,7 @@ def test_cython_api():
         (special.gammaincc, cython_special.gammaincc, ('dd',), None),
         (special.gammainccinv, cython_special.gammainccinv, ('dd',), None),
         (special.gammaincinv, cython_special.gammaincinv, ('dd',), None),
+        (special.gammaln, cython_special.gammaln, ('d',), None),
         (special.gammasgn, cython_special.gammasgn, ('d',), None),
         (special.gdtr, cython_special.gdtr, ('ddd',), None),
         (special.gdtrc, cython_special.gdtrc, ('ddd',), None),
@@ -230,7 +232,7 @@ def test_cython_api():
         (special.obl_rad2_cv, cython_special._obl_rad2_cv_pywrap, ('ddddd',), "see gh-6211"),
         (special.pbdv, cython_special._pbdv_pywrap, ('dd',), None),
         (special.pbvv, cython_special._pbvv_pywrap, ('dd',), None),
-        (special.pbwa, cython_special._pbwa_pywrap, ('dd',), "see gh-6208"),
+        (special.pbwa, cython_special._pbwa_pywrap, ('dd',), None),
         (special.pdtr, cython_special.pdtr, ('ld', 'dd'), None),
         (special.pdtrc, cython_special.pdtrc, ('ld', 'dd'), None),
         (special.pdtri, cython_special.pdtri, ('ld', 'dd'), None),
@@ -289,7 +291,7 @@ def test_cython_api():
     def check(param):
         pyfunc, cyfunc, specializations, knownfailure = param
         if knownfailure:
-            raise KnownFailureTest(knownfailure)
+            pytest.xfail(reason=knownfailure)
 
         # Check which parameters are expected to be fused types
         values = [set() for code in specializations[0]]
@@ -327,4 +329,4 @@ def test_cython_api():
                 assert_allclose(cyval, pyval, err_msg="{} {} {}".format(pt, typecodes, signature))
 
     for param in params:
-        yield check, param
+        check(param)

@@ -27,7 +27,7 @@ Setting = namedtuple('Setting', 'name value origin type')
 
 
 # FIXME: see if we can unify in module_utils with similar function used by argspec
-def ensure_type(value, value_type):
+def ensure_type(value, value_type, origin=None):
     ''' return a configuration variable with casting
     :arg value: The value to ensure correct typing of
     :kwarg value_type: The type of the value.  This can be any of the following strings:
@@ -44,6 +44,11 @@ def ensure_type(value, value_type):
             means colon separated strings.)  Split the value and then expand
             each part for environment variables and tildes.
     '''
+
+    basedir = None
+    if origin and os.path.isabs(origin) and os.path.exists(origin):
+        basedir = origin
+
     if value_type:
         value_type = value_type.lower()
 
@@ -66,10 +71,10 @@ def ensure_type(value, value_type):
                 value = None
 
         elif value_type == 'path':
-            value = resolve_path(value)
+            value = resolve_path(value, basedir=basedir)
 
         elif value_type in ('tmp', 'temppath', 'tmppath'):
-            value = resolve_path(value)
+            value = resolve_path(value, basedir=basedir)
             if not os.path.exists(value):
                 makedirs_safe(value, 0o700)
             prefix = 'ansible-local-%s' % os.getpid()
@@ -78,12 +83,12 @@ def ensure_type(value, value_type):
         elif value_type == 'pathspec':
             if isinstance(value, string_types):
                 value = value.split(os.pathsep)
-            value = [resolve_path(x) for x in value]
+            value = [resolve_path(x, basedir=basedir) for x in value]
 
         elif value_type == 'pathlist':
             if isinstance(value, string_types):
                 value = value.split(',')
-            value = [resolve_path(x) for x in value]
+            value = [resolve_path(x, basedir=basedir) for x in value]
 
         # defaults to string types
         elif isinstance(value, string_types):
@@ -93,12 +98,12 @@ def ensure_type(value, value_type):
 
 
 # FIXME: see if this can live in utils/path
-def resolve_path(path):
+def resolve_path(path, basedir=None):
     ''' resolve relative or 'varaible' paths '''
     if '{{CWD}}' in path:  # allow users to force CWD using 'magic' {{CWD}}
         path = path.replace('{{CWD}}', os.getcwd())
 
-    return unfrackpath(path, follow=False)
+    return unfrackpath(path, follow=False, basedir=basedir)
 
 
 # FIXME: generic file type?
@@ -292,12 +297,14 @@ class ConfigManager(object):
             if ftype and defs[config].get(ftype):
                 if ftype == 'ini':
                     # load from ini config
-                    try:  # FIXME: generaelize _loop_entries to allow for files also
+                    try:  # FIXME: generaelize _loop_entries to allow for files also, most of this code is dupe
                         for ini_entry in defs[config]['ini']:
-                            value = get_ini_config_value(self._parser, ini_entry)
-                            origin = cfile
-                            if value is not None and 'deprecated' in ini_entry:
-                                self.DEPRECATED.append(('[%s]%s' % (ini_entry['section'], ini_entry['key']), ini_entry['deprecated']))
+                            temp_value = get_ini_config_value(self._parser, ini_entry)
+                            if temp_value is not None:
+                                value = temp_value
+                                origin = cfile
+                                if 'deprecated' in ini_entry:
+                                    self.DEPRECATED.append(('[%s]%s' % (ini_entry['section'], ini_entry['key']), ini_entry['deprecated']))
                     except Exception as e:
                         sys.stderr.write("Error while loading ini config %s: %s" % (cfile, to_native(e)))
                 elif ftype == 'yaml':
@@ -315,22 +322,13 @@ class ConfigManager(object):
         if value is None:
             value = defs[config].get('default')
             origin = 'default'
-            # FIXME: moved eval to constants as this does not have access to previous vars
-            if plugin_type is None and isinstance(value, string_types) and (value.startswith('eval(') and value.endswith(')')):
+            # skip typing as this is a temlated default that will be resolved later in constants, which has needed vars
+            if plugin_type is None and isinstance(value, string_types) and (value.startswith('{{') and value.endswith('}}')):
                 return value, origin
-            #default_value = defs[config].get('default')
-            #if plugin_type is None and isinstance(default_value, string_types) and (default_value.startswith('eval(') and default_value.endswith(')')):
-            #    try:
-            #        eval_string = default_value.replace('eval(', '', 1)[:-1]
-            #        value = eval(eval_string) # FIXME: safe eval?
-            #    except:
-            #        value = default_value
-            #else:
-            #    value = default_value
 
         # ensure correct type
         try:
-            value = ensure_type(value, defs[config].get('type'))
+            value = ensure_type(value, defs[config].get('type'), origin=origin)
         except Exception as e:
             self.UNABLE.append(config)
 

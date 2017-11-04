@@ -21,7 +21,6 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_pb=_b('\n+tensorboard/plugins/audio/plugin_data.proto\x12\x0btensorboard\"}\n\x0f\x41udioPluginData\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\x37\n\x08\x65ncoding\x18\x02 \x01(\x0e\x32%.tensorboard.AudioPluginData.Encoding\" \n\x08\x45ncoding\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x07\n\x03WAV\x10\x0b\x62\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -89,6 +88,7 @@ _AUDIOPLUGINDATA = _descriptor.Descriptor(
 _AUDIOPLUGINDATA.fields_by_name['encoding'].enum_type = _AUDIOPLUGINDATA_ENCODING
 _AUDIOPLUGINDATA_ENCODING.containing_type = _AUDIOPLUGINDATA
 DESCRIPTOR.message_types_by_name['AudioPluginData'] = _AUDIOPLUGINDATA
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 AudioPluginData = _reflection.GeneratedProtocolMessageType('AudioPluginData', (_message.Message,), dict(
   DESCRIPTOR = _AUDIOPLUGINDATA,

@@ -807,6 +807,7 @@ exports.DataTableView = function (superClass) {
         }(this));
     };
     DataTableView.prototype.updateGrid = function () {
+        this.model.view.compute_indices();
         this.data.constructor(this.model.source, this.model.view);
         this.grid.invalidate();
         this.grid.render();

@@ -116,7 +116,7 @@ def parse_time(timestring):
         match = pattern.match(timestring)
         if match:
             groups = match.groupdict()
-            for key, value in list(groups.items()):
+            for key, value in groups.items():
                 if value is not None:
                     groups[key] = value.replace(',', '.')
             tzinfo = build_tzinfo(groups['tzname'], groups['tzsign'],

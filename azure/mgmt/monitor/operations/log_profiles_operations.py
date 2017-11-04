@@ -9,9 +9,9 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
-import uuid
 
 from .. import models
 
@@ -46,9 +46,8 @@ class LogProfilesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or ClientRawResponse if raw=true
+        :rtype: None or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -97,10 +96,9 @@ class LogProfilesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`LogProfileResource
-         <azure.mgmt.monitor.models.LogProfileResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: LogProfileResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.LogProfileResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises:
          :class:`ErrorResponseException<azure.mgmt.monitor.models.ErrorResponseException>`
         """
@@ -151,17 +149,15 @@ class LogProfilesOperations(object):
         :param log_profile_name: The name of the log profile.
         :type log_profile_name: str
         :param parameters: Parameters supplied to the operation.
-        :type parameters: :class:`LogProfileResource
-         <azure.mgmt.monitor.models.LogProfileResource>`
+        :type parameters: ~azure.mgmt.monitor.models.LogProfileResource
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`LogProfileResource
-         <azure.mgmt.monitor.models.LogProfileResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: LogProfileResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.LogProfileResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -218,17 +214,16 @@ class LogProfilesOperations(object):
         :param log_profile_name: The name of the log profile.
         :type log_profile_name: str
         :param log_profiles_resource: Parameters supplied to the operation.
-        :type log_profiles_resource: :class:`LogProfileResourcePatch
-         <azure.mgmt.monitor.models.LogProfileResourcePatch>`
+        :type log_profiles_resource:
+         ~azure.mgmt.monitor.models.LogProfileResourcePatch
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`LogProfileResource
-         <azure.mgmt.monitor.models.LogProfileResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: LogProfileResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.LogProfileResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises:
          :class:`ErrorResponseException<azure.mgmt.monitor.models.ErrorResponseException>`
         """
@@ -285,8 +280,9 @@ class LogProfilesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`LogProfileResourcePaged
-         <azure.mgmt.monitor.models.LogProfileResourcePaged>`
+        :return: An iterator like instance of LogProfileResource
+        :rtype:
+         ~azure.mgmt.monitor.models.LogProfileResourcePaged[~azure.mgmt.monitor.models.LogProfileResource]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

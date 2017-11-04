@@ -41,6 +41,10 @@ define(function (require, exports, module) {
 		trim: true,
 		use_toggle_hotkey: false,
 		toggle_hotkey: 'alt-h',
+		outlines_only: false,
+		outline_width: 2,
+		only_cells_in_scroll: true,
+		scroll_min_delay: 100,
 	};
 
 	// these are set on registering the action(s)
@@ -58,6 +62,7 @@ define(function (require, exports, module) {
 	var globalState = {
 		active: false,
 		timeout: null, // only want one timeout
+		scrollTimeout: null,
 		overlay: null, // one overlay suffices, as all cells use the same one
 	};
 
@@ -90,7 +95,7 @@ define(function (require, exports, module) {
 
 	/**
 	 *  The functions callbackCursorActivity, callbackOnFocus and
-	 *  scheduleHighlight are taken without major unmodified from cm's
+	 *  scheduleHighlight are taken without major modification from cm's
 	 *  match-highlighter.
 	 *  The main difference is using our global state rather than
 	 *  match-highlighter's per-cm state, and a different highlighting function
@@ -215,16 +220,29 @@ define(function (require, exports, module) {
 	}
 
 	/**
+	 * Returns true if part of elem is visible between viewtop & viewbot
+	 */
+	var is_in_view  = function (elem, viewtop, viewbot) {
+		var rect = elem.getBoundingClientRect();
+		// hidden elements show height 0
+		return (rect.top < viewbot) && (rect.bottom > viewtop) && rect.height;
+	}
+
+	/**
 	 *  Return an array of cells to which match highlighting is relevant,
-	 *  dependent on the code_cells_only parameter
+	 *  dependent on the code_cells_only & only_cells_in_scroll parameters
 	 */
 	function get_relevant_cells () {
 		var cells = Jupyter.notebook.get_cells();
 		var relevant_cells = [];
+		var siterect = document.getElementById('site').getBoundingClientRect();
+		var viewtop = siterect.top, viewbot = siterect.bottom;
 		for (var ii = 0; ii < cells.length; ii++) {
 			var cell = cells[ii];
 			if (!params.code_cells_only || cell instanceof CodeCell) {
-				relevant_cells.push(cell);
+				if (!params.only_cells_in_scroll || is_in_view(cell.element[0], viewtop, viewbot)) {
+					relevant_cells.push(cell);
+				}
 			}
 		}
 		return relevant_cells;
@@ -249,6 +267,32 @@ define(function (require, exports, module) {
 		}
 	}
 
+	var throttled_highlight = (function () {
+		var last, throttle_timeout;
+		return function throttled_highlight (cm) {
+			var now = Number(new Date());
+			var do_it = function () {
+				last = Number(new Date());
+				highlightMatchesInAllRelevantCells(cm);
+			};
+			var remaining = last + params.scroll_min_delay - now;
+			if (last && remaining > 0) {
+				clearTimeout(throttle_timeout);
+				throttle_timeout = setTimeout(do_it, remaining);
+			}
+			else {
+				last = undefined; // so we will do it first time next streak
+				do_it();
+			}
+		}
+	})();
+
+	function scroll_handler (evt) {
+		if (Jupyter.notebook.mode === 'edit') {
+			throttled_highlight(Jupyter.notebook.get_selected_cell().code_mirror);
+		}
+	}
+
 	function toggle_highlight_selected (set_on) {
 		set_on = (set_on !== undefined) ? set_on : !params.enable_on_load;
 		// update config to make changes persistent
@@ -268,6 +312,10 @@ define(function (require, exports, module) {
 		});
 		// update menu class
 		$('.' + menu_toggle_class + ' > .fa').toggleClass('fa-check', set_on);
+		// bind/unbind scroll handler
+		$('#site')[
+			(params.only_cells_in_scroll && params.scroll_min_delay > 0) ? 'on' : 'off'
+		]('scroll', scroll_handler);
 		console.log(log_prefix, 'toggled', set_on ? 'on' : 'off');
 		return set_on;
 	}
@@ -342,6 +390,9 @@ define(function (require, exports, module) {
 		})
 		.then(function () {
 			params.show_token = params.show_token ? new RegExp(params.show_token) : false;
+			if (params.outlines_only) {
+				params.highlight_style += '-outline'
+			}
 
 			// alter css according to config
 			alter_css(
@@ -353,6 +404,16 @@ define(function (require, exports, module) {
 				$stylesheet,
 				/^\.notebook_app\.edit_mode\s+\.CodeMirror\.CodeMirror-focused\s+.cm-matchhighlight/,
 				{ backgroundColor: params.highlight_color }
+			);
+			alter_css(
+				$stylesheet,
+				/^\.notebook_app\.edit_mode\s+\.CodeMirror\s+.cm-matchhighlight-outline/,
+				{ outlineColor: params.highlight_color_blurred, outlineWidth: params.outline_width + 'px' }
+			);
+			alter_css(
+				$stylesheet,
+				/^\.notebook_app\.edit_mode\s+\.CodeMirror\.CodeMirror-focused\s+.cm-matchhighlight-outline/,
+				{ outlineColor: params.highlight_color }
 			);
 
 			// set highlight on/off

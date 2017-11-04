@@ -103,7 +103,7 @@ def parse_time(isotimestr):
 
     (timestr, tzstr) = _split_tz(isotimestr)
 
-    if tzstr == None:
+    if tzstr is None:
         return _parse_time_naive(timestr)
     elif tzstr == 'Z':
         return _parse_time_naive(timestr).replace(tzinfo=build_utcoffset('UTC', datetime.timedelta(hours=0)))
@@ -193,6 +193,10 @@ def _parse_second_time(timestr):
         #Since the time constructor doesn't handle fractional seconds, we put
         #the seconds in to a timedelta, and add it to the time before returning
         secondsdelta = datetime.timedelta(seconds = float(timestr[4:]))
+
+    if secondsdelta.seconds >= 60:
+        #https://bitbucket.org/nielsenb/aniso8601/issues/13/parsing-of-leap-second-gives-wildly
+        raise ValueError('Seconds must be less than 60.')
 
     if isominute > 60:
         raise ValueError('ISO 8601 minute element cannot be greater than 60.')

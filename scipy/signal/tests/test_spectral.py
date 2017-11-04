@@ -1,18 +1,20 @@
 from __future__ import division, print_function, absolute_import
 
-import warnings
 import numpy as np
-from numpy.testing import (assert_, run_module_suite, TestCase, dec,
+from numpy.testing import (assert_, assert_approx_equal,
                            assert_allclose, assert_array_equal, assert_equal,
-                           assert_array_almost_equal_nulp, assert_raises,
-                           assert_approx_equal)
+                           assert_array_almost_equal_nulp)
+import pytest
+from pytest import raises as assert_raises
+
+from scipy._lib._numpy_compat import suppress_warnings
 from scipy import signal, fftpack
 from scipy.signal import (periodogram, welch, lombscargle, csd, coherence,
                           spectrogram, stft, istft, check_COLA)
 from scipy.signal.spectral import _spectral_helper
 
 
-class TestPeriodogram(TestCase):
+class TestPeriodogram(object):
     def test_real_onesided_even(self):
         x = np.zeros(16)
         x[0] = 1
@@ -216,7 +218,7 @@ class TestPeriodogram(TestCase):
         assert_(p.dtype == q.dtype)
 
 
-class TestWelch(TestCase):
+class TestWelch(object):
     def test_real_onesided_even(self):
         x = np.zeros(16)
         x[0] = 1
@@ -389,11 +391,10 @@ class TestWelch(TestCase):
         x[0] = 1
         #for string-like window, input signal length < nperseg value gives
         #UserWarning, sets nperseg to x.shape[-1]
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
+        with suppress_warnings() as sup:
+            sup.filter(UserWarning, "nperseg = 256 is greater than input length  = 8, using nperseg = 8")
             f, p = welch(x,window='hann')  # default nperseg
-            f1, p1 = welch(x,window='hann',
-                           nperseg=256)  # user-specified nperseg
+            f1, p1 = welch(x,window='hann', nperseg=256)  # user-specified nperseg
         f2, p2 = welch(x, nperseg=8)  # valid nperseg, doesn't give warning
         assert_allclose(f, f2)
         assert_allclose(p, p2)
@@ -401,12 +402,9 @@ class TestWelch(TestCase):
         assert_allclose(p1, p2)
 
     def test_window_long_or_nd(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
-            assert_raises(ValueError, welch, np.zeros(4), 1,
-                          np.array([1,1,1,1,1]))
-            assert_raises(ValueError, welch, np.zeros(4), 1,
-                          np.arange(6).reshape((2,3)))
+        assert_raises(ValueError, welch, np.zeros(4), 1, np.array([1,1,1,1,1]))
+        assert_raises(ValueError, welch, np.zeros(4), 1,
+                      np.arange(6).reshape((2,3)))
 
     def test_nondefault_noverlap(self):
         x = np.zeros(64)
@@ -742,11 +740,10 @@ class TestCSD:
 
         #for string-like window, input signal length < nperseg value gives
         #UserWarning, sets nperseg to x.shape[-1]
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
+        with suppress_warnings() as sup:
+            sup.filter(UserWarning, "nperseg = 256 is greater than input length  = 8, using nperseg = 8")
             f, p = csd(x, x, window='hann')  # default nperseg
-            f1, p1 = csd(x, x, window='hann',
-                         nperseg=256)  # user-specified nperseg
+            f1, p1 = csd(x, x, window='hann', nperseg=256)  # user-specified nperseg
         f2, p2 = csd(x, x, nperseg=8)  # valid nperseg, doesn't give warning
         assert_allclose(f, f2)
         assert_allclose(p, p2)
@@ -754,12 +751,10 @@ class TestCSD:
         assert_allclose(p1, p2)
 
     def test_window_long_or_nd(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
-            assert_raises(ValueError, csd, np.zeros(4), np.ones(4), 1,
-                          np.array([1,1,1,1,1]))
-            assert_raises(ValueError, csd, np.zeros(4), np.ones(4), 1,
-                          np.arange(6).reshape((2,3)))
+        assert_raises(ValueError, csd, np.zeros(4), np.ones(4), 1,
+                      np.array([1,1,1,1,1]))
+        assert_raises(ValueError, csd, np.zeros(4), np.ones(4), 1,
+                      np.arange(6).reshape((2,3)))
 
     def test_nondefault_noverlap(self):
         x = np.zeros(64)
@@ -842,7 +837,7 @@ class TestCSD:
         assert_allclose(f, fodd)
         assert_allclose(f, feven)
 
-class TestCoherence(TestCase):
+class TestCoherence(object):
     def test_identical_input(self):
         x = np.random.randn(20)
         y = np.copy(x)  # So `y is x` -> False
@@ -866,7 +861,7 @@ class TestCoherence(TestCase):
         assert_allclose(C, C1)
 
 
-class TestSpectrogram(TestCase):
+class TestSpectrogram(object):
     def test_average_all_segments(self):
         x = np.random.randn(1024)
 
@@ -905,10 +900,10 @@ class TestSpectrogram(TestCase):
 
         #for string-like window, input signal length < nperseg value gives
         #UserWarning, sets nperseg to x.shape[-1]
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
-            f, _, p = spectrogram(x, fs,
-                                  window=('tukey',0.25))  # default nperseg
+        f, _, p = spectrogram(x, fs, window=('tukey',0.25))  # default nperseg
+        with suppress_warnings() as sup:
+            sup.filter(UserWarning,
+                       "nperseg = 1025 is greater than input length  = 1024, using nperseg = 1024")
             f1, _, p1 = spectrogram(x, fs, window=('tukey',0.25),
                                     nperseg=1025)  # user-specified nperseg
         f2, _, p2 = spectrogram(x, fs, nperseg=256)  # to compare w/default
@@ -918,7 +913,7 @@ class TestSpectrogram(TestCase):
         assert_allclose(f1, f3)
         assert_allclose(p1, p3)
 
-class TestLombscargle(TestCase):
+class TestLombscargle(object):
     def test_frequency(self):
         """Test if frequency location of peak corresponds to frequency of
         generated input signal.
@@ -952,9 +947,8 @@ class TestLombscargle(TestCase):
         assert_(w - f[np.argmax(P)] < (delta/2.))
 
     def test_amplitude(self):
-        """Test if height of peak in normalized Lomb-Scargle periodogram
-        corresponds to amplitude of the generated input signal.
-        """
+        # Test if height of peak in normalized Lomb-Scargle periodogram
+        # corresponds to amplitude of the generated input signal.
 
         # Input parameters
         ampl = 2.
@@ -985,6 +979,66 @@ class TestLombscargle(TestCase):
         # frequency is less than accuracy
         assert_approx_equal(np.max(pgram), ampl, significant=2)
 
+    def test_precenter(self):
+        # Test if precenter gives the same result as manually precentering.
+
+        # Input parameters
+        ampl = 2.
+        w = 1.
+        phi = 0.5 * np.pi
+        nin = 100
+        nout = 1000
+        p = 0.7  # Fraction of points to select
+        offset = 0.15  # Offset to be subtracted in pre-centering
+
+        # Randomly select a fraction of an array with timesteps
+        np.random.seed(2353425)
+        r = np.random.rand(nin)
+        t = np.linspace(0.01*np.pi, 10.*np.pi, nin)[r >= p]
+
+        # Plot a sine wave for the selected times
+        x = ampl * np.sin(w*t + phi) + offset
+
+        # Define the array of frequencies for which to compute the periodogram
+        f = np.linspace(0.01, 10., nout)
+
+        # Calculate Lomb-Scargle periodogram
+        pgram = lombscargle(t, x, f, precenter=True)
+        pgram2 = lombscargle(t, x - x.mean(), f, precenter=False)
+
+        # check if centering worked
+        assert_allclose(pgram, pgram2)
+
+    def test_normalize(self):
+        # Test normalize option of Lomb-Scarge.
+
+        # Input parameters
+        ampl = 2.
+        w = 1.
+        phi = 0.5 * np.pi
+        nin = 100
+        nout = 1000
+        p = 0.7  # Fraction of points to select
+
+        # Randomly select a fraction of an array with timesteps
+        np.random.seed(2353425)
+        r = np.random.rand(nin)
+        t = np.linspace(0.01*np.pi, 10.*np.pi, nin)[r >= p]
+
+        # Plot a sine wave for the selected times
+        x = ampl * np.sin(w*t + phi)
+
+        # Define the array of frequencies for which to compute the periodogram
+        f = np.linspace(0.01, 10., nout)
+
+        # Calculate Lomb-Scargle periodogram
+        pgram = lombscargle(t, x, f)
+        pgram2 = lombscargle(t, x, f, normalize=True)
+
+        # check if normalization works as expected
+        assert_allclose(pgram * 2 / np.dot(x, x), pgram2)
+        assert_approx_equal(np.max(pgram2), 1.0, significant=2)
+
     def test_wrong_shape(self):
         t = np.linspace(0, 1, 1)
         x = np.linspace(0, 1, 2)
@@ -1006,7 +1060,7 @@ class TestLombscargle(TestCase):
         q = lombscargle(t, x, f*2*np.pi)
 
 
-class TestSTFT(TestCase):
+class TestSTFT(object):
     def test_input_validation(self):
         assert_raises(ValueError, check_COLA, 'hann', -10, 0)
         assert_raises(ValueError, check_COLA, 'hann', 10, 20)
@@ -1122,8 +1176,7 @@ class TestSTFT(TestCase):
             assert_allclose(t, tr, err_msg=msg)
             assert_allclose(x, xr, err_msg=msg)
 
-    # Needs complex rfft from fftpack, see gh-2487 + gh-6058
-    @dec.knownfailureif(True)
+    @pytest.mark.xfail(reason="Needs complex rfft from fftpack, see gh-2487 + gh-6058")
     def test_roundtrip_float32(self):
         np.random.seed(1234)
 
@@ -1173,8 +1226,9 @@ class TestSTFT(TestCase):
             assert_allclose(x, xr, err_msg=msg)
 
         # Check that asking for onesided switches to twosided
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
+        with suppress_warnings() as sup:
+            sup.filter(UserWarning,
+                       "Input data is complex, switching to return_onesided=False")
             _, _, zz = stft(x, nperseg=nperseg, noverlap=noverlap,
                             window=window, detrend=None, padded=False,
                             return_onesided=True)
@@ -1301,6 +1355,3 @@ class TestSTFT(TestCase):
 
         assert_allclose(x_flat, x_transpose_m, err_msg='istft transpose minus')
         assert_allclose(x_flat, x_transpose_p, err_msg='istft transpose plus')
-
-if __name__ == "__main__":
-    run_module_suite()

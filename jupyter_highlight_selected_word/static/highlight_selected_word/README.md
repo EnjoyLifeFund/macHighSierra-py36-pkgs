@@ -40,6 +40,15 @@ The available options are:
 * `highlight_selected_word.highlight_color_blurred` - Color used to highlight
   matching words in blurred (non-active) cells
 
+* `highlight_selected_word.outlines_only` - Highlight words using just an
+  outline, rather than the background color. In contrast to the default
+  background-color highlight, the outline-only is also applied to the
+  currently-selected word
+
+* `highlight_selected_word.outline_width` - Width, in pixels, of the outline
+  used to highlight words when the outline-only setting (above) is selected.
+  Defaults to 1.
+
 * `highlight_selected_word.delay` - Wait time (in milliseconds) before
   highlighting the matches
 
@@ -66,6 +75,16 @@ The available options are:
 * `highlight_selected_word.toggle_hotkey` - Which hotkey to bind to the
   `highlight_selected_word.toggle` action (if set to use, see item above).
   Defaults to `alt-h`
+
+* `highlight_selected_word.only_cells_in_scroll` - Only apply highlights to
+  editors which are visible in the scrolled view. This may offer performance
+  benefits for larger notebooks, but may be annoying if you're doing a lot of
+  scrolling :/
+
+* `highlight_selected_word.scroll_min_delay` - Minimum delay in ms between
+  updating highlights on scrolling the notebook (used only if
+  `highlight_selected_word.only_cells_in_scroll` is `true`).
+  If set to zero, no update is done on scroll.
 
 For example, to set the delay to half a second, and limit highlighting to code
 cells, we can use the following python snippet:

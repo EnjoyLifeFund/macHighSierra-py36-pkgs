@@ -783,13 +783,13 @@ static PyObject *__Pyx_Coroutine_Send(PyObject *self, PyObject *value) {
             ret = __Pyx_async_gen_asend_send(yf, value);
         } else
         #endif
-        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03030000 && (!defined(_MSC_VER) || PY_VERSION_HEX >= 0x03060000)
+        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03030000 && (defined(__linux__) || PY_VERSION_HEX >= 0x030600B3)
         // _PyGen_Send() is not exported before Py3.6
         if (PyGen_CheckExact(yf)) {
             ret = _PyGen_Send((PyGenObject*)yf, value == Py_None ? NULL : value);
         } else
         #endif
-        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03050000 && defined(PyCoro_CheckExact) && (!defined(_MSC_VER) || PY_VERSION_HEX >= 0x03060000)
+        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03050000 && defined(PyCoro_CheckExact) && (defined(__linux__) || PY_VERSION_HEX >= 0x030600B3)
         // _PyGen_Send() is not exported before Py3.6
         if (PyCoro_CheckExact(yf)) {
             ret = _PyGen_Send((PyGenObject*)yf, value == Py_None ? NULL : value);
@@ -885,7 +885,7 @@ static PyObject *__Pyx_Generator_Next(PyObject *self) {
             ret = __Pyx_Generator_Next(yf);
         } else
         #endif
-        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03030000 && (!defined(_MSC_VER) || PY_VERSION_HEX >= 0x03060000)
+        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x03030000 && (defined(__linux__) || PY_VERSION_HEX >= 0x030600B3)
         // _PyGen_Send() is not exported before Py3.6
         if (PyGen_CheckExact(yf)) {
             ret = _PyGen_Send((PyGenObject*)yf, NULL);
@@ -1058,6 +1058,7 @@ static int __Pyx_Coroutine_clear(PyObject *self) {
 #endif
     Py_CLEAR(gen->gi_name);
     Py_CLEAR(gen->gi_qualname);
+    Py_CLEAR(gen->gi_modulename);
     return 0;
 }
 
@@ -1723,13 +1724,20 @@ static void __Pyx__ReturnWithStopIteration(PyObject* value) {
         Py_INCREF(value);
         exc = value;
     }
+    #if CYTHON_FAST_THREAD_STATE
     __Pyx_PyThreadState_assign
-    if (!$local_tstate_cname->exc_type) {
+    #if PY_VERSION_HEX >= 0x030700A2
+    if (!$local_tstate_cname->exc_state.exc_type)
+    #else
+    if (!$local_tstate_cname->exc_type)
+    #endif
+    {
         // no chaining needed => avoid the overhead in PyErr_SetObject()
         Py_INCREF(PyExc_StopIteration);
         __Pyx_ErrRestore(PyExc_StopIteration, exc, NULL);
         return;
     }
+    #endif
 #else
     args = PyTuple_Pack(1, value);
     if (unlikely(!args)) return;

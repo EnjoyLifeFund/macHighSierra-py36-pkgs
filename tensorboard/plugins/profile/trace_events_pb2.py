@@ -21,7 +21,6 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_pb=_b('\n.tensorboard/plugins/profile/trace_events.proto\x12\x13tensorboard.profile\"\xc5\x01\n\x05Trace\x12\x38\n\x07\x64\x65vices\x18\x01 \x03(\x0b\x32\'.tensorboard.profile.Trace.DevicesEntry\x12\x35\n\x0ctrace_events\x18\x04 \x03(\x0b\x32\x1f.tensorboard.profile.TraceEvent\x1aK\n\x0c\x44\x65vicesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12*\n\x05value\x18\x02 \x01(\x0b\x32\x1b.tensorboard.profile.Device:\x02\x38\x01\"\xb9\x01\n\x06\x44\x65vice\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x11\n\tdevice_id\x18\x02 \x01(\x04\x12=\n\tresources\x18\x03 \x03(\x0b\x32*.tensorboard.profile.Device.ResourcesEntry\x1aO\n\x0eResourcesEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12,\n\x05value\x18\x02 \x01(\x0b\x32\x1d.tensorboard.profile.Resource:\x02\x38\x01\"-\n\x08Resource\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bresource_id\x18\x02 \x01(\x04\"m\n\nTraceEvent\x12\x11\n\tdevice_id\x18\x01 \x01(\x04\x12\x13\n\x0bresource_id\x18\x02 \x01(\x04\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x14\n\x0ctimestamp_ps\x18\t \x01(\x04\x12\x13\n\x0b\x64uration_ps\x18\n \x01(\x04\x62\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -290,6 +289,7 @@ DESCRIPTOR.message_types_by_name['Trace'] = _TRACE
 DESCRIPTOR.message_types_by_name['Device'] = _DEVICE
 DESCRIPTOR.message_types_by_name['Resource'] = _RESOURCE
 DESCRIPTOR.message_types_by_name['TraceEvent'] = _TRACEEVENT
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Trace = _reflection.GeneratedProtocolMessageType('Trace', (_message.Message,), dict(
 

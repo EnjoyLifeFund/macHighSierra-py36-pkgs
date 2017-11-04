@@ -31,7 +31,7 @@ from traitlets.config.application import Application, catch_config_error
 from traitlets.config.loader import ConfigFileNotFound
 from traitlets import Unicode, Bool, List
 
-from ipython_genutils.path import ensure_dir_exists
+from .utils import ensure_dir_exists
 from ipython_genutils import py3compat
 
 from .paths import (
@@ -160,10 +160,9 @@ class JupyterApp(Application):
             return
 
         from .migrate import get_ipython_dir, migrate
-        
-        ipdir = get_ipython_dir()
+
         # No IPython dir, nothing to migrate
-        if not os.path.exists(ipdir):
+        if not os.path.exists(get_ipython_dir()):
             return
 
         migrate()

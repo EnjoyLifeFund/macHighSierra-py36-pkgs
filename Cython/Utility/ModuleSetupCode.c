@@ -507,18 +507,27 @@
 
 
 #ifndef CYTHON_FALLTHROUGH
-  #ifdef __cplusplus
+  #if defined(__cplusplus) && __cplusplus >= 201103L
     #if __has_cpp_attribute(fallthrough)
       #define CYTHON_FALLTHROUGH [[fallthrough]]
     #elif __has_cpp_attribute(clang::fallthrough)
       #define CYTHON_FALLTHROUGH [[clang::fallthrough]]
+    #elif __has_cpp_attribute(gnu::fallthrough)
+      #define CYTHON_FALLTHROUGH [[gnu::fallthrough]]
     #endif
   #endif
 
   #ifndef CYTHON_FALLTHROUGH
-    #if __has_attribute(fallthrough) || (defined(__GNUC__) && defined(__attribute__))
+    #if __has_attribute(fallthrough)
       #define CYTHON_FALLTHROUGH __attribute__((fallthrough))
     #else
+      #define CYTHON_FALLTHROUGH
+    #endif
+  #endif
+
+  #if defined(__clang__ ) && defined(__apple_build_version__)
+    #if __apple_build_version__ < 7000000 /* Xcode < 7.0 */
+      #undef  CYTHON_FALLTHROUGH
       #define CYTHON_FALLTHROUGH
     #endif
   #endif
@@ -1031,7 +1040,7 @@ static int __Pyx_RegisterCleanup(void); /*proto*/
 //@substitute: naming
 //@requires: ImportExport.c::ModuleImport
 
-#if PY_MAJOR_VERSION < 3
+#if PY_MAJOR_VERSION < 3 || CYTHON_COMPILING_IN_PYPY
 static PyObject* ${cleanup_cname}_atexit(PyObject *module, CYTHON_UNUSED PyObject *unused) {
     ${cleanup_cname}(module);
     Py_INCREF(Py_None); return Py_None;
@@ -1104,7 +1113,7 @@ bad:
 #else
 // fake call purely to work around "unused function" warning for __Pyx_ImportModule()
 static int __Pyx_RegisterCleanup(void) {
-    if ((0)) __Pyx_ImportModule(NULL);
+    (void)__Pyx_ImportModule; /* unused */
     return 0;
 }
 #endif

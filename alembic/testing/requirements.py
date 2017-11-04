@@ -23,6 +23,11 @@ class SuiteRequirements(Requirements):
             if not util.sqla_084:
                 return True
             from sqlalchemy import inspect
+
+            # temporary
+            if config.db.name == "oracle":
+                return True
+
             insp = inspect(config.db)
             try:
                 insp.get_unique_constraints('x')
@@ -161,8 +166,23 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def sqlalchemy_1115(self):
+        return exclusions.skip_if(
+            lambda config: not util.sqla_1115,
+            "SQLAlchemy 1.1.15 or greater required"
+        )
+
+    @property
     def sqlalchemy_110(self):
         return exclusions.skip_if(
             lambda config: not util.sqla_110,
             "SQLAlchemy 1.1.0 or greater required"
         )
+
+    @property
+    def pep3147(self):
+
+        return exclusions.only_if(
+            lambda config: util.compat.has_pep3147()
+        )
+

@@ -69,31 +69,36 @@ class EncoderPipeline(pipeline.Pipeline):
     self._density_bin_ranges = config.density_bin_ranges
     self._density_window_size = config.density_window_size
     self._pitch_histogram_window_size = config.pitch_histogram_window_size
+    self._optional_conditioning = config.optional_conditioning
 
   def transform(self, performance):
-    if (self._density_bin_ranges is not None and
+    if (self._density_bin_ranges is not None or
         self._pitch_histogram_window_size is not None):
-      # Encode conditional on note density and pitch class histogram.
-      density_sequence = performance_lib.performance_note_density_sequence(
-          performance, self._density_window_size)
-      histogram_sequence = performance_lib.performance_pitch_histogram_sequence(
-          performance, self._pitch_histogram_window_size)
-      encoded = self._encoder_decoder.encode(
-          zip(density_sequence, histogram_sequence), performance)
-    elif self._density_bin_ranges is not None:
-      # Encode conditional on note density.
-      density_sequence = performance_lib.performance_note_density_sequence(
-          performance, self._density_window_size)
-      encoded = self._encoder_decoder.encode(density_sequence, performance)
-    elif self._pitch_histogram_window_size is not None:
-      # Encode conditional on pitch class histogram.
-      histogram_sequence = performance_lib.performance_pitch_histogram_sequence(
-          performance, self._pitch_histogram_window_size)
-      encoded = self._encoder_decoder.encode(histogram_sequence, performance)
+      # Encode conditional on note density and/or pitch class histogram.
+      control_sequences = []
+      if self._density_bin_ranges is not None:
+        control_sequences.append(
+            performance_lib.performance_note_density_sequence(
+                performance, self._density_window_size))
+      if self._pitch_histogram_window_size is not None:
+        control_sequences.append(
+            performance_lib.performance_pitch_histogram_sequence(
+                performance, self._pitch_histogram_window_size))
+      control_sequence = zip(*control_sequences)
+      if self._optional_conditioning:
+        # Create two copies, one with and one without conditioning.
+        encoded = [
+            self._encoder_decoder.encode(
+                zip([disable] * len(control_sequence), control_sequence),
+                performance)
+            for disable in [False, True]]
+      else:
+        encoded = [self._encoder_decoder.encode(
+            control_sequence, performance)]
     else:
       # Encode unconditional.
-      encoded = self._encoder_decoder.encode(performance)
-    return [encoded]
+      encoded = [self._encoder_decoder.encode(performance)]
+    return encoded
 
 
 class PerformanceExtractor(pipeline.Pipeline):
@@ -146,13 +151,15 @@ def get_pipeline(config, min_events, max_events, eval_ratio):
     sustain_pipeline = note_sequence_pipelines.SustainPipeline(
         name='SustainPipeline_' + mode)
     stretch_pipeline = note_sequence_pipelines.StretchPipeline(
-        stretch_factors, name='StretchPipeline_' + mode)
+        stretch_factors if mode == 'training' else [1.0],
+        name='StretchPipeline_' + mode)
     splitter = note_sequence_pipelines.Splitter(
         hop_size_seconds=30.0, name='Splitter_' + mode)
     quantizer = note_sequence_pipelines.Quantizer(
         steps_per_second=config.steps_per_second, name='Quantizer_' + mode)
     transposition_pipeline = note_sequence_pipelines.TranspositionPipeline(
-        transposition_range, name='TranspositionPipeline_' + mode)
+        transposition_range if mode == 'training' else [0],
+        name='TranspositionPipeline_' + mode)
     perf_extractor = PerformanceExtractor(
         min_events=min_events, max_events=max_events,
         num_velocity_bins=config.num_velocity_bins,

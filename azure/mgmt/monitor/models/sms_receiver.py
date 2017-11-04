@@ -25,10 +25,9 @@ class SmsReceiver(Model):
     :type country_code: str
     :param phone_number: The phone number of the SMS receiver.
     :type phone_number: str
-    :ivar status: Possible values include: 'NotSpecified', 'Enabled',
-     'Disabled'
-    :vartype status: str or :class:`ReceiverStatus
-     <azure.mgmt.monitor.models.ReceiverStatus>`
+    :ivar status: The status of the receiver. Possible values include:
+     'NotSpecified', 'Enabled', 'Disabled'
+    :vartype status: str or ~azure.mgmt.monitor.models.ReceiverStatus
     """
 
     _validation = {

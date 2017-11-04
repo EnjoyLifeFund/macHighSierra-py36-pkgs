@@ -1751,7 +1751,7 @@ exports.HasProps = function () {
 /* core/hittest */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var dist_to_segment_squared, nullreturner, sqr;
+var nullreturner, sqr;
 var array_1 = require(21    /* ./util/array */);
 var object_1 = require(29    /* ./util/object */);
 exports.point_in_poly = function (x, y, px, py) {
@@ -1862,7 +1862,7 @@ sqr = function (x) {
 exports.dist_2_pts = function (vx, vy, wx, wy) {
     return sqr(vx - wx) + sqr(vy - wy);
 };
-dist_to_segment_squared = function (p, v, w) {
+exports.dist_to_segment_squared = function (p, v, w) {
     var l2, t;
     l2 = exports.dist_2_pts(v.x, v.y, w.x, w.y);
     if (l2 === 0) {
@@ -1878,7 +1878,7 @@ dist_to_segment_squared = function (p, v, w) {
     return exports.dist_2_pts(p.x, p.y, v.x + t * (w.x - v.x), v.y + t * (w.y - v.y));
 };
 exports.dist_to_segment = function (p, v, w) {
-    return Math.sqrt(dist_to_segment_squared(p, v, w));
+    return Math.sqrt(exports.dist_to_segment_squared(p, v, w));
 };
 exports.check_2_segments_intersect = function (l0_x0, l0_y0, l0_x1, l0_y1, l1_x0, l1_y0, l1_x1, l1_y1) {
     /* Check if 2 segments (l0 and l1) intersect. Returns a structure with
@@ -5114,6 +5114,7 @@ exports.isEmpty = isEmpty;
 /* core/util/proj4 */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
+var latlon_bounds;
 var proj4 = require(342    /* proj4/lib/core */);
 exports.proj4 = proj4;
 var Proj = require(330    /* proj4/lib/Proj */);
@@ -5127,7 +5128,38 @@ proj4.toPoint = toPoint;
 proj4.defs = defs;
 proj4.transform = transform;
 exports.mercator = defs('GOOGLE');
-exports.wgs84 = defs('WGS84');    
+exports.wgs84 = defs('WGS84');
+exports.mercator_bounds = {
+    lon: [
+        -20026376.39,
+        20026376.39
+    ],
+    lat: [
+        -20048966.1,
+        20048966.1
+    ]
+};
+latlon_bounds = {
+    lon: [
+        -180,
+        180
+    ],
+    lat: [
+        -85.06,
+        85.06
+    ]
+};
+exports.clip_mercator = function (low, high, dimension) {
+    var max, min, ref;
+    ref = exports.mercator_bounds[dimension], min = ref[0], max = ref[1];
+    return [
+        Math.max(low, min),
+        Math.min(high, max)
+    ];
+};
+exports.in_bounds = function (value, dimension) {
+    return value > latlon_bounds[dimension][0] && value < latlon_bounds[dimension][1];
+};    
 },
 /* core/util/projections */ function(require, module, exports) {
 'use strict';
@@ -6143,6 +6175,13 @@ ContextProperties = function () {
             return this.cache[attr] = this.cache[attr + '_array'][i];
         }
     };
+    ContextProperties.prototype.set_vectorize = function (ctx, i) {
+        if (this.all_indices != null) {
+            return this._set_vectorize(ctx, this.all_indices[i]);
+        } else {
+            return this._set_vectorize(ctx, i);
+        }
+    };
     return ContextProperties;
 }();
 exports.Line = function (superClass) {
@@ -6161,7 +6200,7 @@ exports.Line = function (superClass) {
         ctx.setLineDash(this.line_dash.value());
         return ctx.setLineDashOffset(this.line_dash_offset.value());
     };
-    Line.prototype.set_vectorize = function (ctx, i) {
+    Line.prototype._set_vectorize = function (ctx, i) {
         this.cache_select('line_color', i);
         if (ctx.strokeStyle !== this.cache.line_color) {
             ctx.strokeStyle = this.cache.line_color;
@@ -6209,7 +6248,7 @@ exports.Fill = function (superClass) {
         ctx.fillStyle = this.fill_color.value();
         return ctx.globalAlpha = this.fill_alpha.value();
     };
-    Fill.prototype.set_vectorize = function (ctx, i) {
+    Fill.prototype._set_vectorize = function (ctx, i) {
         this.cache_select('fill_color', i);
         if (ctx.fillStyle !== this.cache.fill_color) {
             ctx.fillStyle = this.cache.fill_color;
@@ -6261,7 +6300,7 @@ exports.Text = function (superClass) {
         ctx.textAlign = this.text_align.value();
         return ctx.textBaseline = this.text_baseline.value();
     };
-    Text.prototype.set_vectorize = function (ctx, i) {
+    Text.prototype._set_vectorize = function (ctx, i) {
         this.cache_select('font', i);
         if (ctx.font !== this.cache.font) {
             ctx.font = this.cache.font;
@@ -6315,6 +6354,22 @@ exports.Visuals = function () {
             prop = ref[name];
             if (prop instanceof ContextProperties) {
                 results.push(prop.warm_cache(source));
+            } else {
+                results.push(void 0);
+            }
+        }
+        return results;
+    };
+    Visuals.prototype.set_all_indices = function (all_indices) {
+        var name, prop, ref, results;
+        ref = this;
+        results = [];
+        for (name in ref) {
+            if (!hasProp.call(ref, name))
+                continue;
+            prop = ref[name];
+            if (prop instanceof ContextProperties) {
+                results.push(prop.all_indices = all_indices);
             } else {
                 results.push(void 0);
             }
@@ -7173,22 +7228,24 @@ var connection_1 = require(1    /* ./client/connection */);
 var logging_1 = require(13    /* ./core/logging */);
 var document_1 = require(46    /* ./document */);
 var dom_1 = require(5    /* ./core/dom */);
+var receiver_1 = require(243    /* ./protocol/receiver */);
 exports.BOKEH_ROOT = 'bk-root';
-_handle_notebook_comms = function (msg) {
-    var data;
-    logging_1.logger.debug('handling notebook comms');
-    data = JSON.parse(msg.content.data);
-    if ('events' in data && 'references' in data) {
-        return this.apply_json_patch(data, []);
-    } else if ('doc' in data) {
-        return this.replace_with_json(data['doc']);
+_handle_notebook_comms = function (receiver, msg) {
+    if (msg.buffers.length > 0) {
+        receiver.consume(msg.buffers[0].buffer);
     } else {
-        throw new Error('handling notebook comms message: ', msg);
+        receiver.consume(msg.content.data);
+    }
+    msg = receiver.message;
+    if (msg != null) {
+        return this.apply_json_patch(msg.content, msg.buffers);
     }
 };
 _update_comms_callback = function (target, doc, comm) {
+    var r;
     if (target === comm.target_name) {
-        return comm.on_msg(_handle_notebook_comms.bind(doc));
+        r = new receiver_1.Receiver();
+        return comm.on_msg(_handle_notebook_comms.bind(doc, r));
     }
 };
 _init_comms = function (target, doc) {
@@ -7206,8 +7263,10 @@ _init_comms = function (target, doc) {
         }
         try {
             return comm_manager.register_target(target, function (comm, msg) {
+                var r;
                 logging_1.logger.info('Registering Jupyter comms for target ' + target);
-                return comm.on_msg(_handle_notebook_comms.bind(doc));
+                r = new receiver_1.Receiver();
+                return comm.on_msg(_handle_notebook_comms.bind(doc, r));
             });
         } catch (error1) {
             e = error1;
@@ -7362,7 +7421,8 @@ exports.embed_items = function (docs_json, render_items, app_path, absolute_url)
         protocol = 'wss:';
     }
     if (absolute_url != null) {
-        loc = new URL(absolute_url);
+        loc = document.createElement('a');
+        loc.href = absolute_url;
     } else {
         loc = window.location;
     }
@@ -8625,7 +8685,7 @@ exports.ColorBarView = function (superClass) {
         };
     };
     ColorBarView.prototype.render = function () {
-        var ctx, frame_offset, image_offset, location, panel_offset, tick_info;
+        var ctx, image_offset, location, panel_offset, tick_info;
         if (!this.model.visible || this.model.color_mapper == null) {
             return;
         }
@@ -8634,8 +8694,6 @@ exports.ColorBarView = function (superClass) {
         if (this.model.panel != null) {
             panel_offset = this._get_panel_offset();
             ctx.translate(panel_offset.x, panel_offset.y);
-            frame_offset = this._get_frame_offset();
-            ctx.translate(frame_offset.x, frame_offset.y);
         }
         location = this.compute_legend_location();
         ctx.translate(location.sx, location.sy);
@@ -8794,28 +8852,6 @@ exports.ColorBarView = function (superClass) {
             label_extent = 0;
         }
         return label_extent;
-    };
-    ColorBarView.prototype._get_frame_offset = function () {
-        var frame, panel, ref, xoff, yoff;
-        ref = [
-            0,
-            0
-        ], xoff = ref[0], yoff = ref[1];
-        panel = this.model.panel;
-        frame = this.plot_view.frame;
-        switch (panel.side) {
-        case 'left':
-        case 'right':
-            yoff = Math.abs(panel._top.value - frame._top.value);
-            break;
-        case 'above':
-        case 'below':
-            xoff = Math.abs(frame._left.value);
-        }
-        return {
-            x: xoff,
-            y: yoff
-        };
     };
     ColorBarView.prototype._get_image_offset = function () {
         var x, y;
@@ -11856,14 +11892,15 @@ exports.CategoricalAxisView = function (superClass) {
         coords = this.model.tick_coords;
         info = [];
         if (range.levels === 1) {
+            labels = this.model.formatter.doFormat(ticks.major, this);
             info.push([
-                ticks.major,
+                labels,
                 coords.major,
                 this.model.major_label_orientation,
                 this.visuals.major_label_text
             ]);
         } else if (range.levels === 2) {
-            labels = function () {
+            labels = this.model.formatter.doFormat(function () {
                 var k, len, ref2, results;
                 ref2 = ticks.major;
                 results = [];
@@ -11872,7 +11909,7 @@ exports.CategoricalAxisView = function (superClass) {
                     results.push(x[1]);
                 }
                 return results;
-            }();
+            }(), this);
             info.push([
                 labels,
                 coords.major,
@@ -11886,7 +11923,7 @@ exports.CategoricalAxisView = function (superClass) {
                 this.visuals.group_text
             ]);
         } else if (range.levels === 3) {
-            labels = function () {
+            labels = this.model.formatter.doFormat(function () {
                 var k, len, ref2, results;
                 ref2 = ticks.major;
                 results = [];
@@ -11895,7 +11932,7 @@ exports.CategoricalAxisView = function (superClass) {
                     results.push(x[2]);
                 }
                 return results;
-            }();
+            }(), this);
             mid_labels = function () {
                 var k, len, ref2, results;
                 ref2 = ticks.mids;
@@ -15328,6 +15365,7 @@ exports.GlyphView = function (superClass) {
     GlyphView.prototype.set_data = function (source, indices, indices_to_update) {
         var data, data_subset, i, j, k, len, ref, ref1, ref2, ref3, v, xname, xr, yname, yr;
         data = this.model.materialize_dataspecs(source);
+        this.visuals.set_all_indices(indices);
         if (indices && !(this instanceof line_1.LineView)) {
             data_subset = {};
             for (k in data) {
@@ -16936,7 +16974,7 @@ exports.PatchesView = function (superClass) {
         return new spatial_1.RBush(points);
     };
     PatchesView.prototype._mask_data = function (all_indices) {
-        var bbox, ref, ref1, x0, x1, xr, y0, y1, yr;
+        var bbox, indices, ref, ref1, x0, x1, xr, y0, y1, yr;
         xr = this.renderer.plot_view.frame.x_ranges['default'];
         ref = [
             xr.min,
@@ -16954,7 +16992,12 @@ exports.PatchesView = function (superClass) {
             y0,
             y1
         ]);
-        return this.index.indices(bbox);
+        indices = this.index.indices(bbox);
+        return indices.sort(function (_this) {
+            return function (a, b) {
+                return a - b;
+            };
+        }(this));
     };
     PatchesView.prototype._render = function (ctx, indices, arg) {
         var i, j, k, l, len, m, ref, ref1, ref2, results, sx, sxs, sy, sys;
@@ -17354,7 +17397,11 @@ exports.RayView = function (superClass) {
         return RayView.__super__.constructor.apply(this, arguments);
     }
     RayView.prototype._map_data = function () {
-        return this.slength = this.sdist(this.renderer.xscale, this._x, this._length);
+        if (this.model.properties.length.units === 'data') {
+            return this.slength = this.sdist(this.renderer.xscale, this._x, this._length);
+        } else {
+            return this.slength = this._length;
+        }
     };
     RayView.prototype._render = function (ctx, indices, arg) {
         var _angle, height, i, inf_len, j, k, len, ref, results, slength, sx, sy, width;
@@ -17782,7 +17829,7 @@ exports.SegmentView = function (superClass) {
         }
     };
     SegmentView.prototype._hit_point = function (geometry) {
-        var candidates, dist, hits, i, j, len, p0, p1, point, ref, ref1, result, threshold, vx, vy, x, y;
+        var candidates, dist2, hits, i, j, len, lw_voffset, p0, p1, point, ref, ref1, result, threshold2, vx, vy, x, y;
         ref = [
             geometry.vx,
             geometry.vy
@@ -17794,15 +17841,16 @@ exports.SegmentView = function (superClass) {
             y: this.renderer.plot_view.canvas.vy_to_sy(vy)
         };
         hits = [];
+        lw_voffset = 2;
         candidates = this.index.indices({
-            minX: x,
-            minY: y,
-            maxX: x,
-            maxY: y
+            minX: this.renderer.xscale.invert(vx - lw_voffset, true),
+            minY: this.renderer.yscale.invert(vy - lw_voffset, true),
+            maxX: this.renderer.xscale.invert(vx + lw_voffset, true),
+            maxY: this.renderer.yscale.invert(vy + lw_voffset, true)
         });
         for (j = 0, len = candidates.length; j < len; j++) {
             i = candidates[j];
-            threshold = Math.max(2, this.visuals.line.cache_select('line_width', i) / 2);
+            threshold2 = Math.pow(Math.max(2, this.visuals.line.cache_select('line_width', i) / 2), 2);
             ref1 = [
                 {
                     x: this.sx0[i],
@@ -17813,8 +17861,8 @@ exports.SegmentView = function (superClass) {
                     y: this.sy1[i]
                 }
             ], p0 = ref1[0], p1 = ref1[1];
-            dist = hittest.dist_to_segment(point, p0, p1);
-            if (dist < threshold) {
+            dist2 = hittest.dist_to_segment_squared(point, p0, p1);
+            if (dist2 < threshold2) {
                 hits.push(i);
             }
         }
@@ -24157,7 +24205,7 @@ exports.GlyphRendererView = function (superClass) {
         lod_factor = this.plot_model.plot.lod_factor;
         this.decimated = [];
         for (i = j = 0, ref = Math.floor(this.all_indices.length / lod_factor); 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-            this.decimated.push(this.all_indices[i * lod_factor]);
+            this.decimated.push(i * lod_factor);
         }
         dt = Date.now() - t0;
         logging_1.logger.debug(this.glyph.model.type + ' GlyphRenderer (' + this.model.id + '): set_data finished in ' + dt + 'ms');
@@ -24167,7 +24215,7 @@ exports.GlyphRendererView = function (superClass) {
         }
     };
     GlyphRendererView.prototype.render = function () {
-        var ctx, dtmap, dtmask, dtrender, dtselect, dttot, glsupport, glyph, i, indices, inspected, j, k, len, len1, lod_threshold, nonselected, nonselection_glyph, selected, selected_mask, selection_glyph, t0, tmap, tmask, trender, tselect;
+        var ctx, dtmap, dtmask, dtrender, dtselect, dttot, glsupport, glyph, i, indices, inspected, j, k, l, len, len1, len2, lod_threshold, m, nonselected, nonselection_glyph, ref, ref1, results, selected, selected_mask, selection_glyph, t0, tmap, tmask, trender, tselect;
         if (!this.model.visible) {
             return;
         }
@@ -24178,6 +24226,15 @@ exports.GlyphRendererView = function (superClass) {
         dtmap = Date.now() - t0;
         tmask = Date.now();
         indices = this.glyph.mask_data(this.all_indices);
+        if (indices.length === this.all_indices.length) {
+            indices = function () {
+                results = [];
+                for (var j = 0, ref = this.all_indices.length; 0 <= ref ? j < ref : j > ref; 0 <= ref ? j++ : j--) {
+                    results.push(j);
+                }
+                return results;
+            }.apply(this);
+        }
         dtmask = Date.now() - tmask;
         ctx = this.plot_view.canvas_view.ctx;
         ctx.save();
@@ -24186,23 +24243,19 @@ exports.GlyphRendererView = function (superClass) {
             selected = [];
         } else {
             if (selected['0d'].glyph) {
-                if (this.glyph instanceof line_1.LineView) {
-                    selected = indices;
-                } else {
-                    selected = this.model.view.convert_indices_from_subset(indices);
-                }
+                selected = this.model.view.convert_indices_from_subset(indices);
             } else if (selected['1d'].indices.length > 0) {
                 selected = selected['1d'].indices;
             } else {
                 selected = function () {
-                    var j, len, ref, results;
-                    ref = Object.keys(selected['2d'].indices);
-                    results = [];
-                    for (j = 0, len = ref.length; j < len; j++) {
-                        i = ref[j];
-                        results.push(parseInt(i));
+                    var k, len, ref1, results1;
+                    ref1 = Object.keys(selected['2d'].indices);
+                    results1 = [];
+                    for (k = 0, len = ref1.length; k < len; k++) {
+                        i = ref1[k];
+                        results1.push(parseInt(i));
                     }
-                    return results;
+                    return results1;
                 }();
             }
         }
@@ -24211,36 +24264,32 @@ exports.GlyphRendererView = function (superClass) {
             inspected = [];
         } else {
             if (inspected['0d'].glyph) {
-                if (this.glyph instanceof line_1.LineView) {
-                    inspected = indices;
-                } else {
-                    inspected = this.model.view.convert_indices_from_subset(indices);
-                }
+                inspected = this.model.view.convert_indices_from_subset(indices);
             } else if (inspected['1d'].indices.length > 0) {
                 inspected = inspected['1d'].indices;
             } else {
                 inspected = function () {
-                    var j, len, ref, results;
-                    ref = Object.keys(inspected['2d'].indices);
-                    results = [];
-                    for (j = 0, len = ref.length; j < len; j++) {
-                        i = ref[j];
-                        results.push(parseInt(i));
+                    var k, len, ref1, results1;
+                    ref1 = Object.keys(inspected['2d'].indices);
+                    results1 = [];
+                    for (k = 0, len = ref1.length; k < len; k++) {
+                        i = ref1[k];
+                        results1.push(parseInt(i));
                     }
-                    return results;
+                    return results1;
                 }();
             }
         }
         inspected = function () {
-            var j, len, ref, results;
-            results = [];
-            for (j = 0, len = indices.length; j < len; j++) {
-                i = indices[j];
-                if (ref = this.all_indices[i], indexOf.call(inspected, ref) >= 0) {
-                    results.push(i);
+            var k, len, ref1, results1;
+            results1 = [];
+            for (k = 0, len = indices.length; k < len; k++) {
+                i = indices[k];
+                if (ref1 = this.all_indices[i], indexOf.call(inspected, ref1) >= 0) {
+                    results1.push(i);
                 }
             }
-            return results;
+            return results1;
         }.call(this);
         lod_threshold = this.plot_model.plot.lod_threshold;
         if (this.plot_view.interactive && !glsupport && lod_threshold != null && this.all_indices.length > lod_threshold) {
@@ -24258,29 +24307,41 @@ exports.GlyphRendererView = function (superClass) {
         }
         if (!(selected.length && this.have_selection_glyphs())) {
             trender = Date.now();
-            glyph.render(ctx, indices, this.glyph);
-            if (this.hover_glyph && inspected.length) {
-                this.hover_glyph.render(ctx, inspected, this.glyph);
+            if (this.glyph instanceof line_1.LineView) {
+                if (this.hover_glyph && inspected.length) {
+                    this.hover_glyph.render(ctx, this.model.view.convert_indices_from_subset(inspected), this.glyph);
+                } else {
+                    glyph.render(ctx, this.all_indices, this.glyph);
+                }
+            } else {
+                glyph.render(ctx, indices, this.glyph);
+                if (this.hover_glyph && inspected.length) {
+                    this.hover_glyph.render(ctx, inspected, this.glyph);
+                }
             }
             dtrender = Date.now() - trender;
         } else {
             tselect = Date.now();
             selected_mask = {};
-            for (j = 0, len = selected.length; j < len; j++) {
-                i = selected[j];
+            for (k = 0, len = selected.length; k < len; k++) {
+                i = selected[k];
                 selected_mask[i] = true;
             }
             selected = new Array();
             nonselected = new Array();
-            for (k = 0, len1 = indices.length; k < len1; k++) {
-                i = indices[k];
-                if (this.glyph instanceof line_1.LineView) {
+            if (this.glyph instanceof line_1.LineView) {
+                ref1 = this.all_indices;
+                for (l = 0, len1 = ref1.length; l < len1; l++) {
+                    i = ref1[l];
                     if (selected_mask[i] != null) {
                         selected.push(i);
                     } else {
                         nonselected.push(i);
                     }
-                } else {
+                }
+            } else {
+                for (m = 0, len2 = indices.length; m < len2; m++) {
+                    i = indices[m];
                     if (selected_mask[this.all_indices[i]] != null) {
                         selected.push(i);
                     } else {
@@ -24293,7 +24354,11 @@ exports.GlyphRendererView = function (superClass) {
             nonselection_glyph.render(ctx, nonselected, this.glyph);
             selection_glyph.render(ctx, selected, this.glyph);
             if (this.hover_glyph != null) {
-                this.hover_glyph.render(ctx, inspected, this.glyph);
+                if (this.glyph instanceof line_1.LineView) {
+                    this.hover_glyph.render(ctx, this.model.view.convert_indices_from_subset(inspected), this.glyph);
+                } else {
+                    this.hover_glyph.render(ctx, inspected, this.glyph);
+                }
             }
             dtrender = Date.now() - trender;
         }
@@ -25121,6 +25186,7 @@ var extend = function (child, parent) {
     }, hasProp = {}.hasOwnProperty;
 var model_1 = require(49    /* ../../model */);
 var p = require(14    /* core/properties */);
+var hittest_1 = require(9    /* core/hittest */);
 var array_1 = require(21    /* core/util/array */);
 var columnar_data_source_1 = require(171    /* ./columnar_data_source */);
 exports.CDSView = function (superClass) {
@@ -25214,11 +25280,13 @@ exports.CDSView = function (superClass) {
         }
         return results;
     };
-    CDSView.prototype.convert_selection_from_subset = function (selection) {
-        var i, indices_1d;
+    CDSView.prototype.convert_selection_from_subset = function (selection_subset) {
+        var i, indices_1d, selection_full;
+        selection_full = hittest_1.create_hit_test_result();
+        selection_full.update_through_union(selection_subset);
         indices_1d = function () {
             var j, len, ref, results;
-            ref = selection['1d']['indices'];
+            ref = selection_subset['1d']['indices'];
             results = [];
             for (j = 0, len = ref.length; j < len; j++) {
                 i = ref[j];
@@ -25226,14 +25294,16 @@ exports.CDSView = function (superClass) {
             }
             return results;
         }.call(this);
-        selection['1d']['indices'] = indices_1d;
-        return selection;
+        selection_full['1d']['indices'] = indices_1d;
+        return selection_full;
     };
-    CDSView.prototype.convert_selection_to_subset = function (selection) {
-        var i, indices_1d;
+    CDSView.prototype.convert_selection_to_subset = function (selection_full) {
+        var i, indices_1d, selection_subset;
+        selection_subset = hittest_1.create_hit_test_result();
+        selection_subset.update_through_union(selection_full);
         indices_1d = function () {
             var j, len, ref, results;
-            ref = selection['1d']['indices'];
+            ref = selection_full['1d']['indices'];
             results = [];
             for (j = 0, len = ref.length; j < len; j++) {
                 i = ref[j];
@@ -25241,8 +25311,8 @@ exports.CDSView = function (superClass) {
             }
             return results;
         }.call(this);
-        selection['1d']['indices'] = indices_1d;
-        return selection;
+        selection_subset['1d']['indices'] = indices_1d;
+        return selection_subset;
     };
     CDSView.prototype.convert_indices_from_subset = function (indices) {
         var i;
@@ -26638,28 +26708,29 @@ exports.MercatorTicker = function (superClass) {
     MercatorTicker.prototype.type = 'MercatorTicker';
     MercatorTicker.define({ dimension: [p.LatLon] });
     MercatorTicker.prototype.get_ticks_no_defaults = function (data_low, data_high, cross_loc, desired_n_ticks) {
-        var _, i, j, k, l, lat, len, len1, len2, len3, lon, proj_cross_loc, proj_high, proj_low, proj_ticks, ref, ref1, ref10, ref11, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, tick, ticks;
+        var _, i, j, k, l, lat, len, len1, len2, len3, lon, proj_cross_loc, proj_high, proj_low, proj_ticks, ref, ref1, ref10, ref11, ref12, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, tick, ticks;
         if (this.dimension == null) {
             throw new Error('MercatorTicker.dimension not configured');
         }
+        ref = proj4_1.clip_mercator(data_low, data_high, this.dimension), data_low = ref[0], data_high = ref[1];
         if (this.dimension === 'lon') {
-            ref = proj4_1.proj4(proj4_1.mercator).inverse([
+            ref1 = proj4_1.proj4(proj4_1.mercator).inverse([
                 data_low,
                 cross_loc
-            ]), proj_low = ref[0], proj_cross_loc = ref[1];
-            ref1 = proj4_1.proj4(proj4_1.mercator).inverse([
+            ]), proj_low = ref1[0], proj_cross_loc = ref1[1];
+            ref2 = proj4_1.proj4(proj4_1.mercator).inverse([
                 data_high,
                 cross_loc
-            ]), proj_high = ref1[0], proj_cross_loc = ref1[1];
+            ]), proj_high = ref2[0], proj_cross_loc = ref2[1];
         } else {
-            ref2 = proj4_1.proj4(proj4_1.mercator).inverse([
-                cross_loc,
-                data_low
-            ]), proj_cross_loc = ref2[0], proj_low = ref2[1];
             ref3 = proj4_1.proj4(proj4_1.mercator).inverse([
                 cross_loc,
+                data_low
+            ]), proj_cross_loc = ref3[0], proj_low = ref3[1];
+            ref4 = proj4_1.proj4(proj4_1.mercator).inverse([
+                cross_loc,
                 data_high
-            ]), proj_cross_loc = ref3[0], proj_high = ref3[1];
+            ]), proj_cross_loc = ref4[0], proj_high = ref4[1];
         }
         proj_ticks = MercatorTicker.__super__.get_ticks_no_defaults.call(this, proj_low, proj_high, cross_loc, desired_n_ticks);
         ticks = {
@@ -26667,42 +26738,50 @@ exports.MercatorTicker = function (superClass) {
             minor: []
         };
         if (this.dimension === 'lon') {
-            ref4 = proj_ticks.major;
-            for (i = 0, len = ref4.length; i < len; i++) {
-                tick = ref4[i];
-                ref5 = proj4_1.proj4(proj4_1.mercator).forward([
-                    tick,
-                    proj_cross_loc
-                ]), lon = ref5[0], _ = ref5[1];
-                ticks.major.push(lon);
+            ref5 = proj_ticks.major;
+            for (i = 0, len = ref5.length; i < len; i++) {
+                tick = ref5[i];
+                if (proj4_1.in_bounds(tick, 'lon')) {
+                    ref6 = proj4_1.proj4(proj4_1.mercator).forward([
+                        tick,
+                        proj_cross_loc
+                    ]), lon = ref6[0], _ = ref6[1];
+                    ticks.major.push(lon);
+                }
             }
-            ref6 = proj_ticks.minor;
-            for (j = 0, len1 = ref6.length; j < len1; j++) {
-                tick = ref6[j];
-                ref7 = proj4_1.proj4(proj4_1.mercator).forward([
-                    tick,
-                    proj_cross_loc
-                ]), lon = ref7[0], _ = ref7[1];
-                ticks.minor.push(lon);
+            ref7 = proj_ticks.minor;
+            for (j = 0, len1 = ref7.length; j < len1; j++) {
+                tick = ref7[j];
+                if (proj4_1.in_bounds(tick, 'lon')) {
+                    ref8 = proj4_1.proj4(proj4_1.mercator).forward([
+                        tick,
+                        proj_cross_loc
+                    ]), lon = ref8[0], _ = ref8[1];
+                    ticks.minor.push(lon);
+                }
             }
         } else {
-            ref8 = proj_ticks.major;
-            for (k = 0, len2 = ref8.length; k < len2; k++) {
-                tick = ref8[k];
-                ref9 = proj4_1.proj4(proj4_1.mercator).forward([
-                    proj_cross_loc,
-                    tick
-                ]), _ = ref9[0], lat = ref9[1];
-                ticks.major.push(lat);
+            ref9 = proj_ticks.major;
+            for (k = 0, len2 = ref9.length; k < len2; k++) {
+                tick = ref9[k];
+                if (proj4_1.in_bounds(tick, 'lat')) {
+                    ref10 = proj4_1.proj4(proj4_1.mercator).forward([
+                        proj_cross_loc,
+                        tick
+                    ]), _ = ref10[0], lat = ref10[1];
+                    ticks.major.push(lat);
+                }
             }
-            ref10 = proj_ticks.minor;
-            for (l = 0, len3 = ref10.length; l < len3; l++) {
-                tick = ref10[l];
-                ref11 = proj4_1.proj4(proj4_1.mercator).forward([
-                    proj_cross_loc,
-                    tick
-                ]), _ = ref11[0], lat = ref11[1];
-                ticks.minor.push(lat);
+            ref11 = proj_ticks.minor;
+            for (l = 0, len3 = ref11.length; l < len3; l++) {
+                tick = ref11[l];
+                if (proj4_1.in_bounds(tick, 'lat')) {
+                    ref12 = proj4_1.proj4(proj4_1.mercator).forward([
+                        proj_cross_loc,
+                        tick
+                    ]), _ = ref12[0], lat = ref12[1];
+                    ticks.minor.push(lat);
+                }
             }
         }
         return ticks;
@@ -30899,7 +30978,7 @@ exports.HoverToolView = function (superClass) {
         }
     };
     HoverToolView.prototype._update = function (arg) {
-        var canvas, d1x, d1y, d2x, d2y, data_x, data_y, dist1, dist2, ds, frame, geometry, i, ii, indices, j, jj, k, l, len, len1, pt, ref, ref1, ref10, ref11, ref12, ref13, ref14, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, renderer_view, rx, ry, sdatax, sdatay, sx, sy, tooltip, vars, vx, vy, x, xscale, y, yscale;
+        var canvas, d1x, d1y, d2x, d2y, data_x, data_y, dist1, dist2, ds, frame, geometry, i, ii, index, indices, j, jj, k, l, len, len1, pt, ref, ref1, ref10, ref11, ref12, ref13, ref14, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, renderer_view, rx, ry, sdatax, sdatay, sx, sy, tooltip, vars, vx, vy, x, xscale, y, yscale;
         renderer_view = arg[0], (ref = arg[1], geometry = ref.geometry);
         if (!this.model.active) {
             return;
@@ -30910,6 +30989,9 @@ exports.HoverToolView = function (superClass) {
         }
         tooltip.clear();
         indices = renderer_view.model.get_selection_manager().inspectors[renderer_view.model.id].indices;
+        if (renderer_view.model instanceof glyph_renderer_1.GlyphRenderer) {
+            indices = renderer_view.model.view.convert_selection_to_subset(indices);
+        }
         ds = renderer_view.model.get_selection_manager().source;
         if (indices.is_empty()) {
             return;
@@ -31075,8 +31157,13 @@ exports.HoverToolView = function (superClass) {
                         vy
                     ], rx = ref14[0], ry = ref14[1];
                 }
+                if (renderer_view.model instanceof glyph_renderer_1.GlyphRenderer) {
+                    index = renderer_view.model.view.convert_indices_from_subset([i])[0];
+                } else {
+                    index = i;
+                }
                 vars = {
-                    index: i,
+                    index: index,
                     x: x,
                     y: y,
                     vx: vx,
@@ -31092,30 +31179,33 @@ exports.HoverToolView = function (superClass) {
         return null;
     };
     HoverToolView.prototype._emit_callback = function (geometry) {
-        var callback, canvas, data, frame, indices, obj, r, ref, xscale, yscale;
-        r = this.computed_renderers[0];
-        indices = this.plot_view.renderer_views[r.id].hit_test(geometry);
-        canvas = this.plot_model.canvas;
-        frame = this.plot_model.frame;
-        geometry['sx'] = canvas.vx_to_sx(geometry.vx);
-        geometry['sy'] = canvas.vy_to_sy(geometry.vy);
-        xscale = frame.xscales[r.x_range_name];
-        yscale = frame.yscales[r.y_range_name];
-        geometry['x'] = xscale.invert(geometry.vx);
-        geometry['y'] = yscale.invert(geometry.vy);
-        callback = this.model.callback;
-        ref = [
-            callback,
-            {
-                index: indices,
-                geometry: geometry,
-                renderer: r
+        var callback, canvas, data, frame, index, k, len, obj, r, ref, ref1, xscale, yscale;
+        ref = this.computed_renderers;
+        for (k = 0, len = ref.length; k < len; k++) {
+            r = ref[k];
+            index = r.data_source.inspected;
+            canvas = this.plot_model.canvas;
+            frame = this.plot_model.frame;
+            geometry['sx'] = canvas.vx_to_sx(geometry.vx);
+            geometry['sy'] = canvas.vy_to_sy(geometry.vy);
+            xscale = frame.xscales[r.x_range_name];
+            yscale = frame.yscales[r.y_range_name];
+            geometry['x'] = xscale.invert(geometry.vx);
+            geometry['y'] = yscale.invert(geometry.vy);
+            callback = this.model.callback;
+            ref1 = [
+                callback,
+                {
+                    index: index,
+                    geometry: geometry,
+                    renderer: r
+                }
+            ], obj = ref1[0], data = ref1[1];
+            if (types_1.isFunction(callback)) {
+                callback(obj, data);
+            } else {
+                callback.execute(obj, data);
             }
-        ], obj = ref[0], data = ref[1];
-        if (types_1.isFunction(callback)) {
-            callback(obj, data);
-        } else {
-            callback.execute(obj, data);
         }
     };
     HoverToolView.prototype._render_tooltips = function (ds, i, vars) {
@@ -31603,7 +31693,7 @@ exports.Toolbar = function (superClass) {
         return this._init_tools();
     };
     Toolbar.prototype._init_tools = function () {
-        var et, i, len, ref, results, tool, tools;
+        var _activate_gesture, et, i, len, ref, tool, tools;
         ref = this.tools;
         for (i = 0, len = ref.length; i < len; i++) {
             tool = ref[i];
@@ -31669,7 +31759,15 @@ exports.Toolbar = function (superClass) {
                 return inspector.active = false;
             });
         }
-        results = [];
+        _activate_gesture = function (_this) {
+            return function (tool) {
+                if (tool.active) {
+                    return _this._active_change(tool);
+                } else {
+                    return tool.active = true;
+                }
+            };
+        }(this);
         for (et in this.gestures) {
             tools = this.gestures[et].tools;
             if (tools.length === 0) {
@@ -31683,9 +31781,9 @@ exports.Toolbar = function (superClass) {
                     continue;
                 }
                 if (this.active_tap === 'auto') {
-                    this.gestures[et].tools[0].active = true;
+                    _activate_gesture(this.gestures[et].tools[0]);
                 } else {
-                    this.active_tap.active = true;
+                    _activate_gesture(this.active_tap);
                 }
             }
             if (et === 'pan') {
@@ -31693,21 +31791,19 @@ exports.Toolbar = function (superClass) {
                     continue;
                 }
                 if (this.active_drag === 'auto') {
-                    this.gestures[et].tools[0].active = true;
+                    _activate_gesture(this.gestures[et].tools[0]);
                 } else {
-                    this.active_drag.active = true;
+                    _activate_gesture(this.active_drag);
                 }
             }
             if (et === 'pinch' || et === 'scroll') {
                 if (this.active_scroll === null || this.active_scroll === 'auto') {
                     continue;
                 }
-                results.push(this.active_scroll.active = true);
-            } else {
-                results.push(void 0);
+                _activate_gesture(this.active_scroll);
             }
         }
-        return results;
+        return null;
     };
     Toolbar.define({
         active_drag: [
@@ -33021,7 +33117,7 @@ exports.safely = safely;
 /* version */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.version = '0.12.9';    
+exports.version = '0.12.10';    
 },
 /* canvas2svg/canvas2svg */ function(require, module, exports) {
 /*!!
@@ -44667,6 +44763,7 @@ var __await;
 var __asyncGenerator;
 var __asyncDelegator;
 var __asyncValues;
+var __makeTemplateObject;
 (function (factory) {
     var root = typeof global === 'object' ? global : typeof self === 'object' ? self : typeof this === 'object' ? this : {};
     if (typeof define === 'function' && define.amd) {
@@ -44679,6 +44776,11 @@ var __asyncValues;
         factory(createExporter(root));
     }
     function createExporter(exports, previous) {
+        if (typeof Object.create === 'function') {
+            Object.defineProperty(exports, '__esModule', { value: true });
+        } else {
+            exports.__esModule = true;
+        }
         return function (id, v) {
             return exports[id] = previous ? previous(id, v) : v;
         };
@@ -44974,6 +45076,14 @@ var __asyncValues;
         var m = o[Symbol.asyncIterator];
         return m ? m.call(o) : typeof __values === 'function' ? __values(o) : o[Symbol.iterator]();
     };
+    __makeTemplateObject = function (cooked, raw) {
+        if (Object.defineProperty) {
+            Object.defineProperty(cooked, 'raw', { value: raw });
+        } else {
+            cooked.raw = raw;
+        }
+        return cooked;
+    };
     exporter('__extends', __extends);
     exporter('__assign', __assign);
     exporter('__rest', __rest);
@@ -44990,6 +45100,7 @@ var __asyncValues;
     exporter('__asyncGenerator', __asyncGenerator);
     exporter('__asyncDelegator', __asyncDelegator);
     exporter('__asyncValues', __asyncValues);
+    exporter('__makeTemplateObject', __makeTemplateObject);
 }));}
 ], {"base":0,"client/connection":1,"client/session":2,"core/bokeh_events":3,"core/build_views":4,"core/dom":5,"core/dom_view":6,"core/enums":7,"core/has_props":8,"core/hittest":9,"core/layout/layout_canvas":10,"core/layout/side_panel":11,"core/layout/solver":12,"core/logging":13,"core/properties":14,"core/property_mixins":15,"core/selection_manager":16,"core/selector":17,"core/settings":18,"core/signaling":19,"core/ui_events":20,"core/util/array":21,"core/util/bbox":22,"core/util/callback":23,"core/util/canvas":24,"core/util/color":25,"core/util/data_structures":26,"core/util/eq":27,"core/util/math":28,"core/util/object":29,"core/util/proj4":30,"core/util/projections":31,"core/util/refs":32,"core/util/selection":33,"core/util/serialization":34,"core/util/spatial":35,"core/util/string":36,"core/util/svg_colors":37,"core/util/templating":38,"core/util/text":39,"core/util/throttle":40,"core/util/types":41,"core/util/wheel":42,"core/util/zoom":43,"core/view":44,"core/visuals":45,"document":46,"embed":47,"main":48,"model":49,"models/annotations/annotation":50,"models/annotations/arrow":51,"models/annotations/arrow_head":52,"models/annotations/band":53,"models/annotations/box_annotation":54,"models/annotations/color_bar":55,"models/annotations/index":56,"models/annotations/label":57,"models/annotations/label_set":58,"models/annotations/legend":59,"models/annotations/legend_item":60,"models/annotations/poly_annotation":61,"models/annotations/span":62,"models/annotations/text_annotation":63,"models/annotations/title":64,"models/annotations/tooltip":65,"models/annotations/whisker":66,"models/axes/axis":67,"models/axes/categorical_axis":68,"models/axes/continuous_axis":69,"models/axes/datetime_axis":70,"models/axes/index":71,"models/axes/linear_axis":72,"models/axes/log_axis":73,"models/callbacks/customjs":74,"models/callbacks/index":75,"models/callbacks/open_url":76,"models/canvas/canvas":77,"models/canvas/cartesian_frame":78,"models/canvas/index":79,"models/expressions/expression":80,"models/expressions/index":81,"models/expressions/stack":82,"models/filters/boolean_filter":83,"models/filters/customjs_filter":84,"models/filters/filter":85,"models/filters/group_filter":86,"models/filters/index":87,"models/filters/index_filter":88,"models/formatters/basic_tick_formatter":89,"models/formatters/categorical_tick_formatter":90,"models/formatters/datetime_tick_formatter":91,"models/formatters/func_tick_formatter":92,"models/formatters/index":93,"models/formatters/log_tick_formatter":94,"models/formatters/mercator_tick_formatter":95,"models/formatters/numeral_tick_formatter":96,"models/formatters/printf_tick_formatter":97,"models/formatters/tick_formatter":98,"models/glyphs/annular_wedge":99,"models/glyphs/annulus":100,"models/glyphs/arc":101,"models/glyphs/bezier":102,"models/glyphs/box":103,"models/glyphs/circle":104,"models/glyphs/ellipse":105,"models/glyphs/glyph":106,"models/glyphs/hbar":107,"models/glyphs/image":108,"models/glyphs/image_rgba":109,"models/glyphs/image_url":110,"models/glyphs/index":111,"models/glyphs/line":112,"models/glyphs/multi_line":113,"models/glyphs/oval":114,"models/glyphs/patch":115,"models/glyphs/patches":116,"models/glyphs/quad":117,"models/glyphs/quadratic":118,"models/glyphs/ray":119,"models/glyphs/rect":120,"models/glyphs/segment":121,"models/glyphs/text":122,"models/glyphs/vbar":123,"models/glyphs/wedge":124,"models/glyphs/xy_glyph":125,"models/graphs/graph_hit_test_policy":126,"models/graphs/index":127,"models/graphs/layout_provider":128,"models/graphs/static_layout_provider":129,"models/grids/grid":130,"models/grids/index":131,"models/index":132,"models/layouts/box":133,"models/layouts/column":134,"models/layouts/index":135,"models/layouts/layout_dom":136,"models/layouts/row":137,"models/layouts/spacer":138,"models/layouts/widget_box":139,"models/mappers/categorical_color_mapper":140,"models/mappers/color_mapper":141,"models/mappers/index":142,"models/mappers/linear_color_mapper":143,"models/mappers/log_color_mapper":144,"models/markers/index":145,"models/markers/marker":146,"models/plots/gmap_plot":147,"models/plots/gmap_plot_canvas":148,"models/plots/index":149,"models/plots/plot":150,"models/plots/plot_canvas":151,"models/ranges/data_range":152,"models/ranges/data_range1d":153,"models/ranges/factor_range":154,"models/ranges/index":155,"models/ranges/range":156,"models/ranges/range1d":157,"models/renderers/glyph_renderer":158,"models/renderers/graph_renderer":159,"models/renderers/guide_renderer":160,"models/renderers/index":161,"models/renderers/renderer":162,"models/scales/categorical_scale":163,"models/scales/index":164,"models/scales/linear_scale":165,"models/scales/log_scale":166,"models/scales/scale":167,"models/sources/ajax_data_source":168,"models/sources/cds_view":169,"models/sources/column_data_source":170,"models/sources/columnar_data_source":171,"models/sources/data_source":172,"models/sources/geojson_data_source":173,"models/sources/index":174,"models/sources/remote_data_source":175,"models/tickers/adaptive_ticker":176,"models/tickers/basic_ticker":177,"models/tickers/categorical_ticker":178,"models/tickers/composite_ticker":179,"models/tickers/continuous_ticker":180,"models/tickers/datetime_ticker":181,"models/tickers/days_ticker":182,"models/tickers/fixed_ticker":183,"models/tickers/index":184,"models/tickers/log_ticker":185,"models/tickers/mercator_ticker":186,"models/tickers/months_ticker":187,"models/tickers/single_interval_ticker":188,"models/tickers/ticker":189,"models/tickers/util":190,"models/tickers/years_ticker":191,"models/tiles/bbox_tile_source":192,"models/tiles/dynamic_image_renderer":193,"models/tiles/image_pool":194,"models/tiles/image_source":195,"models/tiles/index":196,"models/tiles/mercator_tile_source":197,"models/tiles/quadkey_tile_source":198,"models/tiles/tile_renderer":199,"models/tiles/tile_source":200,"models/tiles/tile_utils":201,"models/tiles/tms_tile_source":202,"models/tiles/wmts_tile_source":203,"models/tools/actions/action_tool":204,"models/tools/actions/help_tool":205,"models/tools/actions/redo_tool":206,"models/tools/actions/reset_tool":207,"models/tools/actions/save_tool":208,"models/tools/actions/undo_tool":209,"models/tools/actions/zoom_in_tool":210,"models/tools/actions/zoom_out_tool":211,"models/tools/button_tool":212,"models/tools/gestures/box_select_tool":213,"models/tools/gestures/box_zoom_tool":214,"models/tools/gestures/gesture_tool":215,"models/tools/gestures/lasso_select_tool":216,"models/tools/gestures/pan_tool":217,"models/tools/gestures/poly_select_tool":218,"models/tools/gestures/select_tool":219,"models/tools/gestures/tap_tool":220,"models/tools/gestures/wheel_pan_tool":221,"models/tools/gestures/wheel_zoom_tool":222,"models/tools/index":223,"models/tools/inspectors/crosshair_tool":224,"models/tools/inspectors/hover_tool":225,"models/tools/inspectors/inspect_tool":226,"models/tools/on_off_button":227,"models/tools/tool":228,"models/tools/tool_proxy":229,"models/tools/toolbar":230,"models/tools/toolbar_base":231,"models/tools/toolbar_box":232,"models/transforms/customjs_transform":233,"models/transforms/dodge":234,"models/transforms/index":235,"models/transforms/interpolator":236,"models/transforms/jitter":237,"models/transforms/linear_interpolator":238,"models/transforms/step_interpolator":239,"models/transforms/transform":240,"polyfill":241,"protocol/message":242,"protocol/receiver":243,"safely":244,"version":245}, 48);
 })

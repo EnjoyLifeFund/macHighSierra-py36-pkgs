@@ -175,6 +175,9 @@ RESET_VARS = (
     'ansible_ssh_executable',
 )
 
+OPTION_FLAGS = ('connection', 'remote_user', 'private_key_file', 'verbosity', 'force_handlers', 'step', 'start_at_task', 'diff',
+                'ssh_common_args', 'docker_extra_args', 'sftp_extra_args', 'scp_extra_args', 'ssh_extra_args')
+
 
 class PlayContext(Base):
 
@@ -338,9 +341,8 @@ class PlayContext(Base):
         self.diff = boolean(options.diff, strict=False)
 
         #  general flags (should we move out?)
-        # for flag in ('connection', 'remote_user', 'private_key_file', 'verbosity', 'force_handlers', 'step', 'start_at_task', 'diff'):
         #  should only be 'non plugin' flags
-        for flag in ('connection', 'remote_user', 'private_key_file', 'verbosity', 'force_handlers', 'step', 'start_at_task', 'diff'):
+        for flag in OPTION_FLAGS:
             attribute = getattr(options, flag, False)
             if attribute:
                 setattr(self, flag, attribute)
@@ -540,18 +542,10 @@ class PlayContext(Base):
                 command = success_cmd
 
             # set executable to use for the privilege escalation method, with various overrides
-            exe = self.become_method
-            for myexe in (getattr(self, '%s_exe' % self.become_method, None), self.become_exe):
-                if myexe:
-                    exe = myexe
-                    break
+            exe = self.become_exe or getattr(self, '%s_exe' % self.become_method, self.become_method)
 
             # set flags to use for the privilege escalation method, with various overrides
-            flags = ''
-            for myflag in (getattr(self, '%s_flags' % self.become_method, None), self.become_flags):
-                if myflag is not None:
-                    flags = myflag
-                    break
+            flags = self.become_flags or getattr(self, '%s_flags' % self.become_method, '')
 
             if self.become_method == 'sudo':
                 # If we have a password, we run sudo with a randomly-generated

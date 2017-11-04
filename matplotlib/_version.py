@@ -11,8 +11,8 @@ version_json = '''
 {
  "dirty": false,
  "error": null,
- "full-revisionid": "e175a41cb81880dbc553d9140e6ae5717457afa8",
- "version": "2.0.2"
+ "full-revisionid": "b392d46466e98cd6a437e16b52b3ed8de23b0b52",
+ "version": "2.1.0"
 }
 '''  # END VERSION_JSON
 

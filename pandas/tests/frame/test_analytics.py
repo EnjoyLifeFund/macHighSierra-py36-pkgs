@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import warnings
 from datetime import timedelta
 from distutils.version import LooseVersion
 import sys
@@ -13,7 +14,7 @@ from numpy.random import randn
 import numpy as np
 
 from pandas.compat import lrange, product
-from pandas import (compat, isnull, notnull, DataFrame, Series,
+from pandas import (compat, isna, notna, DataFrame, Series,
                     MultiIndex, date_range, Timestamp)
 import pandas as pd
 import pandas.core.nanops as nanops
@@ -81,11 +82,11 @@ class TestDataFrameAnalytics(TestData):
                             'C': [np.nan, np.nan, np.nan, np.nan,
                                   np.nan, np.nan]})
             rs = df.corr(meth)
-            assert isnull(rs.loc['A', 'B'])
-            assert isnull(rs.loc['B', 'A'])
+            assert isna(rs.loc['A', 'B'])
+            assert isna(rs.loc['B', 'A'])
             assert rs.loc['A', 'A'] == 1
             assert rs.loc['B', 'B'] == 1
-            assert isnull(rs.loc['C', 'C'])
+            assert isna(rs.loc['C', 'C'])
 
     def test_corr_constant(self):
         tm._skip_if_no_scipy()
@@ -96,13 +97,12 @@ class TestDataFrameAnalytics(TestData):
             df = DataFrame({'A': [1, 1, 1, np.nan, np.nan, np.nan],
                             'B': [np.nan, np.nan, np.nan, 1, 1, 1]})
             rs = df.corr(meth)
-            assert isnull(rs.values).all()
+            assert isna(rs.values).all()
 
     def test_corr_int(self):
         # dtypes other than float64 #1761
         df3 = DataFrame({"a": [1, 2, 3, 4], "b": [1, 2, 3, 4]})
 
-        # it works!
         df3.cov()
         df3.corr()
 
@@ -117,7 +117,11 @@ class TestDataFrameAnalytics(TestData):
         expected = DataFrame(np.ones((2, 2)), index=[
                              'a', 'b'], columns=['a', 'b'])
         for meth in ['pearson', 'kendall', 'spearman']:
-            tm.assert_frame_equal(df.corr(meth), expected)
+
+            # RuntimeWarning
+            with warnings.catch_warnings(record=True):
+                result = df.corr(meth)
+            tm.assert_frame_equal(result, expected)
 
     def test_corr_cov_independent_index_column(self):
         # GH 14617
@@ -136,7 +140,7 @@ class TestDataFrameAnalytics(TestData):
         tm.assert_frame_equal(expected, result)
 
         result = self.frame.cov(min_periods=len(self.frame) + 1)
-        assert isnull(result.values).all()
+        assert isna(result.values).all()
 
         # with NAs
         frame = self.frame.copy()
@@ -389,7 +393,7 @@ class TestDataFrameAnalytics(TestData):
         tm.assert_series_equal(test, df.T.sum(axis=1))
 
     def test_count(self):
-        f = lambda s: notnull(s).sum()
+        f = lambda s: notna(s).sum()
         self._check_stat_op('count', f,
                             has_skipna=False,
                             has_numeric_only=True,
@@ -444,7 +448,11 @@ class TestDataFrameAnalytics(TestData):
                             has_numeric_only=True, check_dtype=False,
                             check_less_precise=True)
 
-    def test_stat_operators_attempt_obj_array(self):
+    @pytest.mark.parametrize(
+        "method", ['sum', 'mean', 'prod', 'var',
+                   'std', 'skew', 'min', 'max'])
+    def test_stat_operators_attempt_obj_array(self, method):
+        # GH #676
         data = {
             'a': [-0.00049987540199591344, -0.0016467257772919831,
                   0.00067695870775883013],
@@ -454,20 +462,17 @@ class TestDataFrameAnalytics(TestData):
         }
         df1 = DataFrame(data, index=['foo', 'bar', 'baz'],
                         dtype='O')
-        methods = ['sum', 'mean', 'prod', 'var', 'std', 'skew', 'min', 'max']
 
-        # GH #676
         df2 = DataFrame({0: [np.nan, 2], 1: [np.nan, 3],
                          2: [np.nan, 4]}, dtype=object)
 
         for df in [df1, df2]:
-            for meth in methods:
-                assert df.values.dtype == np.object_
-                result = getattr(df, meth)(1)
-                expected = getattr(df.astype('f8'), meth)(1)
+            assert df.values.dtype == np.object_
+            result = getattr(df, method)(1)
+            expected = getattr(df.astype('f8'), method)(1)
 
-                if not tm._incompat_bottleneck_version(meth):
-                    tm.assert_series_equal(result, expected)
+            if method in ['sum', 'prod']:
+                tm.assert_series_equal(result, expected)
 
     def test_mean(self):
         self._check_stat_op('mean', np.mean, check_dates=True)
@@ -477,7 +482,7 @@ class TestDataFrameAnalytics(TestData):
 
     def test_median(self):
         def wrapper(x):
-            if isnull(x).any():
+            if isna(x).any():
                 return np.nan
             return np.median(x)
 
@@ -559,15 +564,15 @@ class TestDataFrameAnalytics(TestData):
         arr = np.repeat(np.random.random((1, 1000)), 1000, 0)
         result = nanops.nanvar(arr, axis=0)
         assert not (result < 0).any()
-        if nanops._USE_BOTTLENECK:
-            nanops._USE_BOTTLENECK = False
+
+        with pd.option_context('use_bottleneck', False):
             result = nanops.nanvar(arr, axis=0)
             assert not (result < 0).any()
-            nanops._USE_BOTTLENECK = True
 
-    def test_numeric_only_flag(self):
+    @pytest.mark.parametrize(
+        "meth", ['sem', 'var', 'std'])
+    def test_numeric_only_flag(self, meth):
         # GH #9201
-        methods = ['sem', 'var', 'std']
         df1 = DataFrame(np.random.randn(5, 3), columns=['foo', 'bar', 'baz'])
         # set one entry to a number in str format
         df1.loc[0, 'foo'] = '100'
@@ -576,20 +581,19 @@ class TestDataFrameAnalytics(TestData):
         # set one entry to a non-number str
         df2.loc[0, 'foo'] = 'a'
 
-        for meth in methods:
-            result = getattr(df1, meth)(axis=1, numeric_only=True)
-            expected = getattr(df1[['bar', 'baz']], meth)(axis=1)
-            tm.assert_series_equal(expected, result)
+        result = getattr(df1, meth)(axis=1, numeric_only=True)
+        expected = getattr(df1[['bar', 'baz']], meth)(axis=1)
+        tm.assert_series_equal(expected, result)
 
-            result = getattr(df2, meth)(axis=1, numeric_only=True)
-            expected = getattr(df2[['bar', 'baz']], meth)(axis=1)
-            tm.assert_series_equal(expected, result)
+        result = getattr(df2, meth)(axis=1, numeric_only=True)
+        expected = getattr(df2[['bar', 'baz']], meth)(axis=1)
+        tm.assert_series_equal(expected, result)
 
-            # df1 has all numbers, df2 has a letter inside
-            pytest.raises(TypeError, lambda: getattr(df1, meth)(
-                axis=1, numeric_only=False))
-            pytest.raises(TypeError, lambda: getattr(df2, meth)(
-                axis=1, numeric_only=False))
+        # df1 has all numbers, df2 has a letter inside
+        pytest.raises(TypeError, lambda: getattr(df1, meth)(
+            axis=1, numeric_only=False))
+        pytest.raises(TypeError, lambda: getattr(df2, meth)(
+            axis=1, numeric_only=False))
 
     def test_mixed_ops(self):
         # GH 16116
@@ -602,11 +606,9 @@ class TestDataFrameAnalytics(TestData):
             result = getattr(df, op)()
             assert len(result) == 2
 
-            if nanops._USE_BOTTLENECK:
-                nanops._USE_BOTTLENECK = False
+            with pd.option_context('use_bottleneck', False):
                 result = getattr(df, op)()
                 assert len(result) == 2
-                nanops._USE_BOTTLENECK = True
 
     def test_cumsum(self):
         self.tsframe.loc[5:10, 0] = nan
@@ -672,11 +674,10 @@ class TestDataFrameAnalytics(TestData):
         arr = np.repeat(np.random.random((1, 1000)), 1000, 0)
         result = nanops.nansem(arr, axis=0)
         assert not (result < 0).any()
-        if nanops._USE_BOTTLENECK:
-            nanops._USE_BOTTLENECK = False
+
+        with pd.option_context('use_bottleneck', False):
             result = nanops.nansem(arr, axis=0)
             assert not (result < 0).any()
-            nanops._USE_BOTTLENECK = True
 
     def test_skew(self):
         tm._skip_if_no_scipy()
@@ -763,7 +764,7 @@ class TestDataFrameAnalytics(TestData):
         tm.assert_series_equal(result0, frame.apply(skipna_wrapper),
                                check_dtype=check_dtype,
                                check_less_precise=check_less_precise)
-        if not tm._incompat_bottleneck_version(name):
+        if name in ['sum', 'prod']:
             exp = frame.apply(skipna_wrapper, axis=1)
             tm.assert_series_equal(result1, exp, check_dtype=False,
                                    check_less_precise=check_less_precise)
@@ -795,7 +796,7 @@ class TestDataFrameAnalytics(TestData):
             all_na = self.frame * np.NaN
             r0 = getattr(all_na, name)(axis=0)
             r1 = getattr(all_na, name)(axis=1)
-            if not tm._incompat_bottleneck_version(name):
+            if name in ['sum', 'prod']:
                 assert np.isnan(r0).all()
                 assert np.isnan(r1).all()
 
@@ -974,7 +975,7 @@ class TestDataFrameAnalytics(TestData):
 
     def test_median_corner(self):
         def wrapper(x):
-            if isnull(x).any():
+            if isna(x).any():
                 return np.nan
             return np.median(x)
 
@@ -998,7 +999,7 @@ class TestDataFrameAnalytics(TestData):
 
     def test_sum_bools(self):
         df = DataFrame(index=lrange(1), columns=lrange(10))
-        bools = isnull(df)
+        bools = isna(df)
         assert bools.sum(axis=1)[0] == 10
 
     # Index of max / min
@@ -1151,10 +1152,13 @@ class TestDataFrameAnalytics(TestData):
         expected = DataFrame([df.loc[s].isin(other) for s in df.index])
         tm.assert_frame_equal(result, expected)
 
-    def test_isin_empty(self):
+    @pytest.mark.parametrize("empty", [[], Series(), np.array([])])
+    def test_isin_empty(self, empty):
+        # see gh-16991
         df = DataFrame({'A': ['a', 'b', 'c'], 'B': ['a', 'e', 'f']})
-        result = df.isin([])
-        expected = pd.DataFrame(False, df.index, df.columns)
+        expected = DataFrame(False, df.index, df.columns)
+
+        result = df.isin(empty)
         tm.assert_frame_equal(result, expected)
 
     def test_isin_dict(self):
@@ -1389,6 +1393,21 @@ class TestDataFrameAnalytics(TestData):
 
         for keep in ['first', 'last', False]:
             assert df.duplicated(keep=keep).sum() == 0
+
+    def test_drop_duplicates_with_duplicate_column_names(self):
+        # GH17836
+        df = DataFrame([
+            [1, 2, 5],
+            [3, 4, 6],
+            [3, 4, 7]
+        ], columns=['a', 'a', 'b'])
+
+        result0 = df.drop_duplicates()
+        tm.assert_frame_equal(result0, df)
+
+        result1 = df.drop_duplicates('a')
+        expected1 = df[:2]
+        tm.assert_frame_equal(result1, expected1)
 
     def test_drop_duplicates_for_take_all(self):
         df = DataFrame({'AAA': ['foo', 'bar', 'baz', 'bar',
@@ -1807,6 +1826,7 @@ class TestDataFrameAnalytics(TestData):
 
     def test_clip(self):
         median = self.frame.median().median()
+        original = self.frame.copy()
 
         capped = self.frame.clip_upper(median)
         assert not (capped.values > median).any()
@@ -1816,6 +1836,25 @@ class TestDataFrameAnalytics(TestData):
 
         double = self.frame.clip(upper=median, lower=median)
         assert not (double.values != median).any()
+
+        # Verify that self.frame was not changed inplace
+        assert (self.frame.values == original.values).all()
+
+    def test_inplace_clip(self):
+        # GH #15388
+        median = self.frame.median().median()
+        frame_copy = self.frame.copy()
+
+        frame_copy.clip_upper(median, inplace=True)
+        assert not (frame_copy.values > median).any()
+        frame_copy = self.frame.copy()
+
+        frame_copy.clip_lower(median, inplace=True)
+        assert not (frame_copy.values < median).any()
+        frame_copy = self.frame.copy()
+
+        frame_copy.clip(upper=median, lower=median, inplace=True)
+        assert not (frame_copy.values != median).any()
 
     def test_dataframe_clip(self):
         # GH #2747
@@ -1832,29 +1871,34 @@ class TestDataFrameAnalytics(TestData):
             assert (clipped_df.values[ub_mask] == ub).all()
             assert (clipped_df.values[mask] == df.values[mask]).all()
 
-    @pytest.mark.xfail(reason=("clip on mixed integer or floats "
-                               "with integer clippers coerces to float"))
     def test_clip_mixed_numeric(self):
-
+        # TODO(jreback)
+        # clip on mixed integer or floats
+        # with integer clippers coerces to float
         df = DataFrame({'A': [1, 2, 3],
                         'B': [1., np.nan, 3.]})
         result = df.clip(1, 2)
-        expected = DataFrame({'A': [1, 2, 2],
+        expected = DataFrame({'A': [1, 2, 2.],
                               'B': [1., np.nan, 2.]})
         tm.assert_frame_equal(result, expected, check_like=True)
 
-    def test_clip_against_series(self):
+    @pytest.mark.parametrize("inplace", [True, False])
+    def test_clip_against_series(self, inplace):
         # GH #6966
 
         df = DataFrame(np.random.randn(1000, 2))
         lb = Series(np.random.randn(1000))
         ub = lb + 1
 
-        clipped_df = df.clip(lb, ub, axis=0)
+        original = df.copy()
+        clipped_df = df.clip(lb, ub, axis=0, inplace=inplace)
+
+        if inplace:
+            clipped_df = df
 
         for i in range(2):
-            lb_mask = df.iloc[:, i] <= lb
-            ub_mask = df.iloc[:, i] >= ub
+            lb_mask = original.iloc[:, i] <= lb
+            ub_mask = original.iloc[:, i] >= ub
             mask = ~lb_mask & ~ub_mask
 
             result = clipped_df.loc[lb_mask, i]
@@ -1867,12 +1911,33 @@ class TestDataFrameAnalytics(TestData):
 
             tm.assert_series_equal(clipped_df.loc[mask, i], df.loc[mask, i])
 
-    def test_clip_against_frame(self):
+    @pytest.mark.parametrize("inplace", [True, False])
+    @pytest.mark.parametrize("lower", [[2, 3, 4], np.asarray([2, 3, 4])])
+    @pytest.mark.parametrize("axis,res", [
+        (0, [[2., 2., 3.], [4., 5., 6.], [7., 7., 7.]]),
+        (1, [[2., 3., 4.], [4., 5., 6.], [5., 6., 7.]])
+    ])
+    def test_clip_against_list_like(self, inplace, lower, axis, res):
+        # GH #15390
+        original = self.simple.copy(deep=True)
+
+        result = original.clip(lower=lower, upper=[5, 6, 7],
+                               axis=axis, inplace=inplace)
+
+        expected = pd.DataFrame(res,
+                                columns=original.columns,
+                                index=original.index)
+        if inplace:
+            result = original
+        tm.assert_frame_equal(result, expected, check_exact=True)
+
+    @pytest.mark.parametrize("axis", [0, 1, None])
+    def test_clip_against_frame(self, axis):
         df = DataFrame(np.random.randn(1000, 2))
         lb = DataFrame(np.random.randn(1000, 2))
         ub = lb + 1
 
-        clipped_df = df.clip(lb, ub)
+        clipped_df = df.clip(lb, ub, axis=axis)
 
         lb_mask = df <= lb
         ub_mask = df >= ub
@@ -1881,6 +1946,17 @@ class TestDataFrameAnalytics(TestData):
         tm.assert_frame_equal(clipped_df[lb_mask], lb[lb_mask])
         tm.assert_frame_equal(clipped_df[ub_mask], ub[ub_mask])
         tm.assert_frame_equal(clipped_df[mask], df[mask])
+
+    def test_clip_with_na_args(self):
+        """Should process np.nan argument as None """
+        # GH # 17276
+        tm.assert_frame_equal(self.frame.clip(np.nan), self.frame)
+        tm.assert_frame_equal(self.frame.clip(upper=[1, 2, np.nan]),
+                              self.frame)
+        tm.assert_frame_equal(self.frame.clip(lower=[1, np.nan, 3]),
+                              self.frame)
+        tm.assert_frame_equal(self.frame.clip(upper=np.nan, lower=np.nan),
+                              self.frame)
 
     # Matrix-like
 
@@ -2022,6 +2098,9 @@ class TestNLargestNSmallest(object):
         df = df_main_dtypes
         error_msg = self.dtype_error_msg_template.format(
             column=columns[1], method=method, dtype=df[columns[1]].dtype)
+        # escape some characters that may be in the repr
+        error_msg = (error_msg.replace('(', '\\(').replace(")", "\\)")
+                              .replace("[", "\\[").replace("]", "\\]"))
         with tm.assert_raises_regex(TypeError, error_msg):
             getattr(df, method)(2, columns)
 

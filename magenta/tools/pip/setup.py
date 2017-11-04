@@ -37,8 +37,10 @@ REQUIRED_PACKAGES = [
     'bokeh >= 0.12.0',
     'futures',
     'intervaltree >= 2.1.0',
+    'librosa >= 0.5.1',
     'matplotlib >= 1.5.3',
     'mido == 1.2.6',
+    'mir_eval >= 0.4',
     'numpy >= 1.11.0',
     'pandas >= 0.18.1',
     'pretty_midi >= 0.2.6',
@@ -71,6 +73,12 @@ CONSOLE_SCRIPTS = [
     'magenta.models.melody_rnn.melody_rnn_train',
     'magenta.models.nsynth.wavenet.nsynth_generate',
     'magenta.models.nsynth.wavenet.nsynth_save_embeddings',
+    'magenta.models.onsets_frames_transcription.'
+    'onsets_frames_transcription_create_dataset',
+    'magenta.models.onsets_frames_transcription.'
+    'onsets_frames_transcription_infer',
+    'magenta.models.onsets_frames_transcription.'
+    'onsets_frames_transcription_train',
     'magenta.models.performance_rnn.performance_rnn_create_dataset',
     'magenta.models.performance_rnn.performance_rnn_generate',
     'magenta.models.performance_rnn.performance_rnn_train',

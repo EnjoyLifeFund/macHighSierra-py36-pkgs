@@ -21,7 +21,6 @@ from chainer.utils import argument
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cuda.cudnn.cudnn
-    _cudnn_version = libcudnn.getVersion()
 
 
 class NStepGRU(n_step_rnn.BaseNStepRNN):
@@ -108,14 +107,14 @@ def n_step_gru(
 
     Returns:
         tuple: This functions returns a tuple concaining three elements,
-            ``hy`` and ``ys``.
+        ``hy`` and ``ys``.
 
-            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
-            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
-              ``ys[t]`` holds hidden states of the last layer corresponding
-              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
-              mini-batch size for time ``t``, and ``N`` is size of hidden
-              units. Note that ``B_t`` is the same value as ``xs[t]``.
+        - ``hy`` is an updated hidden states whose shape is same as ``hx``.
+        - ``ys`` is a list of :class:`~chainer.Variable` . Each element
+          ``ys[t]`` holds hidden states of the last layer corresponding
+          to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
+          mini-batch size for time ``t``, and ``N`` is size of hidden
+          units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     """
 
@@ -211,14 +210,14 @@ def n_step_bigru(
 
     Returns:
         tuple: This functions returns a tuple concaining three elements,
-            ``hy`` and ``ys``.
+        ``hy`` and ``ys``.
 
-            - ``hy`` is an updated hidden states whose shape is same as ``hx``.
-            - ``ys`` is a list of :class:`~chainer.Variable` . Each element
-              ``ys[t]`` holds hidden states of the last layer corresponding
-              to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
-              mini-batch size for time ``t``, and ``N`` is size of hidden
-              units. Note that ``B_t`` is the same value as ``xs[t]``.
+        - ``hy`` is an updated hidden states whose shape is same as ``hx``.
+        - ``ys`` is a list of :class:`~chainer.Variable` . Each element
+          ``ys[t]`` holds hidden states of the last layer corresponding
+          to an input ``xs[t]``. Its shape is ``(B_t, N)`` where ``B_t`` is
+          mini-batch size for time ``t``, and ``N`` is size of hidden
+          units. Note that ``B_t`` is the same value as ``xs[t]``.
 
     """
 

@@ -60,7 +60,7 @@ define(function() { return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 121);
+/******/ 	return __webpack_require__(__webpack_require__.s = 122);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -96,6 +96,74 @@ if (typeof Object.create === 'function') {
 /* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
+/* eslint-disable node/no-deprecated-api */
+var buffer = __webpack_require__(2)
+var Buffer = buffer.Buffer
+
+// alternative to using Object.keys for old browsers
+function copyProps (src, dst) {
+  for (var key in src) {
+    dst[key] = src[key]
+  }
+}
+if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
+  module.exports = buffer
+} else {
+  // Copy properties from require('buffer')
+  copyProps(buffer, exports)
+  exports.Buffer = SafeBuffer
+}
+
+function SafeBuffer (arg, encodingOrOffset, length) {
+  return Buffer(arg, encodingOrOffset, length)
+}
+
+// Copy static methods from Buffer
+copyProps(Buffer, SafeBuffer)
+
+SafeBuffer.from = function (arg, encodingOrOffset, length) {
+  if (typeof arg === 'number') {
+    throw new TypeError('Argument must not be a number')
+  }
+  return Buffer(arg, encodingOrOffset, length)
+}
+
+SafeBuffer.alloc = function (size, fill, encoding) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  var buf = Buffer(size)
+  if (fill !== undefined) {
+    if (typeof encoding === 'string') {
+      buf.fill(fill, encoding)
+    } else {
+      buf.fill(fill)
+    }
+  } else {
+    buf.fill(0)
+  }
+  return buf
+}
+
+SafeBuffer.allocUnsafe = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return Buffer(size)
+}
+
+SafeBuffer.allocUnsafeSlow = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return buffer.SlowBuffer(size)
+}
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global) {/*!
  * The buffer module from node.js, for the browser.
@@ -108,7 +176,7 @@ if (typeof Object.create === 'function') {
 
 
 var base64 = __webpack_require__(75)
-var ieee754 = __webpack_require__(153)
+var ieee754 = __webpack_require__(154)
 var isArray = __webpack_require__(77)
 
 exports.Buffer = Buffer
@@ -1890,7 +1958,7 @@ function isnan (val) {
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18)))
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1906,13 +1974,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-__export(__webpack_require__(126));
 __export(__webpack_require__(127));
 __export(__webpack_require__(128));
 __export(__webpack_require__(129));
 __export(__webpack_require__(130));
-__export(__webpack_require__(16));
 __export(__webpack_require__(131));
+__export(__webpack_require__(16));
 __export(__webpack_require__(132));
 __export(__webpack_require__(133));
 __export(__webpack_require__(134));
@@ -1922,10 +1989,11 @@ __export(__webpack_require__(137));
 __export(__webpack_require__(138));
 __export(__webpack_require__(139));
 __export(__webpack_require__(140));
+__export(__webpack_require__(141));
 
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(module) {(function (module, exports) {
@@ -1980,7 +2048,7 @@ __export(__webpack_require__(140));
 
   var Buffer;
   try {
-    Buffer = __webpack_require__(191).Buffer;
+    Buffer = __webpack_require__(192).Buffer;
   } catch (e) {
   }
 
@@ -5359,74 +5427,6 @@ __export(__webpack_require__(140));
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(74)(module)))
 
 /***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* eslint-disable node/no-deprecated-api */
-var buffer = __webpack_require__(1)
-var Buffer = buffer.Buffer
-
-// alternative to using Object.keys for old browsers
-function copyProps (src, dst) {
-  for (var key in src) {
-    dst[key] = src[key]
-  }
-}
-if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-  module.exports = buffer
-} else {
-  // Copy properties from require('buffer')
-  copyProps(buffer, exports)
-  exports.Buffer = SafeBuffer
-}
-
-function SafeBuffer (arg, encodingOrOffset, length) {
-  return Buffer(arg, encodingOrOffset, length)
-}
-
-// Copy static methods from Buffer
-copyProps(Buffer, SafeBuffer)
-
-SafeBuffer.from = function (arg, encodingOrOffset, length) {
-  if (typeof arg === 'number') {
-    throw new TypeError('Argument must not be a number')
-  }
-  return Buffer(arg, encodingOrOffset, length)
-}
-
-SafeBuffer.alloc = function (size, fill, encoding) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  var buf = Buffer(size)
-  if (fill !== undefined) {
-    if (typeof encoding === 'string') {
-      buf.fill(fill, encoding)
-    } else {
-      buf.fill(fill)
-    }
-  } else {
-    buf.fill(0)
-  }
-  return buf
-}
-
-SafeBuffer.allocUnsafe = function (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  return Buffer(size)
-}
-
-SafeBuffer.allocUnsafeSlow = function (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  return buffer.SlowBuffer(size)
-}
-
-
-/***/ }),
 /* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -7005,8 +7005,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
-var collections_1 = __webpack_require__(145);
+var algorithm_1 = __webpack_require__(3);
+var collections_1 = __webpack_require__(146);
 /**
  * A message which can be delivered to a message handler.
  *
@@ -7533,9 +7533,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-__export(__webpack_require__(141));
 __export(__webpack_require__(142));
 __export(__webpack_require__(143));
+__export(__webpack_require__(144));
 
 
 /***/ }),
@@ -7562,7 +7562,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
 var signaling_1 = __webpack_require__(9);
@@ -8518,7 +8518,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 /**
  * A concrete implementation of `ISignal`.
  *
@@ -9044,15 +9044,15 @@ var Private;
 
 var elliptic = exports;
 
-elliptic.version = __webpack_require__(197).version;
-elliptic.utils = __webpack_require__(198);
-elliptic.rand = __webpack_require__(96);
+elliptic.version = __webpack_require__(198).version;
+elliptic.utils = __webpack_require__(199);
+elliptic.rand = __webpack_require__(97);
 elliptic.curve = __webpack_require__(45);
-elliptic.curves = __webpack_require__(203);
+elliptic.curves = __webpack_require__(204);
 
 // Protocols
-elliptic.ec = __webpack_require__(211);
-elliptic.eddsa = __webpack_require__(215);
+elliptic.ec = __webpack_require__(212);
+elliptic.eddsa = __webpack_require__(216);
 
 
 /***/ }),
@@ -9067,12 +9067,12 @@ function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 Object.defineProperty(exports, "__esModule", { value: true });
-__export(__webpack_require__(123));
+__export(__webpack_require__(124));
 __export(__webpack_require__(53));
-__export(__webpack_require__(247));
 __export(__webpack_require__(248));
 __export(__webpack_require__(249));
 __export(__webpack_require__(250));
+__export(__webpack_require__(251));
 __export(__webpack_require__(24));
 
 
@@ -20068,7 +20068,7 @@ module.exports = g;
 /* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var Transform = __webpack_require__(41).Transform
 var StringDecoder = __webpack_require__(61).StringDecoder
 var inherits = __webpack_require__(0)
@@ -20493,7 +20493,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
@@ -21695,25 +21695,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |----------------------------------------------------------------------------*/
 __export(__webpack_require__(28));
 __export(__webpack_require__(54));
-__export(__webpack_require__(147));
 __export(__webpack_require__(148));
-__export(__webpack_require__(239));
-__export(__webpack_require__(111));
+__export(__webpack_require__(149));
 __export(__webpack_require__(240));
+__export(__webpack_require__(112));
 __export(__webpack_require__(241));
 __export(__webpack_require__(242));
-__export(__webpack_require__(22));
-__export(__webpack_require__(110));
 __export(__webpack_require__(243));
+__export(__webpack_require__(22));
+__export(__webpack_require__(111));
+__export(__webpack_require__(244));
 __export(__webpack_require__(39));
 __export(__webpack_require__(29));
-__export(__webpack_require__(244));
-__export(__webpack_require__(112));
 __export(__webpack_require__(245));
 __export(__webpack_require__(113));
-__export(__webpack_require__(114));
-__export(__webpack_require__(70));
 __export(__webpack_require__(246));
+__export(__webpack_require__(114));
+__export(__webpack_require__(115));
+__export(__webpack_require__(70));
+__export(__webpack_require__(247));
 __export(__webpack_require__(55));
 __export(__webpack_require__(8));
 
@@ -21919,66 +21919,78 @@ var Private;
 /* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {// prototype class for hash functions
+var Buffer = __webpack_require__(1).Buffer
+
+// prototype class for hash functions
 function Hash (blockSize, finalSize) {
-  this._block = new Buffer(blockSize)
+  this._block = Buffer.alloc(blockSize)
   this._finalSize = finalSize
   this._blockSize = blockSize
   this._len = 0
-  this._s = 0
 }
 
 Hash.prototype.update = function (data, enc) {
   if (typeof data === 'string') {
     enc = enc || 'utf8'
-    data = new Buffer(data, enc)
+    data = Buffer.from(data, enc)
   }
 
-  var l = this._len += data.length
-  var s = this._s || 0
-  var f = 0
-  var buffer = this._block
+  var block = this._block
+  var blockSize = this._blockSize
+  var length = data.length
+  var accum = this._len
 
-  while (s < l) {
-    var t = Math.min(data.length, f + this._blockSize - (s % this._blockSize))
-    var ch = (t - f)
+  for (var offset = 0; offset < length;) {
+    var assigned = accum % blockSize
+    var remainder = Math.min(length - offset, blockSize - assigned)
 
-    for (var i = 0; i < ch; i++) {
-      buffer[(s % this._blockSize) + i] = data[i + f]
+    for (var i = 0; i < remainder; i++) {
+      block[assigned + i] = data[offset + i]
     }
 
-    s += ch
-    f += ch
+    accum += remainder
+    offset += remainder
 
-    if ((s % this._blockSize) === 0) {
-      this._update(buffer)
+    if ((accum % blockSize) === 0) {
+      this._update(block)
     }
   }
-  this._s = s
 
+  this._len += length
   return this
 }
 
 Hash.prototype.digest = function (enc) {
-  // Suppose the length of the message M, in bits, is l
-  var l = this._len * 8
+  var rem = this._len % this._blockSize
 
-  // Append the bit 1 to the end of the message
-  this._block[this._len % this._blockSize] = 0x80
+  this._block[rem] = 0x80
 
-  // and then k zero bits, where k is the smallest non-negative solution to the equation (l + 1 + k) === finalSize mod blockSize
-  this._block.fill(0, this._len % this._blockSize + 1)
+  // zero (rem + 1) trailing bits, where (rem + 1) is the smallest
+  // non-negative solution to the equation (length + 1 + (rem + 1)) === finalSize mod blockSize
+  this._block.fill(0, rem + 1)
 
-  if (l % (this._blockSize * 8) >= this._finalSize * 8) {
+  if (rem >= this._finalSize) {
     this._update(this._block)
     this._block.fill(0)
   }
 
-  // to this append the block which is equal to the number l written in binary
-  // TODO: handle case where l is > Math.pow(2, 29)
-  this._block.writeInt32BE(l, this._blockSize - 4)
+  var bits = this._len * 8
 
-  var hash = this._update(this._block) || this._hash()
+  // uint32
+  if (bits <= 0xffffffff) {
+    this._block.writeUInt32BE(bits, this._blockSize - 4)
+
+  // uint64
+  } else {
+    var lowBits = bits & 0xffffffff
+    var highBits = (bits - lowBits) / 0x100000000
+
+    this._block.writeUInt32BE(highBits, this._blockSize - 8)
+    this._block.writeUInt32BE(lowBits, this._blockSize - 4)
+  }
+
+  this._update(this._block)
+  var hash = this._hash()
 
   return enc ? hash.toString(enc) : hash
 }
@@ -21989,7 +22001,6 @@ Hash.prototype._update = function () {
 
 module.exports = Hash
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
 /* 28 */
@@ -22488,7 +22499,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var messaging_1 = __webpack_require__(6);
 var layout_1 = __webpack_require__(22);
 var widget_1 = __webpack_require__(8);
@@ -22774,7 +22785,7 @@ function oldBrowser () {
   throw new Error('secure random number generation not supported by this browser\nuse chrome, FireFox or Internet Explorer 11')
 }
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var crypto = global.crypto || global.msCrypto
 
 if (crypto && crypto.getRandomValues) {
@@ -22867,7 +22878,7 @@ module.exports = function createHash (alg) {
   return new Hash(sha(alg))
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 32 */
@@ -22981,7 +22992,7 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 33 */
@@ -22998,7 +23009,7 @@ function objectToString(o) {
   return buffer
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 34 */
@@ -23105,13 +23116,13 @@ BlockHash.prototype._pad = function pad() {
 
 var asn1 = exports;
 
-asn1.bignum = __webpack_require__(3);
+asn1.bignum = __webpack_require__(4);
 
-asn1.define = __webpack_require__(219).define;
+asn1.define = __webpack_require__(220).define;
 asn1.base = __webpack_require__(36);
-asn1.constants = __webpack_require__(102);
-asn1.decoders = __webpack_require__(225);
-asn1.encoders = __webpack_require__(227);
+asn1.constants = __webpack_require__(103);
+asn1.decoders = __webpack_require__(226);
+asn1.encoders = __webpack_require__(228);
 
 
 /***/ }),
@@ -23120,10 +23131,10 @@ asn1.encoders = __webpack_require__(227);
 
 var base = exports;
 
-base.Reporter = __webpack_require__(222).Reporter;
-base.DecoderBuffer = __webpack_require__(101).DecoderBuffer;
-base.EncoderBuffer = __webpack_require__(101).EncoderBuffer;
-base.Node = __webpack_require__(223);
+base.Reporter = __webpack_require__(223).Reporter;
+base.DecoderBuffer = __webpack_require__(102).DecoderBuffer;
+base.EncoderBuffer = __webpack_require__(102).EncoderBuffer;
+base.Node = __webpack_require__(224);
 
 
 /***/ }),
@@ -23206,7 +23217,7 @@ exports._unrefActive = exports.active = function(item) {
 };
 
 // setimmediate attaches itself to the global object
-__webpack_require__(144);
+__webpack_require__(145);
 exports.setImmediate = setImmediate;
 exports.clearImmediate = clearImmediate;
 
@@ -23330,12 +23341,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-__export(__webpack_require__(149));
 __export(__webpack_require__(150));
 __export(__webpack_require__(151));
+__export(__webpack_require__(152));
 __export(__webpack_require__(76));
-__export(__webpack_require__(237));
 __export(__webpack_require__(238));
+__export(__webpack_require__(239));
 
 
 /***/ }),
@@ -23370,10 +23381,10 @@ var inherits = __webpack_require__(0);
 
 inherits(Stream, EE);
 Stream.Readable = __webpack_require__(59);
-Stream.Writable = __webpack_require__(160);
-Stream.Duplex = __webpack_require__(161);
-Stream.Transform = __webpack_require__(162);
-Stream.PassThrough = __webpack_require__(163);
+Stream.Writable = __webpack_require__(161);
+Stream.Duplex = __webpack_require__(162);
+Stream.Transform = __webpack_require__(163);
+Stream.PassThrough = __webpack_require__(164);
 
 // Backwards-compat with node 0.4.x
 Stream.Stream = Stream;
@@ -23526,8 +23537,8 @@ function nextTick(fn, arg1, arg2, arg3) {
 /* 43 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Buffer = __webpack_require__(4).Buffer
-var MD5 = __webpack_require__(172)
+var Buffer = __webpack_require__(1).Buffer
+var MD5 = __webpack_require__(173)
 
 /* eslint-disable camelcase */
 function EVP_BytesToKey (password, salt, keyBits, ivLen) {
@@ -23582,7 +23593,7 @@ module.exports = EVP_BytesToKey
 // which is in turn based on the one from crypto-js
 // https://code.google.com/p/crypto-js/
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 
 function asUInt32Array (buf) {
   if (!Buffer.isBuffer(buf)) buf = Buffer.from(buf)
@@ -23816,19 +23827,19 @@ module.exports.AES = AES
 
 var curve = exports;
 
-curve.base = __webpack_require__(199);
-curve.short = __webpack_require__(200);
-curve.mont = __webpack_require__(201);
-curve.edwards = __webpack_require__(202);
+curve.base = __webpack_require__(200);
+curve.short = __webpack_require__(201);
+curve.mont = __webpack_require__(202);
+curve.edwards = __webpack_require__(203);
 
 
 /***/ }),
 /* 46 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var asn1 = __webpack_require__(218)
-var aesid = __webpack_require__(230)
-var fixProc = __webpack_require__(231)
+/* WEBPACK VAR INJECTION */(function(Buffer) {var asn1 = __webpack_require__(219)
+var aesid = __webpack_require__(231)
+var fixProc = __webpack_require__(232)
 var ciphers = __webpack_require__(63)
 var compat = __webpack_require__(86)
 module.exports = parseKeys
@@ -23933,7 +23944,7 @@ function decrypt (data, password) {
   return Buffer.concat(out)
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 47 */
@@ -23949,7 +23960,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 /**
  * A virtual node which represents plain text content.
  *
@@ -25490,7 +25501,7 @@ var singleton = null;
 var	singletonCounter = 0;
 var	stylesInsertedAtTop = [];
 
-var	fixUrls = __webpack_require__(274);
+var	fixUrls = __webpack_require__(275);
 
 module.exports = function(list, options) {
 	if (typeof DEBUG !== "undefined" && DEBUG) {
@@ -27732,10 +27743,10 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var utils = __webpack_require__(24);
-var backbonePatch = __webpack_require__(124);
+var backbonePatch = __webpack_require__(125);
 var Backbone = __webpack_require__(52);
 var $ = __webpack_require__(12);
-var nativeview_1 = __webpack_require__(125);
+var nativeview_1 = __webpack_require__(126);
 var widgets_1 = __webpack_require__(25);
 var messaging_1 = __webpack_require__(6);
 exports.JUPYTER_WIDGETS_VERSION = '1.0.0';
@@ -28570,7 +28581,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
@@ -29430,7 +29441,7 @@ exports.Title = Title;
  * See http://pajhome.org.uk/crypt/md5 for more info.
  */
 
-var makeHash = __webpack_require__(154)
+var makeHash = __webpack_require__(155)
 
 /*
  * Calculate the MD5 of an array of little-endian words, and a bit length
@@ -29580,7 +29591,7 @@ module.exports = function md5 (buf) {
 "use strict";
 /* WEBPACK VAR INJECTION */(function(Buffer) {
 var inherits = __webpack_require__(0)
-var HashBase = __webpack_require__(155)
+var HashBase = __webpack_require__(156)
 
 function RIPEMD160 () {
   HashBase.call(this, 64)
@@ -29870,7 +29881,7 @@ function fn5 (a, b, c, d, e, m, k, s) {
 
 module.exports = RIPEMD160
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 58 */
@@ -30190,7 +30201,7 @@ exports.Readable = exports;
 exports.Writable = __webpack_require__(60);
 exports.Duplex = __webpack_require__(23);
 exports.Transform = __webpack_require__(81);
-exports.PassThrough = __webpack_require__(159);
+exports.PassThrough = __webpack_require__(160);
 
 
 /***/ }),
@@ -30270,7 +30281,7 @@ util.inherits = __webpack_require__(0);
 
 /*<replacement>*/
 var internalUtil = {
-  deprecate: __webpack_require__(158)
+  deprecate: __webpack_require__(159)
 };
 /*</replacement>*/
 
@@ -30279,7 +30290,7 @@ var Stream = __webpack_require__(79);
 /*</replacement>*/
 
 /*<replacement>*/
-var Buffer = __webpack_require__(4).Buffer;
+var Buffer = __webpack_require__(1).Buffer;
 var OurUint8Array = global.Uint8Array || function () {};
 function _uint8ArrayToBuffer(chunk) {
   return Buffer.from(chunk);
@@ -30889,7 +30900,7 @@ Writable.prototype._destroy = function (err, cb) {
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var Buffer = __webpack_require__(1).Buffer;
+var Buffer = __webpack_require__(2).Buffer;
 
 var isBufferEncoding = Buffer.isEncoding
   || function(encoding) {
@@ -31104,11 +31115,11 @@ var exports = module.exports = function SHA (algorithm) {
   return new Algorithm()
 }
 
-exports.sha = __webpack_require__(164)
-exports.sha1 = __webpack_require__(165)
-exports.sha224 = __webpack_require__(166)
+exports.sha = __webpack_require__(165)
+exports.sha1 = __webpack_require__(166)
+exports.sha224 = __webpack_require__(167)
 exports.sha256 = __webpack_require__(82)
-exports.sha384 = __webpack_require__(167)
+exports.sha384 = __webpack_require__(168)
 exports.sha512 = __webpack_require__(83)
 
 
@@ -31116,9 +31127,9 @@ exports.sha512 = __webpack_require__(83)
 /* 63 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var ciphers = __webpack_require__(174)
-var deciphers = __webpack_require__(182)
-var modes = __webpack_require__(91)
+var ciphers = __webpack_require__(175)
+var deciphers = __webpack_require__(183)
+var modes = __webpack_require__(92)
 
 function getCiphers () {
   return Object.keys(modes)
@@ -31136,17 +31147,17 @@ exports.listCiphers = exports.getCiphers = getCiphers
 /***/ (function(module, exports, __webpack_require__) {
 
 var modeModules = {
-  ECB: __webpack_require__(175),
-  CBC: __webpack_require__(176),
-  CFB: __webpack_require__(177),
-  CFB8: __webpack_require__(178),
-  CFB1: __webpack_require__(179),
-  OFB: __webpack_require__(180),
+  ECB: __webpack_require__(176),
+  CBC: __webpack_require__(177),
+  CFB: __webpack_require__(178),
+  CFB8: __webpack_require__(179),
+  CFB1: __webpack_require__(180),
+  OFB: __webpack_require__(181),
   CTR: __webpack_require__(90),
   GCM: __webpack_require__(90)
 }
 
-var modes = __webpack_require__(91)
+var modes = __webpack_require__(92)
 
 for (var key in modes) {
   modes[key].module = modeModules[modes[key].mode]
@@ -31162,18 +31173,18 @@ module.exports = modes
 "use strict";
 
 
-exports.utils = __webpack_require__(184);
-exports.Cipher = __webpack_require__(185);
-exports.DES = __webpack_require__(186);
-exports.CBC = __webpack_require__(187);
-exports.EDE = __webpack_require__(188);
+exports.utils = __webpack_require__(185);
+exports.Cipher = __webpack_require__(186);
+exports.DES = __webpack_require__(187);
+exports.CBC = __webpack_require__(188);
+exports.EDE = __webpack_require__(189);
 
 
 /***/ }),
 /* 66 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var bn = __webpack_require__(3);
+/* WEBPACK VAR INJECTION */(function(Buffer) {var bn = __webpack_require__(4);
 var randomBytes = __webpack_require__(30);
 module.exports = crt;
 function blind(priv) {
@@ -31214,7 +31225,7 @@ function getr(priv) {
   return r;
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 67 */
@@ -31224,9 +31235,9 @@ var hash = exports;
 
 hash.utils = __webpack_require__(17);
 hash.common = __webpack_require__(34);
-hash.sha = __webpack_require__(204);
-hash.ripemd = __webpack_require__(208);
-hash.hmac = __webpack_require__(209);
+hash.sha = __webpack_require__(205);
+hash.ripemd = __webpack_require__(209);
+hash.hmac = __webpack_require__(210);
 
 // Proxy hash functions to the main object
 hash.sha1 = hash.sha.sha1;
@@ -31251,7 +31262,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 /**
  * A disposable object which delegates to a callback function.
  */
@@ -31654,7 +31665,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var dragdrop_1 = __webpack_require__(48);
 var messaging_1 = __webpack_require__(6);
@@ -32879,21 +32890,21 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __export(__webpack_require__(15));
 __export(__webpack_require__(49));
-__export(__webpack_require__(251));
 __export(__webpack_require__(252));
 __export(__webpack_require__(253));
-__export(__webpack_require__(115));
 __export(__webpack_require__(254));
+__export(__webpack_require__(116));
 __export(__webpack_require__(255));
 __export(__webpack_require__(256));
-__export(__webpack_require__(116));
-__export(__webpack_require__(261));
+__export(__webpack_require__(257));
+__export(__webpack_require__(117));
 __export(__webpack_require__(262));
 __export(__webpack_require__(263));
 __export(__webpack_require__(264));
-__export(__webpack_require__(268));
+__export(__webpack_require__(265));
+__export(__webpack_require__(269));
 __export(__webpack_require__(20));
-exports.version = __webpack_require__(269).version;
+exports.version = __webpack_require__(270).version;
 
 
 /***/ }),
@@ -32908,9 +32919,9 @@ exports.version = __webpack_require__(269).version;
 // This widget is strongly coupled to the notebook because of the outputarea
 // dependency.
 var widgets = __webpack_require__(71);
-var outputBase = __webpack_require__(270);
+var outputBase = __webpack_require__(271);
 var _ = __webpack_require__(5);
-__webpack_require__(272);
+__webpack_require__(273);
 
 var outputArea = new Promise(function(resolve, reject) {
         requirejs(["notebook/js/outputarea"], resolve, reject)
@@ -50330,7 +50341,7 @@ var Random;
     Random.getRandomValues = (function () {
         // Look up the crypto module if available.
         var crypto = ((typeof window !== 'undefined' && (window.crypto || window.msCrypto)) ||
-            ("function" !== 'undefined' && __webpack_require__(152)) || null);
+            ("function" !== 'undefined' && __webpack_require__(153)) || null);
         // Modern browsers and IE 11
         if (crypto && typeof crypto.getRandomValues === 'function') {
             return function getRandomValues(buffer) {
@@ -50438,7 +50449,7 @@ var Stream = __webpack_require__(79);
 // TODO(bmeurer): Change this back to const once hole checks are
 // properly optimized away early in Ignition+TurboFan.
 /*<replacement>*/
-var Buffer = __webpack_require__(4).Buffer;
+var Buffer = __webpack_require__(1).Buffer;
 var OurUint8Array = global.Uint8Array || function () {};
 function _uint8ArrayToBuffer(chunk) {
   return Buffer.from(chunk);
@@ -50454,7 +50465,7 @@ util.inherits = __webpack_require__(0);
 /*</replacement>*/
 
 /*<replacement>*/
-var debugUtil = __webpack_require__(156);
+var debugUtil = __webpack_require__(157);
 var debug = void 0;
 if (debugUtil && debugUtil.debuglog) {
   debug = debugUtil.debuglog('stream');
@@ -50463,7 +50474,7 @@ if (debugUtil && debugUtil.debuglog) {
 }
 /*</replacement>*/
 
-var BufferList = __webpack_require__(157);
+var BufferList = __webpack_require__(158);
 var destroyImpl = __webpack_require__(80);
 var StringDecoder;
 
@@ -51701,7 +51712,7 @@ function done(stream, er, data) {
 /* 82 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {/**
+/**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
  * Version 2.2-beta Copyright Angel Marin, Paul Johnston 2000 - 2009.
@@ -51711,6 +51722,7 @@ function done(stream, er, data) {
 
 var inherits = __webpack_require__(0)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var K = [
   0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
@@ -51820,7 +51832,7 @@ Sha256.prototype._update = function (M) {
 }
 
 Sha256.prototype._hash = function () {
-  var H = new Buffer(32)
+  var H = Buffer.allocUnsafe(32)
 
   H.writeInt32BE(this._a, 0)
   H.writeInt32BE(this._b, 4)
@@ -51836,14 +51848,14 @@ Sha256.prototype._hash = function () {
 
 module.exports = Sha256
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
 /* 83 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(0)
+var inherits = __webpack_require__(0)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var K = [
   0x428a2f98, 0xd728ae22, 0x71374491, 0x23ef65cd,
@@ -52081,7 +52093,7 @@ Sha512.prototype._update = function (M) {
 }
 
 Sha512.prototype._hash = function () {
-  var H = new Buffer(64)
+  var H = Buffer.allocUnsafe(64)
 
   function writeInt64BE (h, l, offset) {
     H.writeInt32BE(h, offset)
@@ -52102,7 +52114,6 @@ Sha512.prototype._hash = function () {
 
 module.exports = Sha512
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
 /* 84 */
@@ -52111,9 +52122,9 @@ module.exports = Sha512
 "use strict";
 
 var inherits = __webpack_require__(0)
-var Legacy = __webpack_require__(168)
+var Legacy = __webpack_require__(169)
 var Base = __webpack_require__(19)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var md5 = __webpack_require__(56)
 var RIPEMD160 = __webpack_require__(57)
 
@@ -52184,7 +52195,7 @@ module.exports = {"sha224WithRSAEncryption":{"sign":"rsa","hash":"sha224","id":"
 /***/ (function(module, exports, __webpack_require__) {
 
 
-exports.pbkdf2 = __webpack_require__(170)
+exports.pbkdf2 = __webpack_require__(171)
 
 exports.pbkdf2Sync = __webpack_require__(89)
 
@@ -52240,7 +52251,7 @@ var sha = __webpack_require__(62)
 
 var checkParameters = __webpack_require__(87)
 var defaultEncoding = __webpack_require__(88)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var ZEROS = Buffer.alloc(128)
 var sizes = {
   md5: 16,
@@ -52341,22 +52352,9 @@ module.exports = pbkdf2
 /* 90 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var xor = __webpack_require__(33)
-
-function incr32 (iv) {
-  var len = iv.length
-  var item
-  while (len--) {
-    item = iv.readUInt8(len)
-    if (item === 255) {
-      iv.writeUInt8(0, len)
-    } else {
-      item++
-      iv.writeUInt8(item, len)
-      break
-    }
-  }
-}
+var xor = __webpack_require__(33)
+var Buffer = __webpack_require__(1).Buffer
+var incr32 = __webpack_require__(91)
 
 function getBlock (self) {
   var out = self._cipher.encryptBlockRaw(self._prev)
@@ -52385,24 +52383,45 @@ exports.encrypt = function (self, chunk) {
   return xor(chunk, pad)
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
 /* 91 */
 /***/ (function(module, exports) {
 
-module.exports = {"aes-128-ecb":{"cipher":"AES","key":128,"iv":0,"mode":"ECB","type":"block"},"aes-192-ecb":{"cipher":"AES","key":192,"iv":0,"mode":"ECB","type":"block"},"aes-256-ecb":{"cipher":"AES","key":256,"iv":0,"mode":"ECB","type":"block"},"aes-128-cbc":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes-192-cbc":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes-256-cbc":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes128":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes192":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes256":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes-128-cfb":{"cipher":"AES","key":128,"iv":16,"mode":"CFB","type":"stream"},"aes-192-cfb":{"cipher":"AES","key":192,"iv":16,"mode":"CFB","type":"stream"},"aes-256-cfb":{"cipher":"AES","key":256,"iv":16,"mode":"CFB","type":"stream"},"aes-128-cfb8":{"cipher":"AES","key":128,"iv":16,"mode":"CFB8","type":"stream"},"aes-192-cfb8":{"cipher":"AES","key":192,"iv":16,"mode":"CFB8","type":"stream"},"aes-256-cfb8":{"cipher":"AES","key":256,"iv":16,"mode":"CFB8","type":"stream"},"aes-128-cfb1":{"cipher":"AES","key":128,"iv":16,"mode":"CFB1","type":"stream"},"aes-192-cfb1":{"cipher":"AES","key":192,"iv":16,"mode":"CFB1","type":"stream"},"aes-256-cfb1":{"cipher":"AES","key":256,"iv":16,"mode":"CFB1","type":"stream"},"aes-128-ofb":{"cipher":"AES","key":128,"iv":16,"mode":"OFB","type":"stream"},"aes-192-ofb":{"cipher":"AES","key":192,"iv":16,"mode":"OFB","type":"stream"},"aes-256-ofb":{"cipher":"AES","key":256,"iv":16,"mode":"OFB","type":"stream"},"aes-128-ctr":{"cipher":"AES","key":128,"iv":16,"mode":"CTR","type":"stream"},"aes-192-ctr":{"cipher":"AES","key":192,"iv":16,"mode":"CTR","type":"stream"},"aes-256-ctr":{"cipher":"AES","key":256,"iv":16,"mode":"CTR","type":"stream"},"aes-128-gcm":{"cipher":"AES","key":128,"iv":12,"mode":"GCM","type":"auth"},"aes-192-gcm":{"cipher":"AES","key":192,"iv":12,"mode":"GCM","type":"auth"},"aes-256-gcm":{"cipher":"AES","key":256,"iv":12,"mode":"GCM","type":"auth"}}
+function incr32 (iv) {
+  var len = iv.length
+  var item
+  while (len--) {
+    item = iv.readUInt8(len)
+    if (item === 255) {
+      iv.writeUInt8(0, len)
+    } else {
+      item++
+      iv.writeUInt8(item, len)
+      break
+    }
+  }
+}
+module.exports = incr32
+
 
 /***/ }),
 /* 92 */
+/***/ (function(module, exports) {
+
+module.exports = {"aes-128-ecb":{"cipher":"AES","key":128,"iv":0,"mode":"ECB","type":"block"},"aes-192-ecb":{"cipher":"AES","key":192,"iv":0,"mode":"ECB","type":"block"},"aes-256-ecb":{"cipher":"AES","key":256,"iv":0,"mode":"ECB","type":"block"},"aes-128-cbc":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes-192-cbc":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes-256-cbc":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes128":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes192":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes256":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes-128-cfb":{"cipher":"AES","key":128,"iv":16,"mode":"CFB","type":"stream"},"aes-192-cfb":{"cipher":"AES","key":192,"iv":16,"mode":"CFB","type":"stream"},"aes-256-cfb":{"cipher":"AES","key":256,"iv":16,"mode":"CFB","type":"stream"},"aes-128-cfb8":{"cipher":"AES","key":128,"iv":16,"mode":"CFB8","type":"stream"},"aes-192-cfb8":{"cipher":"AES","key":192,"iv":16,"mode":"CFB8","type":"stream"},"aes-256-cfb8":{"cipher":"AES","key":256,"iv":16,"mode":"CFB8","type":"stream"},"aes-128-cfb1":{"cipher":"AES","key":128,"iv":16,"mode":"CFB1","type":"stream"},"aes-192-cfb1":{"cipher":"AES","key":192,"iv":16,"mode":"CFB1","type":"stream"},"aes-256-cfb1":{"cipher":"AES","key":256,"iv":16,"mode":"CFB1","type":"stream"},"aes-128-ofb":{"cipher":"AES","key":128,"iv":16,"mode":"OFB","type":"stream"},"aes-192-ofb":{"cipher":"AES","key":192,"iv":16,"mode":"OFB","type":"stream"},"aes-256-ofb":{"cipher":"AES","key":256,"iv":16,"mode":"OFB","type":"stream"},"aes-128-ctr":{"cipher":"AES","key":128,"iv":16,"mode":"CTR","type":"stream"},"aes-192-ctr":{"cipher":"AES","key":192,"iv":16,"mode":"CTR","type":"stream"},"aes-256-ctr":{"cipher":"AES","key":256,"iv":16,"mode":"CTR","type":"stream"},"aes-128-gcm":{"cipher":"AES","key":128,"iv":12,"mode":"GCM","type":"auth"},"aes-192-gcm":{"cipher":"AES","key":192,"iv":12,"mode":"GCM","type":"auth"},"aes-256-gcm":{"cipher":"AES","key":256,"iv":12,"mode":"GCM","type":"auth"}}
+
+/***/ }),
+/* 93 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var aes = __webpack_require__(44)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var Transform = __webpack_require__(19)
 var inherits = __webpack_require__(0)
-var GHASH = __webpack_require__(181)
+var GHASH = __webpack_require__(182)
 var xor = __webpack_require__(33)
+var incr32 = __webpack_require__(91)
 
 function xorTest (a, b) {
   var out = 0
@@ -52416,13 +52435,39 @@ function xorTest (a, b) {
   return out
 }
 
+function calcIv (self, iv, ck) {
+  if (iv.length === 12) {
+    self._finID = Buffer.concat([iv, Buffer.from([0, 0, 0, 1])])
+    return Buffer.concat([iv, Buffer.from([0, 0, 0, 2])])
+  }
+  var ghash = new GHASH(ck)
+  var len = iv.length
+  var toPad = len % 16
+  ghash.update(iv)
+  if (toPad) {
+    toPad = 16 - toPad
+    ghash.update(Buffer.alloc(toPad, 0))
+  }
+  ghash.update(Buffer.alloc(8, 0))
+  var ivBits = len * 8
+  var tail = Buffer.alloc(8)
+  tail.writeUIntBE(ivBits, 0, 8)
+  ghash.update(tail)
+  self._finID = ghash.state
+  var out = Buffer.from(self._finID)
+  incr32(out)
+  return out
+}
 function StreamCipher (mode, key, iv, decrypt) {
   Transform.call(this)
 
-  this._finID = Buffer.concat([iv, Buffer.from([0, 0, 0, 1])])
-  iv = Buffer.concat([iv, Buffer.from([0, 0, 0, 2])])
+  var h = Buffer.alloc(4, 0)
 
   this._cipher = new aes.AES(key)
+  var ck = this._cipher.encryptBlock(h)
+  this._ghash = new GHASH(ck)
+  iv = calcIv(this, iv, ck)
+
   this._prev = Buffer.from(iv)
   this._cache = Buffer.allocUnsafe(0)
   this._secCache = Buffer.allocUnsafe(0)
@@ -52431,8 +52476,6 @@ function StreamCipher (mode, key, iv, decrypt) {
   this._len = 0
   this._mode = mode
 
-  var h = Buffer.alloc(4, 0)
-  this._ghash = new GHASH(this._cipher.encryptBlock(h))
   this._authTag = null
   this._called = false
 }
@@ -52492,11 +52535,11 @@ module.exports = StreamCipher
 
 
 /***/ }),
-/* 93 */
+/* 94 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var aes = __webpack_require__(44)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var Transform = __webpack_require__(19)
 var inherits = __webpack_require__(0)
 
@@ -52525,16 +52568,16 @@ module.exports = StreamCipher
 
 
 /***/ }),
-/* 94 */
+/* 95 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var randomBytes = __webpack_require__(30);
 module.exports = findPrime;
 findPrime.simpleSieve = simpleSieve;
 findPrime.fermatTest = fermatTest;
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var TWENTYFOUR = new BN(24);
-var MillerRabin = __webpack_require__(95);
+var MillerRabin = __webpack_require__(96);
 var millerRabin = new MillerRabin();
 var ONE = new BN(1);
 var TWO = new BN(2);
@@ -52636,11 +52679,11 @@ function findPrime(bits, gen) {
 
 
 /***/ }),
-/* 95 */
+/* 96 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var bn = __webpack_require__(3);
-var brorand = __webpack_require__(96);
+var bn = __webpack_require__(4);
+var brorand = __webpack_require__(97);
 
 function MillerRabin(rand) {
   this.rand = rand || new brorand.Rand();
@@ -52651,20 +52694,24 @@ MillerRabin.create = function create(rand) {
   return new MillerRabin(rand);
 };
 
-MillerRabin.prototype._rand = function _rand(n) {
+MillerRabin.prototype._randbelow = function _randbelow(n) {
   var len = n.bitLength();
-  var buf = this.rand.generate(Math.ceil(len / 8));
+  var min_bytes = Math.ceil(len / 8);
 
-  // Set low bits
-  buf[0] |= 3;
+  // Generage random bytes until a number less than n is found.
+  // This ensures that 0..n-1 have an equal probability of being selected.
+  do
+    var a = new bn(this.rand.generate(min_bytes));
+  while (a.cmp(n) >= 0);
 
-  // Mask high bits
-  var mask = len & 0x7;
-  if (mask !== 0)
-    buf[buf.length - 1] >>= 7 - mask;
+  return a;
+};
 
-  return new bn(buf);
-}
+MillerRabin.prototype._randrange = function _randrange(start, stop) {
+  // Generate a random number greater than or equal to start and less than stop.
+  var size = stop.sub(start);
+  return start.add(this._randbelow(size));
+};
 
 MillerRabin.prototype.test = function test(n, k, cb) {
   var len = n.bitLength();
@@ -52676,7 +52723,6 @@ MillerRabin.prototype.test = function test(n, k, cb) {
 
   // Find d and s, (n - 1) = (2 ^ s) * d;
   var n1 = n.subn(1);
-  var n2 = n1.subn(1);
   for (var s = 0; !n1.testn(s); s++) {}
   var d = n.shrn(s);
 
@@ -52684,7 +52730,7 @@ MillerRabin.prototype.test = function test(n, k, cb) {
 
   var prime = true;
   for (; k > 0; k--) {
-    var a = this._rand(n2);
+    var a = this._randrange(new bn(2), n1);
     if (cb)
       cb(a);
 
@@ -52718,14 +52764,13 @@ MillerRabin.prototype.getDivisor = function getDivisor(n, k) {
 
   // Find d and s, (n - 1) = (2 ^ s) * d;
   var n1 = n.subn(1);
-  var n2 = n1.subn(1);
   for (var s = 0; !n1.testn(s); s++) {}
   var d = n.shrn(s);
 
   var rn1 = n1.toRed(red);
 
   for (; k > 0; k--) {
-    var a = this._rand(n2);
+    var a = this._randrange(new bn(2), n1);
 
     var g = n.gcd(a);
     if (g.cmpn(1) !== 0)
@@ -52755,7 +52800,7 @@ MillerRabin.prototype.getDivisor = function getDivisor(n, k) {
 
 
 /***/ }),
-/* 96 */
+/* 97 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var r;
@@ -52813,7 +52858,7 @@ if (typeof self === 'object') {
 } else {
   // Node.js or Web worker with no crypto support
   try {
-    var crypto = __webpack_require__(192);
+    var crypto = __webpack_require__(193);
     if (typeof crypto.randomBytes !== 'function')
       throw new Error('Not supported');
 
@@ -52826,7 +52871,7 @@ if (typeof self === 'object') {
 
 
 /***/ }),
-/* 97 */
+/* 98 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52891,7 +52936,7 @@ utils.encode = function encode(arr, enc) {
 
 
 /***/ }),
-/* 98 */
+/* 99 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52947,7 +52992,7 @@ exports.g1_256 = g1_256;
 
 
 /***/ }),
-/* 99 */
+/* 100 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -52955,7 +53000,7 @@ exports.g1_256 = g1_256;
 
 var utils = __webpack_require__(17);
 var common = __webpack_require__(34);
-var shaCommon = __webpack_require__(98);
+var shaCommon = __webpack_require__(99);
 var assert = __webpack_require__(13);
 
 var sum32 = utils.sum32;
@@ -53059,7 +53104,7 @@ SHA256.prototype._digest = function digest(enc) {
 
 
 /***/ }),
-/* 100 */
+/* 101 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -53396,12 +53441,12 @@ function g1_512_lo(xh, xl) {
 
 
 /***/ }),
-/* 101 */
+/* 102 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
 var Reporter = __webpack_require__(36).Reporter;
-var Buffer = __webpack_require__(1).Buffer;
+var Buffer = __webpack_require__(2).Buffer;
 
 function DecoderBuffer(base, options) {
   Reporter.call(this, options);
@@ -53518,7 +53563,7 @@ EncoderBuffer.prototype.join = function join(out, offset) {
 
 
 /***/ }),
-/* 102 */
+/* 103 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var constants = exports;
@@ -53539,11 +53584,11 @@ constants._reverse = function reverse(map) {
   return res;
 };
 
-constants.der = __webpack_require__(224);
+constants.der = __webpack_require__(225);
 
 
 /***/ }),
-/* 103 */
+/* 104 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
@@ -53873,11 +53918,11 @@ function derDecodeLen(buf, primitive, fail) {
 
 
 /***/ }),
-/* 104 */
+/* 105 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
-var Buffer = __webpack_require__(1).Buffer;
+var Buffer = __webpack_require__(2).Buffer;
 
 var asn1 = __webpack_require__(35);
 var base = asn1.base;
@@ -54174,13 +54219,13 @@ function encodeTag(tag, primitive, cls, reporter) {
 
 
 /***/ }),
-/* 105 */
+/* 106 */
 /***/ (function(module, exports) {
 
 module.exports = {"1.3.132.0.10":"secp256k1","1.3.132.0.33":"p224","1.2.840.10045.3.1.1":"p192","1.2.840.10045.3.1.7":"p256","1.3.132.0.34":"p384","1.3.132.0.35":"p521"}
 
 /***/ }),
-/* 106 */
+/* 107 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(31);
@@ -54199,10 +54244,10 @@ function i2ops(c) {
   out.writeUInt32BE(c,0);
   return out;
 }
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 107 */
+/* 108 */
 /***/ (function(module, exports) {
 
 module.exports = function xor(a, b) {
@@ -54215,10 +54260,10 @@ module.exports = function xor(a, b) {
 };
 
 /***/ }),
-/* 108 */
+/* 109 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var bn = __webpack_require__(3);
+/* WEBPACK VAR INJECTION */(function(Buffer) {var bn = __webpack_require__(4);
 function withPublic(paddedMsg, key) {
   return new Buffer(paddedMsg
     .toRed(bn.mont(key.modulus))
@@ -54228,10 +54273,10 @@ function withPublic(paddedMsg, key) {
 }
 
 module.exports = withPublic;
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 109 */
+/* 110 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -54244,7 +54289,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var coreutils_1 = __webpack_require__(40);
 var disposable_1 = __webpack_require__(68);
 var domutils_1 = __webpack_require__(7);
@@ -55119,7 +55164,7 @@ var Private;
 
 
 /***/ }),
-/* 110 */
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -55150,8 +55195,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
-var commands_1 = __webpack_require__(109);
+var algorithm_1 = __webpack_require__(3);
+var commands_1 = __webpack_require__(110);
 var coreutils_1 = __webpack_require__(40);
 var domutils_1 = __webpack_require__(7);
 var keyboard_1 = __webpack_require__(69);
@@ -56624,7 +56669,7 @@ var Private;
 
 
 /***/ }),
-/* 111 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -56647,7 +56692,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var boxengine_1 = __webpack_require__(28);
@@ -58201,7 +58246,7 @@ var Private;
 
 
 /***/ }),
-/* 112 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58224,7 +58269,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
@@ -58899,7 +58944,7 @@ var Private;
 
 
 /***/ }),
-/* 113 */
+/* 114 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58922,7 +58967,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var layout_1 = __webpack_require__(22);
@@ -59174,7 +59219,7 @@ exports.StackedLayout = StackedLayout;
 
 
 /***/ }),
-/* 114 */
+/* 115 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59199,7 +59244,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |----------------------------------------------------------------------------*/
 var signaling_1 = __webpack_require__(9);
 var panel_1 = __webpack_require__(39);
-var stackedlayout_1 = __webpack_require__(113);
+var stackedlayout_1 = __webpack_require__(114);
 /**
  * A panel where visible widgets are stacked atop one another.
  *
@@ -59262,7 +59307,7 @@ var Private;
 
 
 /***/ }),
-/* 115 */
+/* 116 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59291,7 +59336,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var base_1 = __webpack_require__(11);
 var widget_core_1 = __webpack_require__(14);
 var utils_1 = __webpack_require__(15);
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var messaging_1 = __webpack_require__(6);
 var widgets_1 = __webpack_require__(25);
 var _ = __webpack_require__(5);
@@ -59490,7 +59535,7 @@ exports.VBoxView = VBoxView;
 
 
 /***/ }),
-/* 116 */
+/* 117 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59520,10 +59565,10 @@ var widget_core_1 = __webpack_require__(14);
 var widget_description_1 = __webpack_require__(20);
 var base_1 = __webpack_require__(11);
 var utils_1 = __webpack_require__(15);
-var d3_format_1 = __webpack_require__(117);
+var d3_format_1 = __webpack_require__(118);
 var _ = __webpack_require__(5);
 var $ = __webpack_require__(12);
-__webpack_require__(257);
+__webpack_require__(258);
 var IntModel = (function (_super) {
     __extends(IntModel, _super);
     function IntModel() {
@@ -60353,7 +60398,7 @@ exports.PlayView = PlayView;
 
 
 /***/ }),
-/* 117 */
+/* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 (function (global, factory) {
@@ -60860,7 +60905,7 @@ exports.PlayView = PlayView;
 }));
 
 /***/ }),
-/* 118 */
+/* 119 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -61602,7 +61647,7 @@ return $.widget;
 
 
 /***/ }),
-/* 119 */
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61647,7 +61692,7 @@ module.exports = {action: action};
 
 
 /***/ }),
-/* 120 */
+/* 121 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61658,7 +61703,7 @@ module.exports = {action: action};
 
 var VIEW_MIME_TYPE = "application/vnd.jupyter.widget-view+json"
 
-var htmlManagerVersion = __webpack_require__(275).version;
+var htmlManagerVersion = __webpack_require__(276).version;
 
 var embed_widgets = function() {
     return new Promise(function(resolve, reject) {
@@ -61747,7 +61792,7 @@ module.exports = {
 
 
 /***/ }),
-/* 121 */
+/* 122 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61768,9 +61813,9 @@ window['requirejs'].config({
 var MIME_TYPE = 'application/vnd.jupyter.widget-view+json';
 var CLASS_NAME = 'jupyter-widgets-view';
 
-var mngr = __webpack_require__(122);
-__webpack_require__(119);
+var mngr = __webpack_require__(123);
 __webpack_require__(120);
+__webpack_require__(121);
 var PhosphorWidget = __webpack_require__(25);
 
 /**
@@ -61873,7 +61918,7 @@ function register_events(Jupyter, events, outputarea) {
                 PhosphorWidget.Widget.attach(view.pWidget, node);
             });
         } else {
-            node.textContent = `A Jupyter widget could not be displayed because the widget state could not be found. This could happen if the kernel storing the widget is no longer available, or if the widget state was not saved in the notebook. You may be able to create the widget by running the appropriate cells.`;
+            node.textContent = 'A Jupyter widget could not be displayed because the widget state could not be found. This could happen if the kernel storing the widget is no longer available, or if the widget state was not saved in the notebook. You may be able to create the widget by running the appropriate cells.';
         }
     }
 
@@ -61901,9 +61946,9 @@ function load_ipython_extension () {
             "base/js/events",
             "notebook/js/outputarea"
         ], function(Jupyter, events, outputarea) {
-            __webpack_require__(277);
-            __webpack_require__(279);
-            __webpack_require__(281);
+            __webpack_require__(278);
+            __webpack_require__(280);
+            __webpack_require__(282);
             register_events(Jupyter, events, outputarea);
             resolve();
         });
@@ -61917,7 +61962,7 @@ module.exports = _.extend({
 
 
 /***/ }),
-/* 122 */
+/* 123 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -61930,9 +61975,9 @@ var Backbone = __webpack_require__(52);
 var base = __webpack_require__(11);
 var widgets = __webpack_require__(71);
 var outputWidgets = __webpack_require__(72);
-var saveState = __webpack_require__(119);
-var embedWidgets = __webpack_require__(120);
-var version = __webpack_require__(276).version;
+var saveState = __webpack_require__(120);
+var embedWidgets = __webpack_require__(121);
+var version = __webpack_require__(277).version;
 var output = __webpack_require__(72);
 
 var MIME_TYPE = 'application/vnd.jupyter.widget-view+json';
@@ -62219,7 +62264,7 @@ module.exports = {
 
 
 /***/ }),
-/* 123 */
+/* 124 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62643,7 +62688,7 @@ exports.ManagerBase = ManagerBase;
 
 
 /***/ }),
-/* 124 */
+/* 125 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62768,7 +62813,7 @@ exports.set = set;
 
 
 /***/ }),
-/* 125 */
+/* 126 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -62937,7 +62982,7 @@ exports.NativeView = NativeView;
 
 
 /***/ }),
-/* 126 */
+/* 127 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64222,7 +64267,7 @@ var ArrayExt;
 
 
 /***/ }),
-/* 127 */
+/* 128 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64324,7 +64369,7 @@ exports.ChainIterator = ChainIterator;
 
 
 /***/ }),
-/* 128 */
+/* 129 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64387,7 +64432,7 @@ exports.EmptyIterator = EmptyIterator;
 
 
 /***/ }),
-/* 129 */
+/* 130 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64481,7 +64526,7 @@ exports.FilterIterator = FilterIterator;
 
 
 /***/ }),
-/* 130 */
+/* 131 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64675,7 +64720,7 @@ exports.minmax = minmax;
 
 
 /***/ }),
-/* 131 */
+/* 132 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64765,7 +64810,7 @@ exports.MapIterator = MapIterator;
 
 
 /***/ }),
-/* 132 */
+/* 133 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64884,7 +64929,7 @@ var Private;
 
 
 /***/ }),
-/* 133 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -64942,7 +64987,7 @@ exports.reduce = reduce;
 
 
 /***/ }),
-/* 134 */
+/* 135 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65039,7 +65084,7 @@ exports.RepeatIterator = RepeatIterator;
 
 
 /***/ }),
-/* 135 */
+/* 136 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65125,7 +65170,7 @@ exports.RetroArrayIterator = RetroArrayIterator;
 
 
 /***/ }),
-/* 136 */
+/* 137 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65203,7 +65248,7 @@ exports.topologicSort = topologicSort;
 
 
 /***/ }),
-/* 137 */
+/* 138 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65292,7 +65337,7 @@ exports.StrideIterator = StrideIterator;
 
 
 /***/ }),
-/* 138 */
+/* 139 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65470,7 +65515,7 @@ var StringExt;
 
 
 /***/ }),
-/* 139 */
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65555,7 +65600,7 @@ exports.TakeIterator = TakeIterator;
 
 
 /***/ }),
-/* 140 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65648,7 +65693,7 @@ exports.ZipIterator = ZipIterator;
 
 
 /***/ }),
-/* 141 */
+/* 142 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65780,7 +65825,7 @@ var ElementExt;
 
 
 /***/ }),
-/* 142 */
+/* 143 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -65818,7 +65863,7 @@ var Platform;
 
 
 /***/ }),
-/* 143 */
+/* 144 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -66055,7 +66100,7 @@ var Private;
 
 
 /***/ }),
-/* 144 */
+/* 145 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
@@ -66248,7 +66293,7 @@ var Private;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18), __webpack_require__(21)))
 
 /***/ }),
-/* 145 */
+/* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -66264,11 +66309,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-__export(__webpack_require__(146));
+__export(__webpack_require__(147));
 
 
 /***/ }),
-/* 146 */
+/* 147 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -66281,7 +66326,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 /**
  * A generic doubly-linked list.
  */
@@ -66885,7 +66930,7 @@ var Private;
 
 
 /***/ }),
-/* 147 */
+/* 148 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -67070,7 +67115,7 @@ var Private;
 
 
 /***/ }),
-/* 148 */
+/* 149 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -67101,9 +67146,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var coreutils_1 = __webpack_require__(40);
-var commands_1 = __webpack_require__(109);
+var commands_1 = __webpack_require__(110);
 var domutils_1 = __webpack_require__(7);
 var virtualdom_1 = __webpack_require__(47);
 var widget_1 = __webpack_require__(8);
@@ -68092,7 +68137,7 @@ var Private;
 
 
 /***/ }),
-/* 149 */
+/* 150 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68267,7 +68312,7 @@ var JSONExt;
 
 
 /***/ }),
-/* 150 */
+/* 151 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68368,7 +68413,7 @@ exports.MimeData = MimeData;
 
 
 /***/ }),
-/* 151 */
+/* 152 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68423,7 +68468,7 @@ exports.PromiseDelegate = PromiseDelegate;
 
 
 /***/ }),
-/* 152 */
+/* 153 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68433,7 +68478,7 @@ exports.randomBytes = exports.rng = exports.pseudoRandomBytes = exports.prng = _
 exports.createHash = exports.Hash = __webpack_require__(31)
 exports.createHmac = exports.Hmac = __webpack_require__(84)
 
-var algos = __webpack_require__(169)
+var algos = __webpack_require__(170)
 var algoKeys = Object.keys(algos)
 var hashes = ['sha1', 'sha224', 'sha256', 'sha384', 'sha512', 'md5', 'rmd160'].concat(algoKeys)
 exports.getHashes = function () {
@@ -68444,7 +68489,7 @@ var p = __webpack_require__(86)
 exports.pbkdf2 = p.pbkdf2
 exports.pbkdf2Sync = p.pbkdf2Sync
 
-var aes = __webpack_require__(171)
+var aes = __webpack_require__(172)
 
 exports.Cipher = aes.Cipher
 exports.createCipher = aes.createCipher
@@ -68457,7 +68502,7 @@ exports.createDecipheriv = aes.createDecipheriv
 exports.getCiphers = aes.getCiphers
 exports.listCiphers = aes.listCiphers
 
-var dh = __webpack_require__(190)
+var dh = __webpack_require__(191)
 
 exports.DiffieHellmanGroup = dh.DiffieHellmanGroup
 exports.createDiffieHellmanGroup = dh.createDiffieHellmanGroup
@@ -68465,16 +68510,16 @@ exports.getDiffieHellman = dh.getDiffieHellman
 exports.createDiffieHellman = dh.createDiffieHellman
 exports.DiffieHellman = dh.DiffieHellman
 
-var sign = __webpack_require__(195)
+var sign = __webpack_require__(196)
 
 exports.createSign = sign.createSign
 exports.Sign = sign.Sign
 exports.createVerify = sign.createVerify
 exports.Verify = sign.Verify
 
-exports.createECDH = __webpack_require__(233)
+exports.createECDH = __webpack_require__(234)
 
-var publicEncrypt = __webpack_require__(234)
+var publicEncrypt = __webpack_require__(235)
 
 exports.publicEncrypt = publicEncrypt.publicEncrypt
 exports.privateEncrypt = publicEncrypt.privateEncrypt
@@ -68522,7 +68567,7 @@ exports.constants = {
 
 
 /***/ }),
-/* 153 */
+/* 154 */
 /***/ (function(module, exports) {
 
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -68612,7 +68657,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
 
 
 /***/ }),
-/* 154 */
+/* 155 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68647,10 +68692,10 @@ module.exports = function hash (buf, fn) {
   return buf
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 155 */
+/* 156 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68738,16 +68783,16 @@ HashBase.prototype._digest = function () {
 
 module.exports = HashBase
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 156 */
+/* 157 */
 /***/ (function(module, exports) {
 
 /* (ignored) */
 
 /***/ }),
-/* 157 */
+/* 158 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68757,7 +68802,7 @@ module.exports = HashBase
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Buffer = __webpack_require__(4).Buffer;
+var Buffer = __webpack_require__(1).Buffer;
 /*</replacement>*/
 
 function copyBuffer(src, target, offset) {
@@ -68827,7 +68872,7 @@ module.exports = function () {
 }();
 
 /***/ }),
-/* 158 */
+/* 159 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global) {
@@ -68901,7 +68946,7 @@ function config (name) {
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18)))
 
 /***/ }),
-/* 159 */
+/* 160 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -68954,38 +68999,38 @@ PassThrough.prototype._transform = function (chunk, encoding, cb) {
 };
 
 /***/ }),
-/* 160 */
+/* 161 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(60);
 
 
 /***/ }),
-/* 161 */
+/* 162 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(23);
 
 
 /***/ }),
-/* 162 */
+/* 163 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(59).Transform
 
 
 /***/ }),
-/* 163 */
+/* 164 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(59).PassThrough
 
 
 /***/ }),
-/* 164 */
+/* 165 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {/*
+/*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-0, as defined
  * in FIPS PUB 180-1
  * This source code is derived from sha1.js of the same repository.
@@ -68995,6 +69040,7 @@ module.exports = __webpack_require__(59).PassThrough
 
 var inherits = __webpack_require__(0)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var K = [
   0x5a827999, 0x6ed9eba1, 0x8f1bbcdc | 0, 0xca62c1d6 | 0
@@ -69066,7 +69112,7 @@ Sha.prototype._update = function (M) {
 }
 
 Sha.prototype._hash = function () {
-  var H = new Buffer(20)
+  var H = Buffer.allocUnsafe(20)
 
   H.writeInt32BE(this._a | 0, 0)
   H.writeInt32BE(this._b | 0, 4)
@@ -69079,13 +69125,12 @@ Sha.prototype._hash = function () {
 
 module.exports = Sha
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
-/* 165 */
+/* 166 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {/*
+/*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-1, as defined
  * in FIPS PUB 180-1
  * Version 2.1a Copyright Paul Johnston 2000 - 2002.
@@ -69096,6 +69141,7 @@ module.exports = Sha
 
 var inherits = __webpack_require__(0)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var K = [
   0x5a827999, 0x6ed9eba1, 0x8f1bbcdc | 0, 0xca62c1d6 | 0
@@ -69171,7 +69217,7 @@ Sha1.prototype._update = function (M) {
 }
 
 Sha1.prototype._hash = function () {
-  var H = new Buffer(20)
+  var H = Buffer.allocUnsafe(20)
 
   H.writeInt32BE(this._a | 0, 0)
   H.writeInt32BE(this._b | 0, 4)
@@ -69184,13 +69230,12 @@ Sha1.prototype._hash = function () {
 
 module.exports = Sha1
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
-/* 166 */
+/* 167 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {/**
+/**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
  * Version 2.2-beta Copyright Angel Marin, Paul Johnston 2000 - 2009.
@@ -69201,6 +69246,7 @@ module.exports = Sha1
 var inherits = __webpack_require__(0)
 var Sha256 = __webpack_require__(82)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var W = new Array(64)
 
@@ -69228,7 +69274,7 @@ Sha224.prototype.init = function () {
 }
 
 Sha224.prototype._hash = function () {
-  var H = new Buffer(28)
+  var H = Buffer.allocUnsafe(28)
 
   H.writeInt32BE(this._a, 0)
   H.writeInt32BE(this._b, 4)
@@ -69243,15 +69289,15 @@ Sha224.prototype._hash = function () {
 
 module.exports = Sha224
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
-/* 167 */
+/* 168 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(0)
+var inherits = __webpack_require__(0)
 var SHA512 = __webpack_require__(83)
 var Hash = __webpack_require__(27)
+var Buffer = __webpack_require__(1).Buffer
 
 var W = new Array(160)
 
@@ -69287,7 +69333,7 @@ Sha384.prototype.init = function () {
 }
 
 Sha384.prototype._hash = function () {
-  var H = new Buffer(48)
+  var H = Buffer.allocUnsafe(48)
 
   function writeInt64BE (h, l, offset) {
     H.writeInt32BE(h, offset)
@@ -69306,16 +69352,15 @@ Sha384.prototype._hash = function () {
 
 module.exports = Sha384
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
-/* 168 */
+/* 169 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var inherits = __webpack_require__(0)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 
 var Base = __webpack_require__(19)
 
@@ -69362,20 +69407,20 @@ module.exports = Hmac
 
 
 /***/ }),
-/* 169 */
+/* 170 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(85)
 
 
 /***/ }),
-/* 170 */
+/* 171 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {var checkParameters = __webpack_require__(87)
 var defaultEncoding = __webpack_require__(88)
 var sync = __webpack_require__(89)
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 
 var ZERO_BUF
 var subtle = global.crypto && global.crypto.subtle
@@ -69474,13 +69519,13 @@ module.exports = function (password, salt, iterations, keylen, digest, callback)
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18), __webpack_require__(21)))
 
 /***/ }),
-/* 171 */
+/* 172 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var ebtk = __webpack_require__(43)
 var aes = __webpack_require__(63)
-var DES = __webpack_require__(183)
-var desModes = __webpack_require__(189)
+var DES = __webpack_require__(184)
+var desModes = __webpack_require__(190)
 var aesModes = __webpack_require__(64)
 function createCipher (suite, password) {
   var keyLen, ivLen
@@ -69553,13 +69598,13 @@ exports.listCiphers = exports.getCiphers = getCiphers
 
 
 /***/ }),
-/* 172 */
+/* 173 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(Buffer) {
 var inherits = __webpack_require__(0)
-var HashBase = __webpack_require__(173)
+var HashBase = __webpack_require__(174)
 
 var ARRAY16 = new Array(16)
 
@@ -69703,15 +69748,15 @@ function fnI (a, b, c, d, m, k, s) {
 
 module.exports = MD5
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 173 */
+/* 174 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var Transform = __webpack_require__(41).Transform
 var inherits = __webpack_require__(0)
 
@@ -69808,13 +69853,13 @@ module.exports = HashBase
 
 
 /***/ }),
-/* 174 */
+/* 175 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var MODES = __webpack_require__(64)
-var AuthCipher = __webpack_require__(92)
-var Buffer = __webpack_require__(4).Buffer
-var StreamCipher = __webpack_require__(93)
+var AuthCipher = __webpack_require__(93)
+var Buffer = __webpack_require__(1).Buffer
+var StreamCipher = __webpack_require__(94)
 var Transform = __webpack_require__(19)
 var aes = __webpack_require__(44)
 var ebtk = __webpack_require__(43)
@@ -69904,7 +69949,7 @@ function createCipheriv (suite, password, iv) {
   if (password.length !== config.key / 8) throw new TypeError('invalid key length ' + password.length)
 
   if (typeof iv === 'string') iv = Buffer.from(iv)
-  if (iv.length !== config.iv) throw new TypeError('invalid iv length ' + iv.length)
+  if (config.mode !== 'GCM' && iv.length !== config.iv) throw new TypeError('invalid iv length ' + iv.length)
 
   if (config.type === 'stream') {
     return new StreamCipher(config.module, password, iv)
@@ -69928,7 +69973,7 @@ exports.createCipher = createCipher
 
 
 /***/ }),
-/* 175 */
+/* 176 */
 /***/ (function(module, exports) {
 
 exports.encrypt = function (self, block) {
@@ -69941,7 +69986,7 @@ exports.decrypt = function (self, block) {
 
 
 /***/ }),
-/* 176 */
+/* 177 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var xor = __webpack_require__(33)
@@ -69964,10 +70009,10 @@ exports.decrypt = function (self, block) {
 
 
 /***/ }),
-/* 177 */
+/* 178 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var xor = __webpack_require__(33)
 
 function encryptStart (self, data, decrypt) {
@@ -70003,10 +70048,12 @@ exports.encrypt = function (self, data, decrypt) {
 
 
 /***/ }),
-/* 178 */
+/* 179 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {function encryptByte (self, byteParam, decrypt) {
+var Buffer = __webpack_require__(1).Buffer
+
+function encryptByte (self, byteParam, decrypt) {
   var pad = self._cipher.encryptBlock(self._prev)
   var out = pad[0] ^ byteParam
 
@@ -70030,13 +70077,12 @@ exports.encrypt = function (self, chunk, decrypt) {
   return out
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ }),
-/* 179 */
+/* 180 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 
 function encryptByte (self, byteParam, decrypt) {
   var pad
@@ -70081,7 +70127,7 @@ exports.encrypt = function (self, chunk, decrypt) {
 
 
 /***/ }),
-/* 180 */
+/* 181 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var xor = __webpack_require__(33)
@@ -70101,13 +70147,13 @@ exports.encrypt = function (self, chunk) {
   return xor(chunk, pad)
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 181 */
+/* 182 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Buffer = __webpack_require__(4).Buffer
+var Buffer = __webpack_require__(1).Buffer
 var ZEROES = Buffer.alloc(16, 0)
 
 function toArray (buf) {
@@ -70199,13 +70245,13 @@ module.exports = GHASH
 
 
 /***/ }),
-/* 182 */
+/* 183 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var AuthCipher = __webpack_require__(92)
-var Buffer = __webpack_require__(4).Buffer
+var AuthCipher = __webpack_require__(93)
+var Buffer = __webpack_require__(1).Buffer
 var MODES = __webpack_require__(64)
-var StreamCipher = __webpack_require__(93)
+var StreamCipher = __webpack_require__(94)
 var Transform = __webpack_require__(19)
 var aes = __webpack_require__(44)
 var ebtk = __webpack_require__(43)
@@ -70299,7 +70345,7 @@ function createDecipheriv (suite, password, iv) {
   if (!config) throw new TypeError('invalid suite type')
 
   if (typeof iv === 'string') iv = Buffer.from(iv)
-  if (iv.length !== config.iv) throw new TypeError('invalid iv length ' + iv.length)
+  if (config.mode !== 'GCM' && iv.length !== config.iv) throw new TypeError('invalid iv length ' + iv.length)
 
   if (typeof password === 'string') password = Buffer.from(password)
   if (password.length !== config.key / 8) throw new TypeError('invalid key length ' + password.length)
@@ -70326,7 +70372,7 @@ exports.createDecipheriv = createDecipheriv
 
 
 /***/ }),
-/* 183 */
+/* 184 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var CipherBase = __webpack_require__(19)
@@ -70373,10 +70419,10 @@ DES.prototype._final = function () {
   return new Buffer(this._des.final())
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 184 */
+/* 185 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -70639,7 +70685,7 @@ exports.padSplit = function padSplit(num, size, group) {
 
 
 /***/ }),
-/* 185 */
+/* 186 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -70787,7 +70833,7 @@ Cipher.prototype._finalDecrypt = function _finalDecrypt() {
 
 
 /***/ }),
-/* 186 */
+/* 187 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -70937,7 +70983,7 @@ DES.prototype._decrypt = function _decrypt(state, lStart, rStart, out, off) {
 
 
 /***/ }),
-/* 187 */
+/* 188 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -71009,7 +71055,7 @@ proto._update = function _update(inp, inOff, out, outOff) {
 
 
 /***/ }),
-/* 188 */
+/* 189 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -71071,7 +71117,7 @@ EDE.prototype._unpad = DES.prototype._unpad;
 
 
 /***/ }),
-/* 189 */
+/* 190 */
 /***/ (function(module, exports) {
 
 exports['des-ecb'] = {
@@ -71101,13 +71147,13 @@ exports['des-ede'] = {
 
 
 /***/ }),
-/* 190 */
+/* 191 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var generatePrime = __webpack_require__(94)
-var primes = __webpack_require__(193)
+/* WEBPACK VAR INJECTION */(function(Buffer) {var generatePrime = __webpack_require__(95)
+var primes = __webpack_require__(194)
 
-var DH = __webpack_require__(194)
+var DH = __webpack_require__(195)
 
 function getDiffieHellman (mod) {
   var prime = new Buffer(primes[mod].prime, 'hex')
@@ -71147,13 +71193,7 @@ function createDiffieHellman (prime, enc, generator, genc) {
 exports.DiffieHellmanGroup = exports.createDiffieHellmanGroup = exports.getDiffieHellman = getDiffieHellman
 exports.createDiffieHellman = exports.DiffieHellman = createDiffieHellman
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
-
-/***/ }),
-/* 191 */
-/***/ (function(module, exports) {
-
-/* (ignored) */
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
 /* 192 */
@@ -71165,21 +71205,27 @@ exports.createDiffieHellman = exports.DiffieHellman = createDiffieHellman
 /* 193 */
 /***/ (function(module, exports) {
 
-module.exports = {"modp1":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a3620ffffffffffffffff"},"modp2":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece65381ffffffffffffffff"},"modp5":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff"},"modp14":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aacaa68ffffffffffffffff"},"modp15":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a93ad2caffffffffffffffff"},"modp16":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c934063199ffffffffffffffff"},"modp17":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dcc4024ffffffffffffffff"},"modp18":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dbe115974a3926f12fee5e438777cb6a932df8cd8bec4d073b931ba3bc832b68d9dd300741fa7bf8afc47ed2576f6936ba424663aab639c5ae4f5683423b4742bf1c978238f16cbe39d652de3fdb8befc848ad922222e04a4037c0713eb57a81a23f0c73473fc646cea306b4bcbc8862f8385ddfa9d4b7fa2c087e879683303ed5bdd3a062b3cf5b3a278a66d2a13f83f44f82ddf310ee074ab6a364597e899a0255dc164f31cc50846851df9ab48195ded7ea1b1d510bd7ee74d73faf36bc31ecfa268359046f4eb879f924009438b481c6cd7889a002ed5ee382bc9190da6fc026e479558e4475677e9aa9e3050e2765694dfc81f56e880b96e7160c980dd98edd3dfffffffffffffffff"}}
+/* (ignored) */
 
 /***/ }),
 /* 194 */
+/***/ (function(module, exports) {
+
+module.exports = {"modp1":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a3620ffffffffffffffff"},"modp2":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece65381ffffffffffffffff"},"modp5":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff"},"modp14":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aacaa68ffffffffffffffff"},"modp15":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a93ad2caffffffffffffffff"},"modp16":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c934063199ffffffffffffffff"},"modp17":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dcc4024ffffffffffffffff"},"modp18":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dbe115974a3926f12fee5e438777cb6a932df8cd8bec4d073b931ba3bc832b68d9dd300741fa7bf8afc47ed2576f6936ba424663aab639c5ae4f5683423b4742bf1c978238f16cbe39d652de3fdb8befc848ad922222e04a4037c0713eb57a81a23f0c73473fc646cea306b4bcbc8862f8385ddfa9d4b7fa2c087e879683303ed5bdd3a062b3cf5b3a278a66d2a13f83f44f82ddf310ee074ab6a364597e899a0255dc164f31cc50846851df9ab48195ded7ea1b1d510bd7ee74d73faf36bc31ecfa268359046f4eb879f924009438b481c6cd7889a002ed5ee382bc9190da6fc026e479558e4475677e9aa9e3050e2765694dfc81f56e880b96e7160c980dd98edd3dfffffffffffffffff"}}
+
+/***/ }),
+/* 195 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(Buffer) {var BN = __webpack_require__(3);
-var MillerRabin = __webpack_require__(95);
+/* WEBPACK VAR INJECTION */(function(Buffer) {var BN = __webpack_require__(4);
+var MillerRabin = __webpack_require__(96);
 var millerRabin = new MillerRabin();
 var TWENTYFOUR = new BN(24);
 var ELEVEN = new BN(11);
 var TEN = new BN(10);
 var THREE = new BN(3);
 var SEVEN = new BN(7);
-var primes = __webpack_require__(94);
+var primes = __webpack_require__(95);
 var randomBytes = __webpack_require__(30);
 module.exports = DH;
 
@@ -71336,17 +71382,17 @@ function formatReturnValue(bn, enc) {
   }
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 195 */
+/* 196 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(31)
 var stream = __webpack_require__(41)
 var inherits = __webpack_require__(0)
-var sign = __webpack_require__(196)
-var verify = __webpack_require__(232)
+var sign = __webpack_require__(197)
+var verify = __webpack_require__(233)
 
 var algorithms = __webpack_require__(85)
 Object.keys(algorithms).forEach(function (key) {
@@ -71434,19 +71480,19 @@ module.exports = {
   createVerify: createVerify
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 196 */
+/* 197 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {// much of this based on https://github.com/indutny/self-signed/blob/gh-pages/lib/rsa.js
 var createHmac = __webpack_require__(84)
 var crt = __webpack_require__(66)
 var EC = __webpack_require__(10).ec
-var BN = __webpack_require__(3)
+var BN = __webpack_require__(4)
 var parseKeys = __webpack_require__(46)
-var curves = __webpack_require__(105)
+var curves = __webpack_require__(106)
 
 function sign (hash, key, hashType, signType, tag) {
   var priv = parseKeys(key)
@@ -71586,25 +71632,25 @@ module.exports = sign
 module.exports.getKey = getKey
 module.exports.makeKey = makeKey
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 197 */
+/* 198 */
 /***/ (function(module, exports) {
 
 module.exports = {"_args":[[{"raw":"elliptic@^6.0.0","scope":null,"escapedName":"elliptic","name":"elliptic","rawSpec":"^6.0.0","spec":">=6.0.0 <7.0.0","type":"range"},"/Users/jgrout6/projects/app/ipywidgets/node_modules/browserify-sign"]],"_from":"elliptic@>=6.0.0 <7.0.0","_id":"elliptic@6.4.0","_inCache":true,"_location":"/elliptic","_nodeVersion":"7.0.0","_npmOperationalInternal":{"host":"packages-18-east.internal.npmjs.com","tmp":"tmp/elliptic-6.4.0.tgz_1487798866428_0.30510620190761983"},"_npmUser":{"name":"indutny","email":"fedor@indutny.com"},"_npmVersion":"3.10.8","_phantomChildren":{},"_requested":{"raw":"elliptic@^6.0.0","scope":null,"escapedName":"elliptic","name":"elliptic","rawSpec":"^6.0.0","spec":">=6.0.0 <7.0.0","type":"range"},"_requiredBy":["/browserify-sign","/create-ecdh"],"_resolved":"https://registry.npmjs.org/elliptic/-/elliptic-6.4.0.tgz","_shasum":"cac9af8762c85836187003c8dfe193e5e2eae5df","_shrinkwrap":null,"_spec":"elliptic@^6.0.0","_where":"/Users/jgrout6/projects/app/ipywidgets/node_modules/browserify-sign","author":{"name":"Fedor Indutny","email":"fedor@indutny.com"},"bugs":{"url":"https://github.com/indutny/elliptic/issues"},"dependencies":{"bn.js":"^4.4.0","brorand":"^1.0.1","hash.js":"^1.0.0","hmac-drbg":"^1.0.0","inherits":"^2.0.1","minimalistic-assert":"^1.0.0","minimalistic-crypto-utils":"^1.0.0"},"description":"EC cryptography","devDependencies":{"brfs":"^1.4.3","coveralls":"^2.11.3","grunt":"^0.4.5","grunt-browserify":"^5.0.0","grunt-cli":"^1.2.0","grunt-contrib-connect":"^1.0.0","grunt-contrib-copy":"^1.0.0","grunt-contrib-uglify":"^1.0.1","grunt-mocha-istanbul":"^3.0.1","grunt-saucelabs":"^8.6.2","istanbul":"^0.4.2","jscs":"^2.9.0","jshint":"^2.6.0","mocha":"^2.1.0"},"directories":{},"dist":{"shasum":"cac9af8762c85836187003c8dfe193e5e2eae5df","tarball":"https://registry.npmjs.org/elliptic/-/elliptic-6.4.0.tgz"},"files":["lib"],"gitHead":"6b0d2b76caae91471649c8e21f0b1d3ba0f96090","homepage":"https://github.com/indutny/elliptic","keywords":["EC","Elliptic","curve","Cryptography"],"license":"MIT","main":"lib/elliptic.js","maintainers":[{"name":"indutny","email":"fedor@indutny.com"}],"name":"elliptic","optionalDependencies":{},"readme":"# Elliptic [![Build Status](https://secure.travis-ci.org/indutny/elliptic.png)](http://travis-ci.org/indutny/elliptic) [![Coverage Status](https://coveralls.io/repos/indutny/elliptic/badge.svg?branch=master&service=github)](https://coveralls.io/github/indutny/elliptic?branch=master) [![Code Climate](https://codeclimate.com/github/indutny/elliptic/badges/gpa.svg)](https://codeclimate.com/github/indutny/elliptic)\n\n[![Saucelabs Test Status](https://saucelabs.com/browser-matrix/gh-indutny-elliptic.svg)](https://saucelabs.com/u/gh-indutny-elliptic)\n\nFast elliptic-curve cryptography in a plain javascript implementation.\n\nNOTE: Please take a look at http://safecurves.cr.yp.to/ before choosing a curve\nfor your cryptography operations.\n\n## Incentive\n\nECC is much slower than regular RSA cryptography, the JS implementations are\neven more slower.\n\n## Benchmarks\n\n```bash\n$ node benchmarks/index.js\nBenchmarking: sign\nelliptic#sign x 262 ops/sec ±0.51% (177 runs sampled)\neccjs#sign x 55.91 ops/sec ±0.90% (144 runs sampled)\n------------------------\nFastest is elliptic#sign\n========================\nBenchmarking: verify\nelliptic#verify x 113 ops/sec ±0.50% (166 runs sampled)\neccjs#verify x 48.56 ops/sec ±0.36% (125 runs sampled)\n------------------------\nFastest is elliptic#verify\n========================\nBenchmarking: gen\nelliptic#gen x 294 ops/sec ±0.43% (176 runs sampled)\neccjs#gen x 62.25 ops/sec ±0.63% (129 runs sampled)\n------------------------\nFastest is elliptic#gen\n========================\nBenchmarking: ecdh\nelliptic#ecdh x 136 ops/sec ±0.85% (156 runs sampled)\n------------------------\nFastest is elliptic#ecdh\n========================\n```\n\n## API\n\n### ECDSA\n\n```javascript\nvar EC = require('elliptic').ec;\n\n// Create and initialize EC context\n// (better do it once and reuse it)\nvar ec = new EC('secp256k1');\n\n// Generate keys\nvar key = ec.genKeyPair();\n\n// Sign message (must be an array, or it'll be treated as a hex sequence)\nvar msg = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];\nvar signature = key.sign(msg);\n\n// Export DER encoded signature in Array\nvar derSign = signature.toDER();\n\n// Verify signature\nconsole.log(key.verify(msg, derSign));\n\n// CHECK WITH NO PRIVATE KEY\n\n// Public key as '04 + x + y'\nvar pub = '04bb1fa3...';\n\n// Signature MUST be either:\n// 1) hex-string of DER-encoded signature; or\n// 2) DER-encoded signature as buffer; or\n// 3) object with two hex-string properties (r and s)\n\nvar signature = 'b102ac...'; // case 1\nvar signature = new Buffer('...'); // case 2\nvar signature = { r: 'b1fc...', s: '9c42...' }; // case 3\n\n// Import public key\nvar key = ec.keyFromPublic(pub, 'hex');\n\n// Verify signature\nconsole.log(key.verify(msg, signature));\n```\n\n### EdDSA\n\n```javascript\nvar EdDSA = require('elliptic').eddsa;\n\n// Create and initialize EdDSA context\n// (better do it once and reuse it)\nvar ec = new EdDSA('ed25519');\n\n// Create key pair from secret\nvar key = ec.keyFromSecret('693e3c...'); // hex string, array or Buffer\n\n// Sign message (must be an array, or it'll be treated as a hex sequence)\nvar msg = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];\nvar signature = key.sign(msg).toHex();\n\n// Verify signature\nconsole.log(key.verify(msg, signature));\n\n// CHECK WITH NO PRIVATE KEY\n\n// Import public key\nvar pub = '0a1af638...';\nvar key = ec.keyFromPublic(pub, 'hex');\n\n// Verify signature\nvar signature = '70bed1...';\nconsole.log(key.verify(msg, signature));\n```\n\n### ECDH\n\n```javascript\nvar EC = require('elliptic').ec;\nvar ec = new EC('curve25519');\n\n// Generate keys\nvar key1 = ec.genKeyPair();\nvar key2 = ec.genKeyPair();\n\nvar shared1 = key1.derive(key2.getPublic());\nvar shared2 = key2.derive(key1.getPublic());\n\nconsole.log('Both shared secrets are BN instances');\nconsole.log(shared1.toString(16));\nconsole.log(shared2.toString(16));\n```\n\nthree and more members:\n```javascript\nvar EC = require('elliptic').ec;\nvar ec = new EC('curve25519');\n\nvar A = ec.genKeyPair();\nvar B = ec.genKeyPair();\nvar C = ec.genKeyPair();\n\nvar AB = A.getPublic().mul(B.getPrivate())\nvar BC = B.getPublic().mul(C.getPrivate())\nvar CA = C.getPublic().mul(A.getPrivate())\n\nvar ABC = AB.mul(C.getPrivate())\nvar BCA = BC.mul(A.getPrivate())\nvar CAB = CA.mul(B.getPrivate())\n\nconsole.log(ABC.getX().toString(16))\nconsole.log(BCA.getX().toString(16))\nconsole.log(CAB.getX().toString(16))\n```\n\nNOTE: `.derive()` returns a [BN][1] instance.\n\n## Supported curves\n\nElliptic.js support following curve types:\n\n* Short Weierstrass\n* Montgomery\n* Edwards\n* Twisted Edwards\n\nFollowing curve 'presets' are embedded into the library:\n\n* `secp256k1`\n* `p192`\n* `p224`\n* `p256`\n* `p384`\n* `p521`\n* `curve25519`\n* `ed25519`\n\nNOTE: That `curve25519` could not be used for ECDSA, use `ed25519` instead.\n\n### Implementation details\n\nECDSA is using deterministic `k` value generation as per [RFC6979][0]. Most of\nthe curve operations are performed on non-affine coordinates (either projective\nor extended), various windowing techniques are used for different cases.\n\nAll operations are performed in reduction context using [bn.js][1], hashing is\nprovided by [hash.js][2]\n\n### Related projects\n\n* [eccrypto][3]: isomorphic implementation of ECDSA, ECDH and ECIES for both\n  browserify and node (uses `elliptic` for browser and [secp256k1-node][4] for\n  node)\n\n#### LICENSE\n\nThis software is licensed under the MIT License.\n\nCopyright Fedor Indutny, 2014.\n\nPermission is hereby granted, free of charge, to any person obtaining a\ncopy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to permit\npersons to whom the Software is furnished to do so, subject to the\nfollowing conditions:\n\nThe above copyright notice and this permission notice shall be included\nin all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS\nOR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN\nNO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,\nDAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR\nOTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE\nUSE OR OTHER DEALINGS IN THE SOFTWARE.\n\n[0]: http://tools.ietf.org/html/rfc6979\n[1]: https://github.com/indutny/bn.js\n[2]: https://github.com/indutny/hash.js\n[3]: https://github.com/bitchan/eccrypto\n[4]: https://github.com/wanderer/secp256k1-node\n","readmeFilename":"README.md","repository":{"type":"git","url":"git+ssh://git@github.com/indutny/elliptic.git"},"scripts":{"jscs":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","jshint":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","lint":"npm run jscs && npm run jshint","test":"npm run lint && npm run unit","unit":"istanbul test _mocha --reporter=spec test/index.js","version":"grunt dist && git add dist/"},"version":"6.4.0"}
 
 /***/ }),
-/* 198 */
+/* 199 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = exports;
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var minAssert = __webpack_require__(13);
-var minUtils = __webpack_require__(97);
+var minUtils = __webpack_require__(98);
 
 utils.assert = minAssert;
 utils.toArray = minUtils.toArray;
@@ -71722,13 +71768,13 @@ utils.intFromLE = intFromLE;
 
 
 /***/ }),
-/* 199 */
+/* 200 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
 var getNAF = utils.getNAF;
@@ -72104,7 +72150,7 @@ BasePoint.prototype.dblp = function dblp(k) {
 
 
 /***/ }),
-/* 200 */
+/* 201 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -72112,7 +72158,7 @@ BasePoint.prototype.dblp = function dblp(k) {
 
 var curve = __webpack_require__(45);
 var elliptic = __webpack_require__(10);
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var inherits = __webpack_require__(0);
 var Base = curve.base;
 
@@ -73049,14 +73095,14 @@ JPoint.prototype.isInfinity = function isInfinity() {
 
 
 /***/ }),
-/* 201 */
+/* 202 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var curve = __webpack_require__(45);
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var inherits = __webpack_require__(0);
 var Base = curve.base;
 
@@ -73236,7 +73282,7 @@ Point.prototype.getX = function getX() {
 
 
 /***/ }),
-/* 202 */
+/* 203 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -73244,7 +73290,7 @@ Point.prototype.getX = function getX() {
 
 var curve = __webpack_require__(45);
 var elliptic = __webpack_require__(10);
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var inherits = __webpack_require__(0);
 var Base = curve.base;
 
@@ -73676,7 +73722,7 @@ Point.prototype.mixedAdd = Point.prototype.add;
 
 
 /***/ }),
-/* 203 */
+/* 204 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -73849,7 +73895,7 @@ defineCurve('ed25519', {
 
 var pre;
 try {
-  pre = __webpack_require__(210);
+  pre = __webpack_require__(211);
 } catch (e) {
   pre = undefined;
 }
@@ -73888,21 +73934,21 @@ defineCurve('secp256k1', {
 
 
 /***/ }),
-/* 204 */
+/* 205 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-exports.sha1 = __webpack_require__(205);
-exports.sha224 = __webpack_require__(206);
-exports.sha256 = __webpack_require__(99);
-exports.sha384 = __webpack_require__(207);
-exports.sha512 = __webpack_require__(100);
+exports.sha1 = __webpack_require__(206);
+exports.sha224 = __webpack_require__(207);
+exports.sha256 = __webpack_require__(100);
+exports.sha384 = __webpack_require__(208);
+exports.sha512 = __webpack_require__(101);
 
 
 /***/ }),
-/* 205 */
+/* 206 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -73910,7 +73956,7 @@ exports.sha512 = __webpack_require__(100);
 
 var utils = __webpack_require__(17);
 var common = __webpack_require__(34);
-var shaCommon = __webpack_require__(98);
+var shaCommon = __webpack_require__(99);
 
 var rotl32 = utils.rotl32;
 var sum32 = utils.sum32;
@@ -73983,14 +74029,14 @@ SHA1.prototype._digest = function digest(enc) {
 
 
 /***/ }),
-/* 206 */
+/* 207 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = __webpack_require__(17);
-var SHA256 = __webpack_require__(99);
+var SHA256 = __webpack_require__(100);
 
 function SHA224() {
   if (!(this instanceof SHA224))
@@ -74020,7 +74066,7 @@ SHA224.prototype._digest = function digest(enc) {
 
 
 /***/ }),
-/* 207 */
+/* 208 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -74028,7 +74074,7 @@ SHA224.prototype._digest = function digest(enc) {
 
 var utils = __webpack_require__(17);
 
-var SHA512 = __webpack_require__(100);
+var SHA512 = __webpack_require__(101);
 
 function SHA384() {
   if (!(this instanceof SHA384))
@@ -74062,7 +74108,7 @@ SHA384.prototype._digest = function digest(enc) {
 
 
 /***/ }),
-/* 208 */
+/* 209 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -74215,7 +74261,7 @@ var sh = [
 
 
 /***/ }),
-/* 209 */
+/* 210 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -74269,7 +74315,7 @@ Hmac.prototype.digest = function digest(enc) {
 
 
 /***/ }),
-/* 210 */
+/* 211 */
 /***/ (function(module, exports) {
 
 module.exports = {
@@ -75055,20 +75101,20 @@ module.exports = {
 
 
 /***/ }),
-/* 211 */
+/* 212 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var BN = __webpack_require__(3);
-var HmacDRBG = __webpack_require__(212);
+var BN = __webpack_require__(4);
+var HmacDRBG = __webpack_require__(213);
 var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
 var assert = utils.assert;
 
-var KeyPair = __webpack_require__(213);
-var Signature = __webpack_require__(214);
+var KeyPair = __webpack_require__(214);
+var Signature = __webpack_require__(215);
 
 function EC(options) {
   if (!(this instanceof EC))
@@ -75302,14 +75348,14 @@ EC.prototype.getKeyRecoveryParam = function(e, signature, Q, enc) {
 
 
 /***/ }),
-/* 212 */
+/* 213 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var hash = __webpack_require__(67);
-var utils = __webpack_require__(97);
+var utils = __webpack_require__(98);
 var assert = __webpack_require__(13);
 
 function HmacDRBG(options) {
@@ -75422,13 +75468,13 @@ HmacDRBG.prototype.generate = function generate(len, enc, add, addEnc) {
 
 
 /***/ }),
-/* 213 */
+/* 214 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
 var assert = utils.assert;
@@ -75548,13 +75594,13 @@ KeyPair.prototype.inspect = function inspect() {
 
 
 /***/ }),
-/* 214 */
+/* 215 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 
 var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
@@ -75690,7 +75736,7 @@ Signature.prototype.toDER = function toDER(enc) {
 
 
 /***/ }),
-/* 215 */
+/* 216 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -75701,8 +75747,8 @@ var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
 var assert = utils.assert;
 var parseBytes = utils.parseBytes;
-var KeyPair = __webpack_require__(216);
-var Signature = __webpack_require__(217);
+var KeyPair = __webpack_require__(217);
+var Signature = __webpack_require__(218);
 
 function EDDSA(curve) {
   assert(curve === 'ed25519', 'only tested with ed25519 so far');
@@ -75815,7 +75861,7 @@ EDDSA.prototype.isPoint = function isPoint(val) {
 
 
 /***/ }),
-/* 216 */
+/* 217 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -75918,13 +75964,13 @@ module.exports = KeyPair;
 
 
 /***/ }),
-/* 217 */
+/* 218 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 var elliptic = __webpack_require__(10);
 var utils = elliptic.utils;
 var assert = utils.assert;
@@ -75991,7 +76037,7 @@ module.exports = Signature;
 
 
 /***/ }),
-/* 218 */
+/* 219 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -76001,7 +76047,7 @@ module.exports = Signature;
 
 var asn1 = __webpack_require__(35)
 
-exports.certificate = __webpack_require__(229)
+exports.certificate = __webpack_require__(230)
 
 var RSAPrivateKey = asn1.define('RSAPrivateKey', function () {
   this.seq().obj(
@@ -76120,7 +76166,7 @@ exports.signature = asn1.define('signature', function () {
 
 
 /***/ }),
-/* 219 */
+/* 220 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var asn1 = __webpack_require__(35);
@@ -76143,7 +76189,7 @@ function Entity(name, body) {
 Entity.prototype._createNamed = function createNamed(base) {
   var named;
   try {
-    named = __webpack_require__(220).runInThisContext(
+    named = __webpack_require__(221).runInThisContext(
       '(function ' + this.name + '(entity) {\n' +
       '  this._initNamed(entity);\n' +
       '})'
@@ -76187,10 +76233,10 @@ Entity.prototype.encode = function encode(data, enc, /* internal */ reporter) {
 
 
 /***/ }),
-/* 220 */
+/* 221 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var indexOf = __webpack_require__(221);
+var indexOf = __webpack_require__(222);
 
 var Object_keys = function (obj) {
     if (Object.keys) return Object.keys(obj)
@@ -76331,7 +76377,7 @@ exports.createContext = Script.createContext = function (context) {
 
 
 /***/ }),
-/* 221 */
+/* 222 */
 /***/ (function(module, exports) {
 
 
@@ -76346,7 +76392,7 @@ module.exports = function(arr, obj){
 };
 
 /***/ }),
-/* 222 */
+/* 223 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
@@ -76473,7 +76519,7 @@ ReporterError.prototype.rethrow = function rethrow(msg) {
 
 
 /***/ }),
-/* 223 */
+/* 224 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var Reporter = __webpack_require__(36).Reporter;
@@ -77113,10 +77159,10 @@ Node.prototype._isPrintstr = function isPrintstr(str) {
 
 
 /***/ }),
-/* 224 */
+/* 225 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var constants = __webpack_require__(102);
+var constants = __webpack_require__(103);
 
 exports.tagClass = {
   0: 'universal',
@@ -77161,23 +77207,23 @@ exports.tagByName = constants._reverse(exports.tag);
 
 
 /***/ }),
-/* 225 */
+/* 226 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var decoders = exports;
 
-decoders.der = __webpack_require__(103);
-decoders.pem = __webpack_require__(226);
+decoders.der = __webpack_require__(104);
+decoders.pem = __webpack_require__(227);
 
 
 /***/ }),
-/* 226 */
+/* 227 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
-var Buffer = __webpack_require__(1).Buffer;
+var Buffer = __webpack_require__(2).Buffer;
 
-var DERDecoder = __webpack_require__(103);
+var DERDecoder = __webpack_require__(104);
 
 function PEMDecoder(entity) {
   DERDecoder.call(this, entity);
@@ -77226,22 +77272,22 @@ PEMDecoder.prototype.decode = function decode(data, options) {
 
 
 /***/ }),
-/* 227 */
+/* 228 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var encoders = exports;
 
-encoders.der = __webpack_require__(104);
-encoders.pem = __webpack_require__(228);
+encoders.der = __webpack_require__(105);
+encoders.pem = __webpack_require__(229);
 
 
 /***/ }),
-/* 228 */
+/* 229 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var inherits = __webpack_require__(0);
 
-var DEREncoder = __webpack_require__(104);
+var DEREncoder = __webpack_require__(105);
 
 function PEMEncoder(entity) {
   DEREncoder.call(this, entity);
@@ -77263,7 +77309,7 @@ PEMEncoder.prototype.encode = function encode(data, options) {
 
 
 /***/ }),
-/* 229 */
+/* 230 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -77358,13 +77404,13 @@ module.exports = X509Certificate
 
 
 /***/ }),
-/* 230 */
+/* 231 */
 /***/ (function(module, exports) {
 
 module.exports = {"2.16.840.1.101.3.4.1.1":"aes-128-ecb","2.16.840.1.101.3.4.1.2":"aes-128-cbc","2.16.840.1.101.3.4.1.3":"aes-128-ofb","2.16.840.1.101.3.4.1.4":"aes-128-cfb","2.16.840.1.101.3.4.1.21":"aes-192-ecb","2.16.840.1.101.3.4.1.22":"aes-192-cbc","2.16.840.1.101.3.4.1.23":"aes-192-ofb","2.16.840.1.101.3.4.1.24":"aes-192-cfb","2.16.840.1.101.3.4.1.41":"aes-256-ecb","2.16.840.1.101.3.4.1.42":"aes-256-cbc","2.16.840.1.101.3.4.1.43":"aes-256-ofb","2.16.840.1.101.3.4.1.44":"aes-256-cfb"}
 
 /***/ }),
-/* 231 */
+/* 232 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {// adapted from https://github.com/apatil/pemstrip
@@ -77398,17 +77444,17 @@ module.exports = function (okey, password) {
   }
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 232 */
+/* 233 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {// much of this based on https://github.com/indutny/self-signed/blob/gh-pages/lib/rsa.js
-var BN = __webpack_require__(3)
+var BN = __webpack_require__(4)
 var EC = __webpack_require__(10).ec
 var parseKeys = __webpack_require__(46)
-var curves = __webpack_require__(105)
+var curves = __webpack_require__(106)
 
 function verify (sig, hash, key, signType, tag) {
   var pub = parseKeys(key)
@@ -77488,14 +77534,14 @@ function checkValue (b, q) {
 
 module.exports = verify
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 233 */
+/* 234 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var elliptic = __webpack_require__(10);
-var BN = __webpack_require__(3);
+var BN = __webpack_require__(4);
 
 module.exports = function createECDH(curve) {
 	return new ECDH(curve);
@@ -77617,14 +77663,14 @@ function formatReturnValue(bn, enc, len) {
 	}
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 234 */
+/* 235 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports.publicEncrypt = __webpack_require__(235);
-exports.privateDecrypt = __webpack_require__(236);
+exports.publicEncrypt = __webpack_require__(236);
+exports.privateDecrypt = __webpack_require__(237);
 
 exports.privateEncrypt = function privateEncrypt(key, buf) {
   return exports.publicEncrypt(key, buf, true);
@@ -77635,16 +77681,16 @@ exports.publicDecrypt = function publicDecrypt(key, buf) {
 };
 
 /***/ }),
-/* 235 */
+/* 236 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(46);
 var randomBytes = __webpack_require__(30);
 var createHash = __webpack_require__(31);
-var mgf = __webpack_require__(106);
-var xor = __webpack_require__(107);
-var bn = __webpack_require__(3);
-var withPublic = __webpack_require__(108);
+var mgf = __webpack_require__(107);
+var xor = __webpack_require__(108);
+var bn = __webpack_require__(4);
+var withPublic = __webpack_require__(109);
 var crt = __webpack_require__(66);
 
 var constants = {
@@ -77733,19 +77779,19 @@ function nonZero(len, crypto) {
   }
   return out;
 }
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 236 */
+/* 237 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(Buffer) {var parseKeys = __webpack_require__(46);
-var mgf = __webpack_require__(106);
-var xor = __webpack_require__(107);
-var bn = __webpack_require__(3);
+var mgf = __webpack_require__(107);
+var xor = __webpack_require__(108);
+var bn = __webpack_require__(4);
 var crt = __webpack_require__(66);
 var createHash = __webpack_require__(31);
-var withPublic = __webpack_require__(108);
+var withPublic = __webpack_require__(109);
 module.exports = function privateDecrypt(private_key, enc, reverse) {
   var padding;
   if (private_key.padding) {
@@ -77847,10 +77893,10 @@ function compare(a, b){
   }
   return dif;
 }
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2).Buffer))
 
 /***/ }),
-/* 237 */
+/* 238 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -77886,7 +77932,7 @@ exports.Token = Token;
 
 
 /***/ }),
-/* 238 */
+/* 239 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -77965,7 +78011,7 @@ var UUID;
 
 
 /***/ }),
-/* 239 */
+/* 240 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -77986,10 +78032,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var disposable_1 = __webpack_require__(68);
 var domutils_1 = __webpack_require__(7);
-var menu_1 = __webpack_require__(110);
+var menu_1 = __webpack_require__(111);
 /**
  * An object which implements a universal context menu.
  *
@@ -78186,7 +78232,7 @@ var Private;
 
 
 /***/ }),
-/* 240 */
+/* 241 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -78209,14 +78255,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var coreutils_1 = __webpack_require__(40);
 var domutils_1 = __webpack_require__(7);
 var dragdrop_1 = __webpack_require__(48);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
 var signaling_1 = __webpack_require__(9);
-var docklayout_1 = __webpack_require__(111);
+var docklayout_1 = __webpack_require__(112);
 var tabbar_1 = __webpack_require__(70);
 var widget_1 = __webpack_require__(8);
 /**
@@ -79293,7 +79339,7 @@ var Private;
 
 
 /***/ }),
-/* 241 */
+/* 242 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -79306,7 +79352,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var signaling_1 = __webpack_require__(9);
 /**
  * A class which tracks focus among a set of widgets.
@@ -79630,7 +79676,7 @@ exports.FocusTracker = FocusTracker;
 
 
 /***/ }),
-/* 242 */
+/* 243 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -79653,7 +79699,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var properties_1 = __webpack_require__(26);
@@ -80356,7 +80402,7 @@ var Private;
 
 
 /***/ }),
-/* 243 */
+/* 244 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -80379,7 +80425,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var domutils_1 = __webpack_require__(7);
 var keyboard_1 = __webpack_require__(69);
 var messaging_1 = __webpack_require__(6);
@@ -81140,7 +81186,7 @@ var Private;
 
 
 /***/ }),
-/* 244 */
+/* 245 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -81817,7 +81863,7 @@ var Private;
 
 
 /***/ }),
-/* 245 */
+/* 246 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -81840,10 +81886,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var dragdrop_1 = __webpack_require__(48);
 var panel_1 = __webpack_require__(39);
-var splitlayout_1 = __webpack_require__(112);
+var splitlayout_1 = __webpack_require__(113);
 /**
  * A panel which arranges its widgets into resizable sections.
  *
@@ -82213,7 +82259,7 @@ var Private;
 
 
 /***/ }),
-/* 246 */
+/* 247 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -82240,7 +82286,7 @@ var domutils_1 = __webpack_require__(7);
 var messaging_1 = __webpack_require__(6);
 var signaling_1 = __webpack_require__(9);
 var boxlayout_1 = __webpack_require__(54);
-var stackedpanel_1 = __webpack_require__(114);
+var stackedpanel_1 = __webpack_require__(115);
 var tabbar_1 = __webpack_require__(70);
 var widget_1 = __webpack_require__(8);
 /**
@@ -82553,7 +82599,7 @@ var Private;
 
 
 /***/ }),
-/* 247 */
+/* 248 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -82695,7 +82741,7 @@ exports.LayoutView = LayoutView;
 
 
 /***/ }),
-/* 248 */
+/* 249 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -82829,7 +82875,7 @@ exports.StyleView = StyleView;
 
 
 /***/ }),
-/* 249 */
+/* 250 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83058,7 +83104,7 @@ var shims;
 
 
 /***/ }),
-/* 250 */
+/* 251 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83155,7 +83201,7 @@ exports.ViewList = ViewList;
 
 
 /***/ }),
-/* 251 */
+/* 252 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83278,7 +83324,7 @@ exports.LinkModel = LinkModel;
 
 
 /***/ }),
-/* 252 */
+/* 253 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83595,7 +83641,7 @@ exports.ValidView = ValidView;
 
 
 /***/ }),
-/* 253 */
+/* 254 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83757,7 +83803,7 @@ exports.ButtonView = ButtonView;
 
 
 /***/ }),
-/* 254 */
+/* 255 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83868,7 +83914,7 @@ exports.ImageView = ImageView;
 
 
 /***/ }),
-/* 255 */
+/* 256 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -84006,7 +84052,7 @@ function rgb3_to_rgb6(rgb) {
 
 
 /***/ }),
-/* 256 */
+/* 257 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -84134,7 +84180,7 @@ exports.DatePickerView = DatePickerView;
 
 
 /***/ }),
-/* 257 */
+/* 258 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -84161,10 +84207,10 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 		// AMD. Register as an anonymous module.
 		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [
 			__webpack_require__(12),
-			__webpack_require__(258),
-			__webpack_require__(260),
+			__webpack_require__(259),
+			__webpack_require__(261),
 			__webpack_require__(37),
-			__webpack_require__(118)
+			__webpack_require__(119)
 		], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
@@ -84895,7 +84941,7 @@ return $.widget( "ui.slider", $.ui.mouse, {
 
 
 /***/ }),
-/* 258 */
+/* 259 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -84918,9 +84964,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 		// AMD. Register as an anonymous module.
 		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [
 			__webpack_require__(12),
-			__webpack_require__(259),
+			__webpack_require__(260),
 			__webpack_require__(37),
-			__webpack_require__(118)
+			__webpack_require__(119)
 		], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
 				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
 				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
@@ -85130,7 +85176,7 @@ return $.widget( "ui.mouse", {
 
 
 /***/ }),
-/* 259 */
+/* 260 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;( function( factory ) {
@@ -85154,7 +85200,7 @@ return $.ui.ie = !!/msie [\w.]+/.exec( navigator.userAgent.toLowerCase() );
 
 
 /***/ }),
-/* 260 */
+/* 261 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -85208,7 +85254,7 @@ return $.ui.keyCode = {
 
 
 /***/ }),
-/* 261 */
+/* 262 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -85228,8 +85274,8 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var widget_core_1 = __webpack_require__(14);
 var _ = __webpack_require__(5);
-var widget_int_1 = __webpack_require__(116);
-var d3_format_1 = __webpack_require__(117);
+var widget_int_1 = __webpack_require__(117);
+var d3_format_1 = __webpack_require__(118);
 var FloatModel = (function (_super) {
     __extends(FloatModel, _super);
     function FloatModel() {
@@ -85397,7 +85443,7 @@ exports.FloatProgressModel = FloatProgressModel;
 
 
 /***/ }),
-/* 262 */
+/* 263 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -85785,7 +85831,7 @@ exports.ControllerView = ControllerView;
 
 
 /***/ }),
-/* 263 */
+/* 264 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -86601,7 +86647,7 @@ exports.SelectionRangeSliderView = SelectionRangeSliderView;
 
 
 /***/ }),
-/* 264 */
+/* 265 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -86620,11 +86666,11 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var base_1 = __webpack_require__(11);
-var widget_box_1 = __webpack_require__(115);
-var tabpanel_1 = __webpack_require__(265);
-var accordion_1 = __webpack_require__(266);
+var widget_box_1 = __webpack_require__(116);
+var tabpanel_1 = __webpack_require__(266);
+var accordion_1 = __webpack_require__(267);
 var widgets_1 = __webpack_require__(25);
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var messaging_1 = __webpack_require__(6);
 var _ = __webpack_require__(5);
 var utils = __webpack_require__(15);
@@ -86937,7 +86983,7 @@ var TabView = (function (_super) {
         return this.create_child_view(model).then(function (view) {
             var widget = view.pWidget;
             widget.title.label = placeholder.title.label;
-            widget.title.closable = true;
+            widget.title.closable = false;
             var i = algorithm_1.ArrayExt.firstIndexOf(tabs.widgets, placeholder);
             // insert after placeholder so that if placholder is selected, the
             // real widget will be selected now (this depends on the tab bar
@@ -87001,11 +87047,42 @@ exports.TabView = TabView;
 
 
 /***/ }),
-/* 265 */
+/* 266 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
+/* This file has code derived from PhosphorJS. The license for this PhosphorJS code is:
+
+Copyright (c) 2014-2017, PhosphorJS Contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+*/
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -87017,13 +87094,6 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-/*-----------------------------------------------------------------------------
-| Copyright (c) 2014-2017, PhosphorJS Contributors
-|
-| Distributed under the terms of the BSD 3-Clause License.
-|
-| The full license is in the file LICENSE, distributed with this software.
-|----------------------------------------------------------------------------*/
 var messaging_1 = __webpack_require__(6);
 var signaling_1 = __webpack_require__(9);
 var domutils_1 = __webpack_require__(7);
@@ -87291,7 +87361,7 @@ exports.TabPanel = TabPanel;
 
 
 /***/ }),
-/* 266 */
+/* 267 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -87309,10 +87379,10 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var signaling_1 = __webpack_require__(9);
 var widgets_1 = __webpack_require__(25);
-var currentselection_1 = __webpack_require__(267);
+var currentselection_1 = __webpack_require__(268);
 /**
  * The class name added to Collapse instances.
  */
@@ -87586,7 +87656,7 @@ exports.Accordion = Accordion;
 
 
 /***/ }),
-/* 267 */
+/* 268 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -87597,7 +87667,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * A variety of convenience methods for maintaining a current selection
  */
-var algorithm_1 = __webpack_require__(2);
+var algorithm_1 = __webpack_require__(3);
 var signaling_1 = __webpack_require__(9);
 var Selection = (function () {
     function Selection(sequence, options) {
@@ -87939,7 +88009,7 @@ exports.Selection = Selection;
 
 
 /***/ }),
-/* 268 */
+/* 269 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -88349,13 +88419,13 @@ exports.PasswordView = PasswordView;
 
 
 /***/ }),
-/* 269 */
+/* 270 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"@jupyter-widgets/controls","version":"1.0.1","description":"Jupyter interactive widgets","author":"Project Jupyter","license":"BSD-3-Clause","main":"lib/index.js","typings":"lib/index.d.ts","repository":{"type":"git","url":"https://github.com/jupyter-widgets/ipywidgets.git"},"files":["lib/**/*.d.ts","lib/**/*.js","css/*.css","dist/"],"scripts":{"clean:src":"rimraf lib","clean":"npm run clean:src","build:test":"tsc --project test/src && webpack --config test/webpack.conf.js","build:src":"tsc --project src","build:css":"postcss --use postcss-import --use postcss-cssnext -o css/widgets.built.css css/widgets.css","build":"npm run build:src && npm run build:css","test":"npm run test:unit","test:coverage":"npm run build:test && webpack --config test/webpack-cov.conf.js && karma start test/karma-cov.conf.js","test:unit":"npm run test:unit:firefox && npm run test:unit:chrome","test:unit:default":"npm run build:test && karma start test/karma.conf.js --log-level debug","test:unit:firefox":"npm run test:unit:default -- --browsers=Firefox","test:unit:chrome":"npm run test:unit:default -- --browsers=Chrome","test:unit:ie":"npm run test:unit:default -- --browsers=IE","prepublish":"npm run clean && npm run build"},"devDependencies":{"@types/expect.js":"^0.3.29","@types/mathjax":"0.0.31","@types/mocha":"^2.2.41","@types/node":"^8.0.1","chai":"^4.0.0","css-loader":"^0.28.4","expect.js":"^0.3.1","file-loader":"^0.11.2","istanbul-instrumenter-loader":"^2.0.0","json-loader":"^0.5.4","karma":"^1.6.0","karma-chrome-launcher":"^2.0.0","karma-coverage":"^1.0.0","karma-firefox-launcher":"^1.0.1","karma-ie-launcher":"^1.0.0","karma-mocha":"^1.3.0","karma-mocha-reporter":"^2.2.3","karma-webpack":"^2.0.3","mocha":"^3.3.0","npm-run-all":"^1.5.1","postcss-cli":"^4.1.0","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","sinon":"^2.1.0","sinon-chai":"^2.11.0","style-loader":"^0.18.1","typescript":"~2.4.1","url-loader":"^0.5.9","webpack":"^3.5.5"},"dependencies":{"@jupyter-widgets/base":"^1.0.1","@jupyter-widgets/schema":"^0.3.0","@jupyterlab/services":"^0.49.0","@phosphor/algorithm":"^1.1.0","@phosphor/domutils":"^1.1.0","@phosphor/messaging":"^1.2.0","@phosphor/widgets":"^1.2.0","@types/backbone":"^1.3.33","@types/semver":"^5.3.30","backbone":"1.2.3","d3-format":"^0.5.1","font-awesome":"^4.7.0","jquery":"^3.1.1","jquery-ui":"^1.12.1","semver":"^5.1.0","underscore":"^1.8.3"}}
+module.exports = {"name":"@jupyter-widgets/controls","version":"1.0.5","description":"Jupyter interactive widgets","author":"Project Jupyter","license":"BSD-3-Clause","main":"lib/index.js","typings":"lib/index.d.ts","repository":{"type":"git","url":"https://github.com/jupyter-widgets/ipywidgets.git"},"files":["lib/**/*.d.ts","lib/**/*.js","css/*.css","dist/"],"scripts":{"clean:src":"rimraf lib","clean":"npm run clean:src","build:test":"tsc --project test/src && webpack --config test/webpack.conf.js","build:src":"tsc --project src","build:css":"postcss --use postcss-import --use postcss-cssnext -o css/widgets.built.css css/widgets.css","build":"npm run build:src && npm run build:css","test":"npm run test:unit","test:coverage":"npm run build:test && webpack --config test/webpack-cov.conf.js && karma start test/karma-cov.conf.js","test:unit":"npm run test:unit:firefox && npm run test:unit:chrome","test:unit:default":"npm run build:test && karma start test/karma.conf.js --log-level debug","test:unit:firefox":"npm run test:unit:default -- --browsers=Firefox","test:unit:chrome":"npm run test:unit:default -- --browsers=Chrome","test:unit:ie":"npm run test:unit:default -- --browsers=IE","prepublish":"npm run clean && npm run build"},"devDependencies":{"@jupyterlab/services":"^0.50.2","@types/expect.js":"^0.3.29","@types/mathjax":"0.0.31","@types/mocha":"^2.2.41","@types/node":"^8.0.1","chai":"^4.0.0","css-loader":"^0.28.4","expect.js":"^0.3.1","file-loader":"^0.11.2","istanbul-instrumenter-loader":"^2.0.0","json-loader":"^0.5.4","karma":"^1.6.0","karma-chrome-launcher":"^2.0.0","karma-coverage":"^1.0.0","karma-firefox-launcher":"^1.0.1","karma-ie-launcher":"^1.0.0","karma-mocha":"^1.3.0","karma-mocha-reporter":"^2.2.3","karma-webpack":"^2.0.3","mocha":"^3.3.0","npm-run-all":"^1.5.1","postcss-cli":"^4.1.0","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","sinon":"^2.1.0","sinon-chai":"^2.11.0","style-loader":"^0.18.1","typescript":"~2.4.1","url-loader":"^0.5.9","webpack":"^3.5.5"},"dependencies":{"@jupyter-widgets/base":"^1.0.4","@phosphor/algorithm":"^1.1.0","@phosphor/domutils":"^1.1.0","@phosphor/messaging":"^1.2.0","@phosphor/signaling":"^1.2.0","@phosphor/widgets":"^1.2.0","d3-format":"^0.5.1","jquery":"^3.1.1","jquery-ui":"^1.12.1","underscore":"^1.8.3"}}
 
 /***/ }),
-/* 270 */
+/* 271 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -88364,11 +88434,11 @@ function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 Object.defineProperty(exports, "__esModule", { value: true });
-__export(__webpack_require__(271));
+__export(__webpack_require__(272));
 
 
 /***/ }),
-/* 271 */
+/* 272 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -88416,13 +88486,13 @@ exports.OutputView = OutputView;
 
 
 /***/ }),
-/* 272 */
+/* 273 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(273);
+var content = __webpack_require__(274);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -88447,7 +88517,7 @@ if(false) {
 }
 
 /***/ }),
-/* 273 */
+/* 274 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(50)(undefined);
@@ -88455,13 +88525,13 @@ exports = module.exports = __webpack_require__(50)(undefined);
 
 
 // module
-exports.push([module.i, "/*\n * Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/* Override the correction for the prompt area in https://github.com/jupyter/notebook/blob/dd41d9fd5c4f698bd7468612d877828a7eeb0e7a/IPython/html/static/notebook/less/outputarea.less#L110 */\n\n.jupyter-widgets-output-area div.output_subarea {\n    max-width: 100%;\n}\n", ""]);
+exports.push([module.i, "/*\n * Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/* Override the correction for the prompt area in https://github.com/jupyter/notebook/blob/dd41d9fd5c4f698bd7468612d877828a7eeb0e7a/IPython/html/static/notebook/less/outputarea.less#L110 */\n\n.jupyter-widgets-output-area div.output_subarea {\n    max-width: 100%;\n}\n\n/* Work-around for the bug fixed in https://github.com/jupyter/notebook/pull/2961 */\n\n.jupyter-widgets-output-area > .out_prompt_overlay {\n    display: none;\n}\n", ""]);
 
 // exports
 
 
 /***/ }),
-/* 274 */
+/* 275 */
 /***/ (function(module, exports) {
 
 
@@ -88556,25 +88626,25 @@ module.exports = function (css) {
 
 
 /***/ }),
-/* 275 */
-/***/ (function(module, exports) {
-
-module.exports = {"name":"@jupyter-widgets/html-manager","version":"0.10.1","description":"Standalone package for rendering Jupyter widgets outside notebooks","main":"lib/index.js","typings":"lib/index.d.ts","repository":{"type":"git","url":"https://github.com/jupyter-widgets/ipywidgets.git"},"files":["lib/**/*.d.ts","lib/**/*.js","dist/","css/*.css"],"scripts":{"clean":"rimraf lib && rimraf dist","build:src":"tsc --project src","build:embed-amd":"node scripts/concat-amd-build.js && rimraf dist/amd","build:test":"tsc --project test/src && webpack --config test/webpack.conf.js","build":"npm run build:src && webpack && npm run build:embed-amd","test":"npm run test:unit","test:unit":"npm run test:unit:firefox && npm run test:unit:chrome","test:unit:default":"npm run build:test && karma start test/karma.conf.js --log-level debug --browsers=Firefox","test:unit:firefox":"npm run test:unit:default -- --browsers=Firefox","test:unit:chrome":"npm run test:unit:default -- --browsers=Chrome","prepublish":"npm run clean && npm run build"},"author":"Jupyter Project","license":"BSD-3-Clause","bugs":{"url":"https://github.com/jupyter-widgets/ipywidgets/issues"},"homepage":"https://github.com/jupyter-widgets/ipywidgets#readme","dependencies":{"@jupyter-widgets/base":"^1.0.1","@jupyter-widgets/controls":"^1.0.1","@jupyter-widgets/output":"^1.0.1","@jupyter-widgets/schema":"^0.3.0","@jupyterlab/outputarea":"^0.10.0","@jupyterlab/rendermime-interfaces":"^0.3.1","@phosphor/widgets":"^1.2.0","ajv":"^5.2.2","font-awesome":"^4.7.0"},"devDependencies":{"@types/mocha":"^2.2.41","@types/requirejs":"^2.1.28","chai":"^4.0.0","css-loader":"^0.28.4","file-loader":"^0.11.2","json-loader":"^0.5.4","karma":"^1.6.0","karma-chrome-launcher":"^2.0.0","karma-firefox-launcher":"^1.0.1","karma-ie-launcher":"^1.0.0","karma-mocha":"^1.3.0","karma-mocha-reporter":"^2.2.3","mocha":"^3.3.0","postcss":"^6.0.2","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","style-loader":"^0.18.1","typescript":"~2.4.1","url-loader":"^0.5.9","webpack":"^3.5.5"}}
-
-/***/ }),
 /* 276 */
 /***/ (function(module, exports) {
 
-module.exports = {"name":"@jupyter-widgets/notebook-manager","version":"3.0.2","description":"Jupyter Widgets nbextension","main":"src/extension.js","private":true,"scripts":{"clean":"rimraf widgetsnbextension/static","build":"webpack","test":"echo \"Error: no test specified\" && exit 1","prepublish":"npm run clean && npm run build"},"repository":{"type":"git","url":"git+https://github.com/jupyter-widgets/ipywidgets.git"},"author":"Jupyter Project","license":"BSD-3-Clause","bugs":{"url":"https://github.com/jupyter-widgets/ipywidgets/issues"},"homepage":"https://github.com/jupyter-widgets/ipywidgets#readme","dependencies":{"@jupyter-widgets/base":"^1.0.1","@jupyter-widgets/controls":"^1.0.1","@jupyter-widgets/html-manager":"^0.10.1","@jupyter-widgets/output":"^1.0.1","@phosphor/messaging":"^1.2.0","@phosphor/widgets":"^1.2.0","backbone":"1.2.3","underscore":"^1.8.3"},"devDependencies":{"css-loader":"^0.28.4","json-loader":"^0.5.4","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","style-loader":"^0.18.1","webpack":"^3.5.5"}}
+module.exports = {"name":"@jupyter-widgets/html-manager","version":"0.10.5","description":"Standalone package for rendering Jupyter widgets outside notebooks","main":"lib/index.js","typings":"lib/index.d.ts","repository":{"type":"git","url":"https://github.com/jupyter-widgets/ipywidgets.git"},"files":["lib/**/*.d.ts","lib/**/*.js","dist/","css/*.css"],"scripts":{"clean":"rimraf lib && rimraf dist","build:src":"tsc --project src","build:embed-amd":"node scripts/concat-amd-build.js && rimraf dist/amd","build:test":"tsc --project test/src && webpack --config test/webpack.conf.js","build":"npm run build:src && webpack && npm run build:embed-amd","test":"npm run test:unit","test:unit":"npm run test:unit:firefox && npm run test:unit:chrome","test:unit:default":"npm run build:test && karma start test/karma.conf.js --log-level debug --browsers=Firefox","test:unit:firefox":"npm run test:unit:default -- --browsers=Firefox","test:unit:chrome":"npm run test:unit:default -- --browsers=Chrome","prepublish":"npm run clean && npm run build"},"author":"Jupyter Project","license":"BSD-3-Clause","bugs":{"url":"https://github.com/jupyter-widgets/ipywidgets/issues"},"homepage":"https://github.com/jupyter-widgets/ipywidgets#readme","dependencies":{"@jupyter-widgets/base":"^1.0.4","@jupyter-widgets/controls":"^1.0.5","@jupyter-widgets/output":"^1.0.4","@jupyter-widgets/schema":"^0.3.0","@jupyterlab/outputarea":"^0.11.1","@jupyterlab/rendermime":"^0.11.0","@jupyterlab/rendermime-interfaces":"^0.4.1","@phosphor/widgets":"^1.2.0","ajv":"^5.2.2","font-awesome":"^4.7.0","jquery":"^3.1.1"},"devDependencies":{"@types/mocha":"^2.2.41","@types/requirejs":"^2.1.28","chai":"^4.0.0","css-loader":"^0.28.4","file-loader":"^0.11.2","json-loader":"^0.5.4","karma":"^1.6.0","karma-chrome-launcher":"^2.0.0","karma-firefox-launcher":"^1.0.1","karma-ie-launcher":"^1.0.0","karma-mocha":"^1.3.0","karma-mocha-reporter":"^2.2.3","mocha":"^3.3.0","postcss":"^6.0.2","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","style-loader":"^0.18.1","typescript":"~2.4.1","url-loader":"^0.5.9","webpack":"^3.5.5"}}
 
 /***/ }),
 /* 277 */
+/***/ (function(module, exports) {
+
+module.exports = {"name":"@jupyter-widgets/notebook-manager","version":"3.0.6","description":"Jupyter Widgets nbextension","main":"src/extension.js","private":true,"scripts":{"clean":"rimraf widgetsnbextension/static","build":"webpack","test":"echo \"Error: no test specified\" && exit 1","prepublish":"npm run clean && npm run build"},"repository":{"type":"git","url":"git+https://github.com/jupyter-widgets/ipywidgets.git"},"author":"Jupyter Project","license":"BSD-3-Clause","bugs":{"url":"https://github.com/jupyter-widgets/ipywidgets/issues"},"homepage":"https://github.com/jupyter-widgets/ipywidgets#readme","dependencies":{"@jupyter-widgets/base":"^1.0.4","@jupyter-widgets/controls":"^1.0.5","@jupyter-widgets/html-manager":"^0.10.5","@jupyter-widgets/output":"^1.0.4","@phosphor/messaging":"^1.2.0","@phosphor/widgets":"^1.2.0","backbone":"1.2.3","underscore":"^1.8.3"},"devDependencies":{"css-loader":"^0.28.4","json-loader":"^0.5.4","postcss-cssnext":"^3.0.2","postcss-import":"^10.0.0","postcss-loader":"^2.0.6","rimraf":"^2.6.1","style-loader":"^0.18.1","webpack":"^3.5.5"}}
+
+/***/ }),
+/* 278 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(278);
+var content = __webpack_require__(279);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -88599,7 +88669,7 @@ if(false) {
 }
 
 /***/ }),
-/* 278 */
+/* 279 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(50)(undefined);
@@ -88613,13 +88683,13 @@ exports.push([module.i, "/*-----------------------------------------------------
 
 
 /***/ }),
-/* 279 */
+/* 280 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(280);
+var content = __webpack_require__(281);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -88644,7 +88714,7 @@ if(false) {
 }
 
 /***/ }),
-/* 280 */
+/* 281 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(50)(undefined);
@@ -88658,13 +88728,13 @@ exports.push([module.i, "/* Copyright (c) Jupyter Development Team.\n * Distribu
 
 
 /***/ }),
-/* 281 */
+/* 282 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(282);
+var content = __webpack_require__(283);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -88689,7 +88759,7 @@ if(false) {
 }
 
 /***/ }),
-/* 282 */
+/* 283 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(50)(undefined);
@@ -88697,7 +88767,7 @@ exports = module.exports = __webpack_require__(50)(undefined);
 
 
 // module
-exports.push([module.i, "/* Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/* We import all of these together in a single css file because the Webpack\nloader sees only one file at a time. This allows postcss to see the variable\ndefinitions when they are used. */\n\n/*-----------------------------------------------------------------------------\n| Copyright (c) Jupyter Development Team.\n| Distributed under the terms of the Modified BSD License.\n|----------------------------------------------------------------------------*/\n\n/*\nThis file is copied from the JupyterLab project to define default styling for\nwhen the widget styling is compiled down to eliminate CSS variables. We make one\nchange - we comment out the font import below.\n*/\n\n/**\n * The material design colors are adapted from google-material-color v1.2.6\n * https://github.com/danlevan/google-material-color\n * https://github.com/danlevan/google-material-color/blob/f67ca5f4028b2f1b34862f64b0ca67323f91b088/dist/palette.var.css\n *\n * The license for the material design color CSS variables is as follows (see\n * https://github.com/danlevan/google-material-color/blob/f67ca5f4028b2f1b34862f64b0ca67323f91b088/LICENSE)\n *\n * The MIT License (MIT)\n *\n * Copyright (c) 2014 Dan Le Van\n *\n * Permission is hereby granted, free of charge, to any person obtaining a copy\n * of this software and associated documentation files (the \"Software\"), to deal\n * in the Software without restriction, including without limitation the rights\n * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n * copies of the Software, and to permit persons to whom the Software is\n * furnished to do so, subject to the following conditions:\n *\n * The above copyright notice and this permission notice shall be included in\n * all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n * SOFTWARE.\n */\n\n/*\nThe following CSS variables define the main, public API for styling JupyterLab.\nThese variables should be used by all plugins wherever possible. In other\nwords, plugins should not define custom colors, sizes, etc unless absolutely\nnecessary. This enables users to change the visual theme of JupyterLab\nby changing these variables.\n\nMany variables appear in an ordered sequence (0,1,2,3). These sequences\nare designed to work well together, so for example, `--jp-border-color1` should\nbe used with `--jp-layout-color1`. The numbers have the following meanings:\n\n* 0: super-primary, reserved for special emphasis\n* 1: primary, most important under normal situations\n* 2: secondary, next most important under normal situations\n* 3: tertiary, next most important under normal situations\n\nThroughout JupyterLab, we are mostly following principles from Google's\nMaterial Design when selecting colors. We are not, however, following\nall of MD as it is not optimized for dense, information rich UIs.\n*/\n\n/*\n * Optional monospace font for input/output prompt.\n */\n\n/* Commented out in ipywidgets since we don't need it. */\n\n/* @import url('https://fonts.googleapis.com/css?family=Roboto+Mono'); */\n\n/*\n * Added for compabitility with output area\n */\n\n:root {\n\n  /* Borders\n\n  The following variables, specify the visual styling of borders in JupyterLab.\n   */\n\n  /* UI Fonts\n\n  The UI font CSS variables are used for the typography all of the JupyterLab\n  user interface elements that are not directly user generated content.\n  */ /* Base font size */ /* Ensures px perfect FontAwesome icons */\n\n  /* Use these font colors against the corresponding main layout colors.\n     In a light theme, these go from dark to light.\n  */\n\n  /* Use these against the brand/accent/warn/error colors.\n     These will typically go from light to darker, in both a dark and light theme\n   */\n\n  /* Content Fonts\n\n  Content font variables are used for typography of user generated content.\n  */ /* Base font size */\n\n\n  /* Layout\n\n  The following are the main layout colors use in JupyterLab. In a light\n  theme these would go from light to dark.\n  */\n\n  /* Brand/accent */\n\n  /* State colors (warn, error, success, info) */\n\n  /* Cell specific styles */\n  /* A custom blend of MD grey and blue 600\n   * See https://meyerweb.com/eric/tools/color-blend/#546E7A:1E88E5:5:hex */\n  /* A custom blend of MD grey and orange 600\n   * https://meyerweb.com/eric/tools/color-blend/#546E7A:F4511E:5:hex */\n\n  /* Notebook specific styles */\n\n  /* Console specific styles */\n\n  /* Toolbar specific styles */\n}\n\n/* Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/*\n * We assume that the CSS variables in\n * https://github.com/jupyterlab/jupyterlab/blob/master/src/default-theme/variables.css\n * have been defined.\n */\n\n:root { /* margin between inline elements */\n\n    /* From Material Design Lite */\n}\n\n.jupyter-widgets {\n    margin: 2px;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    color: black;\n    overflow: visible;\n}\n\n.jupyter-widgets.jupyter-widgets-disconnected::before {\n    line-height: 28px;\n    height: 28px;\n}\n\n.jp-Output-result > .jupyter-widgets {\n    margin-left: 0;\n    margin-right: 0;\n}\n\n/* vbox and hbox */\n\n.widget-inline-hbox {\n    /* Horizontal widgets */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: horizontal;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: row;\n            flex-direction: row;\n    -webkit-box-align: baseline;\n        -ms-flex-align: baseline;\n            align-items: baseline;\n}\n\n.widget-inline-vbox {\n    /* Vertical Widgets */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n}\n\n.widget-box {\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    margin: 0;\n    overflow: auto;\n}\n\n.widget-hbox {\n    -webkit-box-orient: horizontal;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: row;\n            flex-direction: row;\n}\n\n.widget-vbox {\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n/* General Button Styling */\n\n.jupyter-button {\n    padding-left: 10px;\n    padding-right: 10px;\n    padding-top: 0px;\n    padding-bottom: 0px;\n    display: inline-block;\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    text-align: center;\n    font-size: 13px;\n    cursor: pointer;\n\n    height: 28px;\n    border: 0px solid;\n    line-height: 28px;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n\n    color: rgba(0, 0, 0, .8);\n    background-color: #EEEEEE;\n    border-color: #E0E0E0;\n    border: none;\n}\n\n.jupyter-button i.fa {\n    margin-right: 4px;\n    pointer-events: none;\n}\n\n.jupyter-button:empty:before {\n    content: \"\\200B\"; /* zero-width space */\n}\n\n.jupyter-widgets.jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n.jupyter-button i.fa.center {\n    margin-right: 0;\n}\n\n.jupyter-button:hover:enabled, .jupyter-button:focus:enabled {\n    /* MD Lite 2dp shadow */\n    -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14),\n                0 3px 1px -2px rgba(0, 0, 0, .2),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n            box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14),\n                0 3px 1px -2px rgba(0, 0, 0, .2),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n}\n\n.jupyter-button:active, .jupyter-button.mod-active {\n    /* MD Lite 4dp shadow */\n    -webkit-box-shadow: 0 4px 5px 0 rgba(0, 0, 0, .14),\n                0 1px 10px 0 rgba(0, 0, 0, .12),\n                0 2px 4px -1px rgba(0, 0, 0, .2);\n            box-shadow: 0 4px 5px 0 rgba(0, 0, 0, .14),\n                0 1px 10px 0 rgba(0, 0, 0, .12),\n                0 2px 4px -1px rgba(0, 0, 0, .2);\n    color: rgba(0, 0, 0, .8);\n    background-color: #BDBDBD;\n}\n\n.jupyter-button:focus:enabled {\n    outline: 1px solid #64B5F6;\n}\n\n/* Button \"Primary\" Styling */\n\n.jupyter-button.mod-primary {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #2196F3;\n}\n\n.jupyter-button.mod-primary.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #1976D2;\n}\n\n.jupyter-button.mod-primary:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #1976D2;\n}\n\n/* Button \"Success\" Styling */\n\n.jupyter-button.mod-success {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #4CAF50;\n}\n\n.jupyter-button.mod-success.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #388E3C;\n }\n\n.jupyter-button.mod-success:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #388E3C;\n }\n\n/* Button \"Info\" Styling */\n\n.jupyter-button.mod-info {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #00BCD4;\n}\n\n.jupyter-button.mod-info.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #0097A7;\n}\n\n.jupyter-button.mod-info:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #0097A7;\n}\n\n/* Button \"Warning\" Styling */\n\n.jupyter-button.mod-warning {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #FF9800;\n}\n\n.jupyter-button.mod-warning.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #F57C00;\n}\n\n.jupyter-button.mod-warning:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #F57C00;\n}\n\n/* Button \"Danger\" Styling */\n\n.jupyter-button.mod-danger {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #F44336;\n}\n\n.jupyter-button.mod-danger.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #D32F2F;\n}\n\n.jupyter-button.mod-danger:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #D32F2F;\n}\n\n/* Widget Button*/\n\n.widget-button, .widget-toggle-button {\n    width: 148px;\n}\n\n/* Widget Label Styling */\n\n/* Override Bootstrap label css */\n\n.jupyter-widgets label {\n    margin-bottom: 0;\n    margin-bottom: initial;\n}\n\n.widget-label-basic {\n    /* Basic Label */\n    color: black;\n    font-size: 13px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    line-height: 28px;\n}\n\n.widget-label {\n    /* Label */\n    color: black;\n    font-size: 13px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    line-height: 28px;\n}\n\n.widget-inline-hbox .widget-label {\n    /* Horizontal Widget Label */\n    color: black;\n    text-align: right;\n    margin-right: 8px;\n    width: 80px;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n}\n\n.widget-inline-vbox .widget-label {\n    /* Vertical Widget Label */\n    color: black;\n    text-align: center;\n    line-height: 28px;\n}\n\n/* Widget Readout Styling */\n\n.widget-readout {\n    color: black;\n    font-size: 13px;\n    height: 28px;\n    line-height: 28px;\n    overflow: hidden;\n    white-space: nowrap;\n    text-align: center;\n}\n\n.widget-readout.overflow {\n    /* Overflowing Readout */\n\n    /* From Material Design Lite\n        shadow-key-umbra-opacity: 0.2;\n        shadow-key-penumbra-opacity: 0.14;\n        shadow-ambient-shadow-opacity: 0.12;\n     */\n    -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .2),\n                        0 3px 1px -2px rgba(0, 0, 0, .14),\n                        0 1px 5px 0 rgba(0, 0, 0, .12);\n\n    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .2),\n                0 3px 1px -2px rgba(0, 0, 0, .14),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n}\n\n.widget-inline-hbox .widget-readout {\n    /* Horizontal Readout */\n    text-align: center;\n    max-width: 148px;\n    min-width: 72px;\n    margin-left: 4px;\n}\n\n.widget-inline-vbox .widget-readout {\n    /* Vertical Readout */\n    margin-top: 4px;\n    /* as wide as the widget */\n    width: inherit;\n}\n\n/* Widget Checkbox Styling */\n\n.widget-checkbox {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-checkbox input[type=\"checkbox\"] {\n    margin: 0px 8px 0px 0px;\n    line-height: 28px;\n    font-size: large;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n    -ms-flex-item-align: center;\n        align-self: center;\n}\n\n/* Widget Valid Styling */\n\n.widget-valid {\n    height: 28px;\n    line-height: 28px;\n    width: 148px;\n    font-size: 13px;\n}\n\n.widget-valid i:before {\n    line-height: 28px;\n    margin-right: 4px;\n    margin-left: 4px;\n\n    /* from the fa class in FontAwesome: https://github.com/FortAwesome/Font-Awesome/blob/49100c7c3a7b58d50baa71efef11af41a66b03d3/css/font-awesome.css#L14 */\n    display: inline-block;\n    font: normal normal normal 14px/1 FontAwesome;\n    font-size: inherit;\n    text-rendering: auto;\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n}\n\n.widget-valid.mod-valid i:before {\n    content: \"\\F00C\";\n    color: green;\n}\n\n.widget-valid.mod-invalid i:before {\n    content: \"\\F00D\";\n    color: red;\n}\n\n.widget-valid.mod-valid .widget-valid-readout {\n    display: none;\n}\n\n/* Widget Text and TextArea Stying */\n\n.widget-textarea, .widget-text {\n    width: 300px;\n}\n\n.widget-text input[type=\"text\"], .widget-text input[type=\"number\"]{\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-text input[type=\"text\"]:disabled, .widget-text input[type=\"number\"]:disabled, .widget-textarea textarea:disabled {\n    opacity: 0.6;\n}\n\n.widget-text input[type=\"text\"], .widget-text input[type=\"number\"], .widget-textarea textarea {\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    padding: 4px 8px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    outline: none !important;\n}\n\n.widget-textarea textarea {\n    height: inherit;\n    width: inherit;\n}\n\n.widget-text input:focus, .widget-textarea textarea:focus {\n    border-color: #64B5F6;\n}\n\n/* Widget Slider */\n\n.widget-slider .ui-slider {\n    /* Slider Track */\n    border: 1px solid #BDBDBD;\n    background: #BDBDBD;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    position: relative;\n    border-radius: 0px;\n}\n\n.widget-slider .ui-slider .ui-slider-handle {\n    /* Slider Handle */\n    outline: none !important; /* focused slider handles are colored - see below */\n    position: absolute;\n    background-color: white;\n    border: 1px solid #9E9E9E;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    z-index: 1;\n    background-image: none; /* Override jquery-ui */\n}\n\n/* Override jquery-ui */\n\n.widget-slider .ui-slider .ui-slider-handle:hover, .widget-slider .ui-slider .ui-slider-handle:focus {\n    background-color: #2196F3;\n    border: 1px solid #2196F3;\n}\n\n.widget-slider .ui-slider .ui-slider-handle:active {\n    background-color: #2196F3;\n    border-color: #2196F3;\n    z-index: 2;\n    -webkit-transform: scale(1.2);\n            transform: scale(1.2);\n}\n\n.widget-slider  .ui-slider .ui-slider-range {\n    /* Interval between the two specified value of a double slider */\n    position: absolute;\n    background: #2196F3;\n    z-index: 0;\n}\n\n/* Shapes of Slider Handles */\n\n.widget-hslider .ui-slider .ui-slider-handle {\n    width: 16px;\n    height: 16px;\n    margin-top: -7px;\n    margin-left: -7px;\n    border-radius: 50%;\n    top: 0;\n}\n\n.widget-vslider .ui-slider .ui-slider-handle {\n    width: 16px;\n    height: 16px;\n    margin-bottom: -7px;\n    margin-left: -7px;\n    border-radius: 50%;\n    left: 0;\n}\n\n.widget-hslider .ui-slider .ui-slider-range {\n    height: 8px;\n    margin-top: -3px;\n}\n\n.widget-vslider .ui-slider .ui-slider-range {\n    width: 8px;\n    margin-left: -3px;\n}\n\n/* Horizontal Slider */\n\n.widget-hslider {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n\n    /* Override the align-items baseline. This way, the description and readout\n    still seem to align their baseline properly, and we don't have to have\n    align-self: stretch in the .slider-container. */\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n}\n\n.widgets-slider .slider-container {\n    overflow: visible;\n}\n\n.widget-hslider .slider-container {\n    height: 28px;\n    margin-left: 6px;\n    margin-right: 6px;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n}\n\n.widget-hslider .ui-slider {\n    /* Inner, invisible slide div */\n    height: 4px;\n    margin-top: 12px;\n    width: 100%;\n}\n\n/* Vertical Slider */\n\n.widget-vbox .widget-label {\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-vslider {\n    /* Vertical Slider */\n    height: 200px;\n    width: 72px;\n}\n\n.widget-vslider .slider-container {\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    margin-left: auto;\n    margin-right: auto;\n    margin-bottom: 6px;\n    margin-top: 6px;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n.widget-vslider .ui-slider-vertical {\n    /* Inner, invisible slide div */\n    width: 4px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-left: auto;\n    margin-right: auto;\n}\n\n/* Widget Progress Styling */\n\n.progress-bar {\n    -webkit-transition: none;\n    transition: none;\n}\n\n.progress-bar {\n    height: 28px;\n}\n\n.progress-bar {\n    background-color: #2196F3;\n}\n\n.progress-bar-success {\n    background-color: #4CAF50;\n}\n\n.progress-bar-info {\n    background-color: #00BCD4;\n}\n\n.progress-bar-warning {\n    background-color: #FF9800;\n}\n\n.progress-bar-danger {\n    background-color: #F44336;\n}\n\n.progress {\n    background-color: #EEEEEE;\n    border: none;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n}\n\n/* Horisontal Progress */\n\n.widget-hprogress {\n    /* Progress Bar */\n    height: 28px;\n    line-height: 28px;\n    width: 300px;\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n\n}\n\n.widget-hprogress .progress {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-top: 4px;\n    margin-bottom: 4px;\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    /* Override bootstrap style */\n    height: auto;\n    height: initial;\n}\n\n/* Vertical Progress */\n\n.widget-vprogress {\n    height: 200px;\n    width: 72px;\n}\n\n.widget-vprogress .progress {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    width: 20px;\n    margin-left: auto;\n    margin-right: auto;\n    margin-bottom: 0;\n}\n\n/* Select Widget Styling */\n\n.widget-dropdown {\n    height: 28px;\n    width: 300px;\n    line-height: 28px;\n}\n\n.widget-dropdown > select {\n    border: 1px solid #9E9E9E;\n    border-radius: 0;\n    height: inherit;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    outline: none !important;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    vertical-align: top;\n    padding-left: 8px;\n\tappearance: none;\n\t-webkit-appearance: none;\n\t-moz-appearance: none;\n    background-repeat: no-repeat;\n\tbackground-size: 20px;\n\tbackground-position: right center;\n    background-image: url(\"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDE5LjIuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAxOCAxOCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTggMTg7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDpub25lO30KPC9zdHlsZT4KPHBhdGggZD0iTTUuMiw1LjlMOSw5LjdsMy44LTMuOGwxLjIsMS4ybC00LjksNWwtNC45LTVMNS4yLDUuOXoiLz4KPHBhdGggY2xhc3M9InN0MCIgZD0iTTAtMC42aDE4djE4SDBWLTAuNnoiLz4KPC9zdmc+Cg\");\n}\n\n.widget-dropdown > select:focus {\n    border-color: #64B5F6;\n}\n\n.widget-dropdown > select:disabled {\n    opacity: 0.6;\n}\n\n/* To disable the dotted border in Firefox around select controls.\n   See http://stackoverflow.com/a/18853002 */\n\n.widget-dropdown > select:-moz-focusring {\n    color: transparent;\n    text-shadow: 0 0 0 #000;\n}\n\n.widget-dropdown > select > option:checked {\n    color: rgba(0, 0, 0, 1.0);\n    background: white repeat url(\"data:image/gif;base64,R0lGO...\");\n}\n\n/* Select and SelectMultiple */\n\n.widget-select {\n    width: 300px;\n    line-height: 28px;\n\n    /* Because Firefox defines the baseline of a select as the bottom of the\n    control, we align the entire control to the top and add padding to the\n    select to get an approximate first line baseline alignment. */\n    -webkit-box-align: start;\n        -ms-flex-align: start;\n            align-items: flex-start;\n}\n\n.widget-select > select {\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    outline: none !important;\n    overflow: auto;\n    height: inherit;\n\n    /* Because Firefox defines the baseline of a select as the bottom of the\n    control, we align the entire control to the top and add padding to the\n    select to get an approximate first line baseline alignment. */\n    padding-top: 5px;\n}\n\n.widget-select > select:focus {\n    border-color: #64B5F6;\n}\n\n.widget-select > select > option:checked {\n    color: rgba(0, 0, 0, 1.0);\n    background: white repeat url(\"data:image/gif;base64,R0lGO...\");\n}\n\n.wiget-select > select > option {\n    padding-left: 4px;\n    line-height: 28px;\n    /* line-height doesn't work on some browsers for select options */\n    padding-top: 21.5px;\n    padding-bottom: 21.5px;\n}\n\n/* Toggle Buttons Styling */\n\n.widget-toggle-buttons {\n    line-height: 28px;\n}\n\n.widget-toggle-buttons .widget-toggle-button {\n    margin-left: 2px;\n    margin-right: 2px;\n}\n\n.widget-toggle-buttons .jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n/* Radio Buttons Styling */\n\n.widget-radio {\n    width: 300px;\n    line-height: 28px;\n}\n\n.widget-radio-box {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-bottom: 8px;\n}\n\n.widget-radio-box label {\n    height: 20px;\n    line-height: 20px;\n    font-size: 13px;\n}\n\n.widget-radio-box input {\n    height: 20px;\n    line-height: 20px;\n    margin: 0 8px 0 1px;\n    float: left;\n}\n\n/* Color Picker Styling */\n\n.widget-colorpicker {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-colorpicker > .widget-colorpicker-input {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    min-width: 72px;\n}\n\n.widget-colorpicker input[type=\"color\"] {\n    width: 28px;\n    height: 28px;\n    padding: 0 2px; /* make the color square actually square on Chrome on OS X */\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    border-left: none;\n    -webkit-box-flex: 0;\n        -ms-flex-positive: 0;\n            flex-grow: 0;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    outline: none !important;\n}\n\n.widget-colorpicker.concise input[type=\"color\"] {\n    border-left: 1px solid #9E9E9E;\n}\n\n.widget-colorpicker input[type=\"color\"]:focus, .widget-colorpicker input[type=\"text\"]:focus {\n    border-color: #64B5F6;\n}\n\n.widget-colorpicker input[type=\"text\"] {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    outline: none !important;\n    height: 28px;\n    line-height: 28px;\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    font-size: 13px;\n    padding: 4px 8px;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n}\n\n.widget-colorpicker input[type=\"text\"]:disabled {\n    opacity: 0.6;\n}\n\n/* Date Picker Styling */\n\n.widget-datepicker {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-datepicker input[type=\"date\"] {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    outline: none !important;\n    height: 28px;\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    padding: 4px 8px;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n}\n\n.widget-datepicker input[type=\"date\"]:focus {\n    border-color: #64B5F6;\n}\n\n.widget-datepicker input[type=\"date\"]:invalid {\n    border-color: #FF9800;\n}\n\n.widget-datepicker input[type=\"date\"]:disabled {\n    opacity: 0.6;\n}\n\n/* Play Widget */\n\n.widget-play {\n    width: 148px;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.widget-play .jupyter-button {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    height: auto;\n}\n\n.widget-play .jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n/* Tab Widget */\n\n.jupyter-widgets .p-TabBar {\n    /* Necessary so that a tab can be shifted down to overlay the border of the box below. */\n    overflow-x: visible;\n    overflow-y: visible;\n}\n\n.jupyter-widgets.widget-tab .p-TabBar.p-mod-horizontal > .p-TabBar-content {\n    -webkit-box-align: end;\n        -ms-flex-align: end;\n            align-items: flex-end;\n    margin-bottom: 0;\n}\n\n.jupyter-widgets.widget-tab {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n.jupyter-widgets.widget-tab > .widget-tab-contents {\n    width: 100%;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    margin: 0;\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    padding: 15px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    overflow: auto;\n}\n\n.jupyter-widgets.widget-tab .widget-tab-contents .widget-tab-child.p-mod-hidden {\n    display: none !important;\n}\n\n.jupyter-widgets.widget-tab .widget-tab-bar.p-TabBar {\n    font: 13px Helvetica, Arial, sans-serif;\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tab {\n    -webkit-box-flex: 0;\n        -ms-flex: 0 1 144px;\n            flex: 0 1 144px;\n    min-width: 35px;\n    min-height: 25px;\n    line-height: 24px;\n    margin-left: -1px;\n    padding: 0px 10px;\n    background: #EEEEEE;\n    color: rgba(0, 0, 0, .5);\n    border: 1px solid #9E9E9E;\n    border-bottom: none;\n    position: relative;\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tab.p-mod-current {\n    color: rgba(0, 0, 0, 1.0);\n    /* We want the background to match the tab content background */\n    background: white;\n    min-height: 26px;\n    -webkit-transform: translateY(1px);\n            transform: translateY(1px);\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tab.p-mod-current:before {\n    position: absolute;\n    top: -1px;\n    left: -1px;\n    content: '';\n    height: 2px;\n    width: calc(100% + 2px);\n    background: #2196F3;\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tab:first-child {\n    margin-left: 0;\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tab:hover:not(.p-mod-current) {\n    background: white;\n    color: rgba(0, 0, 0, .8);\n}\n\n.jupyter-widgets.widget-tab.p-mod-closable > .p-TabBar-tabCloseIcon {\n    margin-left: 4px;\n}\n\n.jupyter-widgets.widget-tab.p-mod-closable > .p-TabBar-tabCloseIcon:before {\n    font-family: FontAwesome;\n    content: '\\F00D'; /* close */\n}\n\n.jupyter-widgets.widget-tab .p-TabBar-tabIcon,\n.jupyter-widgets.widget-tab .p-TabBar-tabLabel,\n.jupyter-widgets.widget-tab .p-TabBar-tabCloseIcon {\n    line-height: 24px;\n}\n\n/* Accordion Widget */\n\n.p-Collapse {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.p-Collapse-header {\n    padding: 4px;\n    cursor: pointer;\n    color: rgba(0, 0, 0, .5);\n    background-color: #EEEEEE;\n    border: 1px solid #9E9E9E;\n    padding: 10px 15px;\n    font-weight: bold;\n}\n\n.p-Collapse-header:hover {\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n}\n\n.p-Collapse-open > .p-Collapse-header {\n    background-color: white;\n    color: rgba(0, 0, 0, 1.0);\n    cursor: default;\n    border-bottom: none;\n}\n\n.p-Collapse .p-Collapse-header::before {\n    content: '\\F0DA\\A0';  /* caret-right, non-breaking space */\n    display: inline-block;\n    font: normal normal normal 14px/1 FontAwesome;\n    font-size: inherit;\n    text-rendering: auto;\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n}\n\n.p-Collapse-open > .p-Collapse-header::before {\n    content: '\\F0D7\\A0'; /* caret-down, non-breaking space */\n}\n\n.p-Collapse-contents {\n    padding: 15px;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    border-left: 1px solid #9E9E9E;\n    border-right: 1px solid #9E9E9E;\n    border-bottom: 1px solid #9E9E9E;\n    overflow: auto;\n}\n\n.p-Accordion {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.p-Accordion .p-Collapse {\n    margin-bottom: 0;\n}\n\n.p-Accordion .p-Collapse + .p-Collapse {\n    margin-top: 4px;\n}\n\n/* HTML widget */\n\n.widget-html, .widget-htmlmath {\n    font-size: 13px;\n}\n\n.widget-html > .widget-html-content, .widget-htmlmath > .widget-html-content {\n    /* Fill out the area in the HTML widget */\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    /* Makes sure the baseline is still aligned with other elements */\n    line-height: 28px;\n    /* Make it possible to have absolutely-positioned elements in the html */\n    position: relative;\n}\n", ""]);
+exports.push([module.i, "/* Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/* We import all of these together in a single css file because the Webpack\nloader sees only one file at a time. This allows postcss to see the variable\ndefinitions when they are used. */\n\n/*-----------------------------------------------------------------------------\n| Copyright (c) Jupyter Development Team.\n| Distributed under the terms of the Modified BSD License.\n|----------------------------------------------------------------------------*/\n\n/*\nThis file is copied from the JupyterLab project to define default styling for\nwhen the widget styling is compiled down to eliminate CSS variables. We make one\nchange - we comment out the font import below.\n*/\n\n/**\n * The material design colors are adapted from google-material-color v1.2.6\n * https://github.com/danlevan/google-material-color\n * https://github.com/danlevan/google-material-color/blob/f67ca5f4028b2f1b34862f64b0ca67323f91b088/dist/palette.var.css\n *\n * The license for the material design color CSS variables is as follows (see\n * https://github.com/danlevan/google-material-color/blob/f67ca5f4028b2f1b34862f64b0ca67323f91b088/LICENSE)\n *\n * The MIT License (MIT)\n *\n * Copyright (c) 2014 Dan Le Van\n *\n * Permission is hereby granted, free of charge, to any person obtaining a copy\n * of this software and associated documentation files (the \"Software\"), to deal\n * in the Software without restriction, including without limitation the rights\n * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n * copies of the Software, and to permit persons to whom the Software is\n * furnished to do so, subject to the following conditions:\n *\n * The above copyright notice and this permission notice shall be included in\n * all copies or substantial portions of the Software.\n *\n * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n * SOFTWARE.\n */\n\n/*\nThe following CSS variables define the main, public API for styling JupyterLab.\nThese variables should be used by all plugins wherever possible. In other\nwords, plugins should not define custom colors, sizes, etc unless absolutely\nnecessary. This enables users to change the visual theme of JupyterLab\nby changing these variables.\n\nMany variables appear in an ordered sequence (0,1,2,3). These sequences\nare designed to work well together, so for example, `--jp-border-color1` should\nbe used with `--jp-layout-color1`. The numbers have the following meanings:\n\n* 0: super-primary, reserved for special emphasis\n* 1: primary, most important under normal situations\n* 2: secondary, next most important under normal situations\n* 3: tertiary, next most important under normal situations\n\nThroughout JupyterLab, we are mostly following principles from Google's\nMaterial Design when selecting colors. We are not, however, following\nall of MD as it is not optimized for dense, information rich UIs.\n*/\n\n/*\n * Optional monospace font for input/output prompt.\n */\n\n/* Commented out in ipywidgets since we don't need it. */\n\n/* @import url('https://fonts.googleapis.com/css?family=Roboto+Mono'); */\n\n/*\n * Added for compabitility with output area\n */\n\n:root {\n\n  /* Borders\n\n  The following variables, specify the visual styling of borders in JupyterLab.\n   */\n\n  /* UI Fonts\n\n  The UI font CSS variables are used for the typography all of the JupyterLab\n  user interface elements that are not directly user generated content.\n  */ /* Base font size */ /* Ensures px perfect FontAwesome icons */\n\n  /* Use these font colors against the corresponding main layout colors.\n     In a light theme, these go from dark to light.\n  */\n\n  /* Use these against the brand/accent/warn/error colors.\n     These will typically go from light to darker, in both a dark and light theme\n   */\n\n  /* Content Fonts\n\n  Content font variables are used for typography of user generated content.\n  */ /* Base font size */\n\n\n  /* Layout\n\n  The following are the main layout colors use in JupyterLab. In a light\n  theme these would go from light to dark.\n  */\n\n  /* Brand/accent */\n\n  /* State colors (warn, error, success, info) */\n\n  /* Cell specific styles */\n  /* A custom blend of MD grey and blue 600\n   * See https://meyerweb.com/eric/tools/color-blend/#546E7A:1E88E5:5:hex */\n  /* A custom blend of MD grey and orange 600\n   * https://meyerweb.com/eric/tools/color-blend/#546E7A:F4511E:5:hex */\n\n  /* Notebook specific styles */\n\n  /* Console specific styles */\n\n  /* Toolbar specific styles */\n}\n\n/* Copyright (c) Jupyter Development Team.\n * Distributed under the terms of the Modified BSD License.\n */\n\n/*\n * We assume that the CSS variables in\n * https://github.com/jupyterlab/jupyterlab/blob/master/src/default-theme/variables.css\n * have been defined.\n */\n\n/* This file has code derived from PhosphorJS CSS files, as noted below. The license for this PhosphorJS code is:\n\nCopyright (c) 2014-2017, PhosphorJS Contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the name of the copyright holder nor the names of its\n  contributors may be used to endorse or promote products derived from\n  this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n*/\n\n/* The following section is derived from https://github.com/phosphorjs/phosphor/blob/23b9d075ebc5b73ab148b6ebfc20af97f85714c4/packages/widgets/style/widget.css */\n\n.jupyter-widgets .p-Widget {\n  -webkit-box-sizing: border-box;\n          box-sizing: border-box;\n  position: relative;\n  overflow: hidden;\n  cursor: default;\n}\n\n.jupyter-widgets .p-Widget.p-mod-hidden {\n  display: none !important;\n}\n\n/* End widget.css */\n\n/* The following section is derived from https://github.com/phosphorjs/phosphor/blob/23b9d075ebc5b73ab148b6ebfc20af97f85714c4/packages/widgets/style/tabbar.css */\n\n.jupyter-widgets.widget-tab > .p-TabBar {\n  display: -webkit-box;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-user-select: none;\n  -moz-user-select: none;\n  -ms-user-select: none;\n  user-select: none;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar[data-orientation='horizontal'] {\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n      -ms-flex-direction: row;\n          flex-direction: row;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar[data-orientation='vertical'] {\n  -webkit-box-orient: vertical;\n  -webkit-box-direction: normal;\n      -ms-flex-direction: column;\n          flex-direction: column;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar > .p-TabBar-content {\n  margin: 0;\n  padding: 0;\n  display: -webkit-box;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-flex: 1;\n      -ms-flex: 1 1 auto;\n          flex: 1 1 auto;\n  list-style-type: none;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar[data-orientation='horizontal'] > .p-TabBar-content {\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n      -ms-flex-direction: row;\n          flex-direction: row;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar[data-orientation='vertical'] > .p-TabBar-content {\n  -webkit-box-orient: vertical;\n  -webkit-box-direction: normal;\n      -ms-flex-direction: column;\n          flex-direction: column;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab {\n  display: -webkit-box;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n      -ms-flex-direction: row;\n          flex-direction: row;\n  -webkit-box-sizing: border-box;\n          box-sizing: border-box;\n  overflow: hidden;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabIcon,\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabCloseIcon {\n  -webkit-box-flex: 0;\n      -ms-flex: 0 0 auto;\n          flex: 0 0 auto;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabLabel {\n  -webkit-box-flex: 1;\n      -ms-flex: 1 1 auto;\n          flex: 1 1 auto;\n  overflow: hidden;\n  white-space: nowrap;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab.p-mod-hidden {\n  display: none !important;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar.p-mod-dragging .p-TabBar-tab {\n  position: relative;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar.p-mod-dragging[data-orientation='horizontal'] .p-TabBar-tab {\n  left: 0;\n  -webkit-transition: left 150ms ease;\n  transition: left 150ms ease;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar.p-mod-dragging[data-orientation='vertical'] .p-TabBar-tab {\n  top: 0;\n  -webkit-transition: top 150ms ease;\n  transition: top 150ms ease;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar.p-mod-dragging .p-TabBar-tab.p-mod-dragging {\n  -webkit-transition: none;\n  transition: none;\n}\n\n/* End tabbar.css */\n\n:root { /* margin between inline elements */\n\n    /* From Material Design Lite */\n}\n\n.jupyter-widgets {\n    margin: 2px;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    color: black;\n    overflow: visible;\n}\n\n.jupyter-widgets.jupyter-widgets-disconnected::before {\n    line-height: 28px;\n    height: 28px;\n}\n\n.jp-Output-result > .jupyter-widgets {\n    margin-left: 0;\n    margin-right: 0;\n}\n\n/* vbox and hbox */\n\n.widget-inline-hbox {\n    /* Horizontal widgets */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: horizontal;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: row;\n            flex-direction: row;\n    -webkit-box-align: baseline;\n        -ms-flex-align: baseline;\n            align-items: baseline;\n}\n\n.widget-inline-vbox {\n    /* Vertical Widgets */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n}\n\n.widget-box {\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    margin: 0;\n    overflow: auto;\n}\n\n.widget-hbox {\n    -webkit-box-orient: horizontal;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: row;\n            flex-direction: row;\n}\n\n.widget-vbox {\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n/* General Button Styling */\n\n.jupyter-button {\n    padding-left: 10px;\n    padding-right: 10px;\n    padding-top: 0px;\n    padding-bottom: 0px;\n    display: inline-block;\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    text-align: center;\n    font-size: 13px;\n    cursor: pointer;\n\n    height: 28px;\n    border: 0px solid;\n    line-height: 28px;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n\n    color: rgba(0, 0, 0, .8);\n    background-color: #EEEEEE;\n    border-color: #E0E0E0;\n    border: none;\n}\n\n.jupyter-button i.fa {\n    margin-right: 4px;\n    pointer-events: none;\n}\n\n.jupyter-button:empty:before {\n    content: \"\\200B\"; /* zero-width space */\n}\n\n.jupyter-widgets.jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n.jupyter-button i.fa.center {\n    margin-right: 0;\n}\n\n.jupyter-button:hover:enabled, .jupyter-button:focus:enabled {\n    /* MD Lite 2dp shadow */\n    -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14),\n                0 3px 1px -2px rgba(0, 0, 0, .2),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n            box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14),\n                0 3px 1px -2px rgba(0, 0, 0, .2),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n}\n\n.jupyter-button:active, .jupyter-button.mod-active {\n    /* MD Lite 4dp shadow */\n    -webkit-box-shadow: 0 4px 5px 0 rgba(0, 0, 0, .14),\n                0 1px 10px 0 rgba(0, 0, 0, .12),\n                0 2px 4px -1px rgba(0, 0, 0, .2);\n            box-shadow: 0 4px 5px 0 rgba(0, 0, 0, .14),\n                0 1px 10px 0 rgba(0, 0, 0, .12),\n                0 2px 4px -1px rgba(0, 0, 0, .2);\n    color: rgba(0, 0, 0, .8);\n    background-color: #BDBDBD;\n}\n\n.jupyter-button:focus:enabled {\n    outline: 1px solid #64B5F6;\n}\n\n/* Button \"Primary\" Styling */\n\n.jupyter-button.mod-primary {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #2196F3;\n}\n\n.jupyter-button.mod-primary.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #1976D2;\n}\n\n.jupyter-button.mod-primary:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #1976D2;\n}\n\n/* Button \"Success\" Styling */\n\n.jupyter-button.mod-success {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #4CAF50;\n}\n\n.jupyter-button.mod-success.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #388E3C;\n }\n\n.jupyter-button.mod-success:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #388E3C;\n }\n\n/* Button \"Info\" Styling */\n\n.jupyter-button.mod-info {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #00BCD4;\n}\n\n.jupyter-button.mod-info.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #0097A7;\n}\n\n.jupyter-button.mod-info:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #0097A7;\n}\n\n/* Button \"Warning\" Styling */\n\n.jupyter-button.mod-warning {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #FF9800;\n}\n\n.jupyter-button.mod-warning.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #F57C00;\n}\n\n.jupyter-button.mod-warning:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #F57C00;\n}\n\n/* Button \"Danger\" Styling */\n\n.jupyter-button.mod-danger {\n    color: rgba(255, 255, 255, 1.0);\n    background-color: #F44336;\n}\n\n.jupyter-button.mod-danger.mod-active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #D32F2F;\n}\n\n.jupyter-button.mod-danger:active {\n    color: rgba(255, 255, 255, 1);\n    background-color: #D32F2F;\n}\n\n/* Widget Button*/\n\n.widget-button, .widget-toggle-button {\n    width: 148px;\n}\n\n/* Widget Label Styling */\n\n/* Override Bootstrap label css */\n\n.jupyter-widgets label {\n    margin-bottom: 0;\n    margin-bottom: initial;\n}\n\n.widget-label-basic {\n    /* Basic Label */\n    color: black;\n    font-size: 13px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    line-height: 28px;\n}\n\n.widget-label {\n    /* Label */\n    color: black;\n    font-size: 13px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    line-height: 28px;\n}\n\n.widget-inline-hbox .widget-label {\n    /* Horizontal Widget Label */\n    color: black;\n    text-align: right;\n    margin-right: 8px;\n    width: 80px;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n}\n\n.widget-inline-vbox .widget-label {\n    /* Vertical Widget Label */\n    color: black;\n    text-align: center;\n    line-height: 28px;\n}\n\n/* Widget Readout Styling */\n\n.widget-readout {\n    color: black;\n    font-size: 13px;\n    height: 28px;\n    line-height: 28px;\n    overflow: hidden;\n    white-space: nowrap;\n    text-align: center;\n}\n\n.widget-readout.overflow {\n    /* Overflowing Readout */\n\n    /* From Material Design Lite\n        shadow-key-umbra-opacity: 0.2;\n        shadow-key-penumbra-opacity: 0.14;\n        shadow-ambient-shadow-opacity: 0.12;\n     */\n    -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .2),\n                        0 3px 1px -2px rgba(0, 0, 0, .14),\n                        0 1px 5px 0 rgba(0, 0, 0, .12);\n\n    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .2),\n                0 3px 1px -2px rgba(0, 0, 0, .14),\n                0 1px 5px 0 rgba(0, 0, 0, .12);\n}\n\n.widget-inline-hbox .widget-readout {\n    /* Horizontal Readout */\n    text-align: center;\n    max-width: 148px;\n    min-width: 72px;\n    margin-left: 4px;\n}\n\n.widget-inline-vbox .widget-readout {\n    /* Vertical Readout */\n    margin-top: 4px;\n    /* as wide as the widget */\n    width: inherit;\n}\n\n/* Widget Checkbox Styling */\n\n.widget-checkbox {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-checkbox input[type=\"checkbox\"] {\n    margin: 0px 8px 0px 0px;\n    line-height: 28px;\n    font-size: large;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n    -ms-flex-item-align: center;\n        align-self: center;\n}\n\n/* Widget Valid Styling */\n\n.widget-valid {\n    height: 28px;\n    line-height: 28px;\n    width: 148px;\n    font-size: 13px;\n}\n\n.widget-valid i:before {\n    line-height: 28px;\n    margin-right: 4px;\n    margin-left: 4px;\n\n    /* from the fa class in FontAwesome: https://github.com/FortAwesome/Font-Awesome/blob/49100c7c3a7b58d50baa71efef11af41a66b03d3/css/font-awesome.css#L14 */\n    display: inline-block;\n    font: normal normal normal 14px/1 FontAwesome;\n    font-size: inherit;\n    text-rendering: auto;\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n}\n\n.widget-valid.mod-valid i:before {\n    content: \"\\F00C\";\n    color: green;\n}\n\n.widget-valid.mod-invalid i:before {\n    content: \"\\F00D\";\n    color: red;\n}\n\n.widget-valid.mod-valid .widget-valid-readout {\n    display: none;\n}\n\n/* Widget Text and TextArea Stying */\n\n.widget-textarea, .widget-text {\n    width: 300px;\n}\n\n.widget-text input[type=\"text\"], .widget-text input[type=\"number\"]{\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-text input[type=\"text\"]:disabled, .widget-text input[type=\"number\"]:disabled, .widget-textarea textarea:disabled {\n    opacity: 0.6;\n}\n\n.widget-text input[type=\"text\"], .widget-text input[type=\"number\"], .widget-textarea textarea {\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    padding: 4px 8px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    outline: none !important;\n}\n\n.widget-textarea textarea {\n    height: inherit;\n    width: inherit;\n}\n\n.widget-text input:focus, .widget-textarea textarea:focus {\n    border-color: #64B5F6;\n}\n\n/* Widget Slider */\n\n.widget-slider .ui-slider {\n    /* Slider Track */\n    border: 1px solid #BDBDBD;\n    background: #BDBDBD;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    position: relative;\n    border-radius: 0px;\n}\n\n.widget-slider .ui-slider .ui-slider-handle {\n    /* Slider Handle */\n    outline: none !important; /* focused slider handles are colored - see below */\n    position: absolute;\n    background-color: white;\n    border: 1px solid #9E9E9E;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    z-index: 1;\n    background-image: none; /* Override jquery-ui */\n}\n\n/* Override jquery-ui */\n\n.widget-slider .ui-slider .ui-slider-handle:hover, .widget-slider .ui-slider .ui-slider-handle:focus {\n    background-color: #2196F3;\n    border: 1px solid #2196F3;\n}\n\n.widget-slider .ui-slider .ui-slider-handle:active {\n    background-color: #2196F3;\n    border-color: #2196F3;\n    z-index: 2;\n    -webkit-transform: scale(1.2);\n            transform: scale(1.2);\n}\n\n.widget-slider  .ui-slider .ui-slider-range {\n    /* Interval between the two specified value of a double slider */\n    position: absolute;\n    background: #2196F3;\n    z-index: 0;\n}\n\n/* Shapes of Slider Handles */\n\n.widget-hslider .ui-slider .ui-slider-handle {\n    width: 16px;\n    height: 16px;\n    margin-top: -7px;\n    margin-left: -7px;\n    border-radius: 50%;\n    top: 0;\n}\n\n.widget-vslider .ui-slider .ui-slider-handle {\n    width: 16px;\n    height: 16px;\n    margin-bottom: -7px;\n    margin-left: -7px;\n    border-radius: 50%;\n    left: 0;\n}\n\n.widget-hslider .ui-slider .ui-slider-range {\n    height: 8px;\n    margin-top: -3px;\n}\n\n.widget-vslider .ui-slider .ui-slider-range {\n    width: 8px;\n    margin-left: -3px;\n}\n\n/* Horizontal Slider */\n\n.widget-hslider {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n\n    /* Override the align-items baseline. This way, the description and readout\n    still seem to align their baseline properly, and we don't have to have\n    align-self: stretch in the .slider-container. */\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n}\n\n.widgets-slider .slider-container {\n    overflow: visible;\n}\n\n.widget-hslider .slider-container {\n    height: 28px;\n    margin-left: 6px;\n    margin-right: 6px;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n}\n\n.widget-hslider .ui-slider {\n    /* Inner, invisible slide div */\n    height: 4px;\n    margin-top: 12px;\n    width: 100%;\n}\n\n/* Vertical Slider */\n\n.widget-vbox .widget-label {\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-vslider {\n    /* Vertical Slider */\n    height: 200px;\n    width: 72px;\n}\n\n.widget-vslider .slider-container {\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    margin-left: auto;\n    margin-right: auto;\n    margin-bottom: 6px;\n    margin-top: 6px;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n.widget-vslider .ui-slider-vertical {\n    /* Inner, invisible slide div */\n    width: 4px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-left: auto;\n    margin-right: auto;\n}\n\n/* Widget Progress Styling */\n\n.progress-bar {\n    -webkit-transition: none;\n    transition: none;\n}\n\n.progress-bar {\n    height: 28px;\n}\n\n.progress-bar {\n    background-color: #2196F3;\n}\n\n.progress-bar-success {\n    background-color: #4CAF50;\n}\n\n.progress-bar-info {\n    background-color: #00BCD4;\n}\n\n.progress-bar-warning {\n    background-color: #FF9800;\n}\n\n.progress-bar-danger {\n    background-color: #F44336;\n}\n\n.progress {\n    background-color: #EEEEEE;\n    border: none;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n}\n\n/* Horisontal Progress */\n\n.widget-hprogress {\n    /* Progress Bar */\n    height: 28px;\n    line-height: 28px;\n    width: 300px;\n    -webkit-box-align: center;\n        -ms-flex-align: center;\n            align-items: center;\n\n}\n\n.widget-hprogress .progress {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-top: 4px;\n    margin-bottom: 4px;\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    /* Override bootstrap style */\n    height: auto;\n    height: initial;\n}\n\n/* Vertical Progress */\n\n.widget-vprogress {\n    height: 200px;\n    width: 72px;\n}\n\n.widget-vprogress .progress {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    width: 20px;\n    margin-left: auto;\n    margin-right: auto;\n    margin-bottom: 0;\n}\n\n/* Select Widget Styling */\n\n.widget-dropdown {\n    height: 28px;\n    width: 300px;\n    line-height: 28px;\n}\n\n.widget-dropdown > select {\n    border: 1px solid #9E9E9E;\n    border-radius: 0;\n    height: inherit;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    outline: none !important;\n    -webkit-box-shadow: none;\n            box-shadow: none;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    vertical-align: top;\n    padding-left: 8px;\n\tappearance: none;\n\t-webkit-appearance: none;\n\t-moz-appearance: none;\n    background-repeat: no-repeat;\n\tbackground-size: 20px;\n\tbackground-position: right center;\n    background-image: url(\"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDE5LjIuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAxOCAxOCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTggMTg7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDpub25lO30KPC9zdHlsZT4KPHBhdGggZD0iTTUuMiw1LjlMOSw5LjdsMy44LTMuOGwxLjIsMS4ybC00LjksNWwtNC45LTVMNS4yLDUuOXoiLz4KPHBhdGggY2xhc3M9InN0MCIgZD0iTTAtMC42aDE4djE4SDBWLTAuNnoiLz4KPC9zdmc+Cg\");\n}\n\n.widget-dropdown > select:focus {\n    border-color: #64B5F6;\n}\n\n.widget-dropdown > select:disabled {\n    opacity: 0.6;\n}\n\n/* To disable the dotted border in Firefox around select controls.\n   See http://stackoverflow.com/a/18853002 */\n\n.widget-dropdown > select:-moz-focusring {\n    color: transparent;\n    text-shadow: 0 0 0 #000;\n}\n\n.widget-dropdown > select > option:checked {\n    color: rgba(0, 0, 0, 1.0);\n    background: white repeat url(\"data:image/gif;base64,R0lGO...\");\n}\n\n/* Select and SelectMultiple */\n\n.widget-select {\n    width: 300px;\n    line-height: 28px;\n\n    /* Because Firefox defines the baseline of a select as the bottom of the\n    control, we align the entire control to the top and add padding to the\n    select to get an approximate first line baseline alignment. */\n    -webkit-box-align: start;\n        -ms-flex-align: start;\n            align-items: flex-start;\n}\n\n.widget-select > select {\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    -webkit-box-flex: 1;\n        -ms-flex: 1 1 148px;\n            flex: 1 1 148px;\n    outline: none !important;\n    overflow: auto;\n    height: inherit;\n\n    /* Because Firefox defines the baseline of a select as the bottom of the\n    control, we align the entire control to the top and add padding to the\n    select to get an approximate first line baseline alignment. */\n    padding-top: 5px;\n}\n\n.widget-select > select:focus {\n    border-color: #64B5F6;\n}\n\n.widget-select > select > option:checked {\n    color: rgba(0, 0, 0, 1.0);\n    background: white repeat url(\"data:image/gif;base64,R0lGO...\");\n}\n\n.wiget-select > select > option {\n    padding-left: 4px;\n    line-height: 28px;\n    /* line-height doesn't work on some browsers for select options */\n    padding-top: 21.5px;\n    padding-bottom: 21.5px;\n}\n\n/* Toggle Buttons Styling */\n\n.widget-toggle-buttons {\n    line-height: 28px;\n}\n\n.widget-toggle-buttons .widget-toggle-button {\n    margin-left: 2px;\n    margin-right: 2px;\n}\n\n.widget-toggle-buttons .jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n/* Radio Buttons Styling */\n\n.widget-radio {\n    width: 300px;\n    line-height: 28px;\n}\n\n.widget-radio-box {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    margin-bottom: 8px;\n}\n\n.widget-radio-box label {\n    height: 20px;\n    line-height: 20px;\n    font-size: 13px;\n}\n\n.widget-radio-box input {\n    height: 20px;\n    line-height: 20px;\n    margin: 0 8px 0 1px;\n    float: left;\n}\n\n/* Color Picker Styling */\n\n.widget-colorpicker {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-colorpicker > .widget-colorpicker-input {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    min-width: 72px;\n}\n\n.widget-colorpicker input[type=\"color\"] {\n    width: 28px;\n    height: 28px;\n    padding: 0 2px; /* make the color square actually square on Chrome on OS X */\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    border-left: none;\n    -webkit-box-flex: 0;\n        -ms-flex-positive: 0;\n            flex-grow: 0;\n    -ms-flex-negative: 0;\n        flex-shrink: 0;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    outline: none !important;\n}\n\n.widget-colorpicker.concise input[type=\"color\"] {\n    border-left: 1px solid #9E9E9E;\n}\n\n.widget-colorpicker input[type=\"color\"]:focus, .widget-colorpicker input[type=\"text\"]:focus {\n    border-color: #64B5F6;\n}\n\n.widget-colorpicker input[type=\"text\"] {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    outline: none !important;\n    height: 28px;\n    line-height: 28px;\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    font-size: 13px;\n    padding: 4px 8px;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n}\n\n.widget-colorpicker input[type=\"text\"]:disabled {\n    opacity: 0.6;\n}\n\n/* Date Picker Styling */\n\n.widget-datepicker {\n    width: 300px;\n    height: 28px;\n    line-height: 28px;\n}\n\n.widget-datepicker input[type=\"date\"] {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    min-width: 0; /* This makes it possible for the flexbox to shrink this input */\n    outline: none !important;\n    height: 28px;\n    border: 1px solid #9E9E9E;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    font-size: 13px;\n    padding: 4px 8px;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n}\n\n.widget-datepicker input[type=\"date\"]:focus {\n    border-color: #64B5F6;\n}\n\n.widget-datepicker input[type=\"date\"]:invalid {\n    border-color: #FF9800;\n}\n\n.widget-datepicker input[type=\"date\"]:disabled {\n    opacity: 0.6;\n}\n\n/* Play Widget */\n\n.widget-play {\n    width: 148px;\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.widget-play .jupyter-button {\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    height: auto;\n}\n\n.widget-play .jupyter-button:disabled {\n    opacity: 0.6;\n}\n\n/* Tab Widget */\n\n.jupyter-widgets.widget-tab {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar {\n    /* Necessary so that a tab can be shifted down to overlay the border of the box below. */\n    overflow-x: visible;\n    overflow-y: visible;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar > .p-TabBar-content {\n    /* Make sure that the tab grows from bottom up */\n    -webkit-box-align: end;\n        -ms-flex-align: end;\n            align-items: flex-end;\n    min-width: 0;\n    min-height: 0;\n}\n\n.jupyter-widgets.widget-tab > .widget-tab-contents {\n    width: 100%;\n    -webkit-box-sizing: border-box;\n            box-sizing: border-box;\n    margin: 0;\n    background: white;\n    color: rgba(0, 0, 0, .8);\n    border: 1px solid #9E9E9E;\n    padding: 15px;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    overflow: auto;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar {\n    font: 13px Helvetica, Arial, sans-serif;\n    min-height: 25px;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab {\n    -webkit-box-flex: 0;\n        -ms-flex: 0 1 144px;\n            flex: 0 1 144px;\n    min-width: 35px;\n    min-height: 25px;\n    line-height: 24px;\n    margin-left: -1px;\n    padding: 0px 10px;\n    background: #EEEEEE;\n    color: rgba(0, 0, 0, .5);\n    border: 1px solid #9E9E9E;\n    border-bottom: none;\n    position: relative;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab.p-mod-current {\n    color: rgba(0, 0, 0, 1.0);\n    /* We want the background to match the tab content background */\n    background: white;\n    min-height: 26px;\n    -webkit-transform: translateY(1px);\n            transform: translateY(1px);\n    overflow: visible;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab.p-mod-current:before {\n    position: absolute;\n    top: -1px;\n    left: -1px;\n    content: '';\n    height: 2px;\n    width: calc(100% + 2px);\n    background: #2196F3;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab:first-child {\n    margin-left: 0;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab:hover:not(.p-mod-current) {\n    background: white;\n    color: rgba(0, 0, 0, .8);\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-mod-closable > .p-TabBar-tabCloseIcon {\n    margin-left: 4px;\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-mod-closable > .p-TabBar-tabCloseIcon:before {\n    font-family: FontAwesome;\n    content: '\\F00D'; /* close */\n}\n\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabIcon,\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabLabel,\n.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tabCloseIcon {\n    line-height: 24px;\n}\n\n/* Accordion Widget */\n\n.p-Collapse {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.p-Collapse-header {\n    padding: 4px;\n    cursor: pointer;\n    color: rgba(0, 0, 0, .5);\n    background-color: #EEEEEE;\n    border: 1px solid #9E9E9E;\n    padding: 10px 15px;\n    font-weight: bold;\n}\n\n.p-Collapse-header:hover {\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n}\n\n.p-Collapse-open > .p-Collapse-header {\n    background-color: white;\n    color: rgba(0, 0, 0, 1.0);\n    cursor: default;\n    border-bottom: none;\n}\n\n.p-Collapse .p-Collapse-header::before {\n    content: '\\F0DA\\A0';  /* caret-right, non-breaking space */\n    display: inline-block;\n    font: normal normal normal 14px/1 FontAwesome;\n    font-size: inherit;\n    text-rendering: auto;\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n}\n\n.p-Collapse-open > .p-Collapse-header::before {\n    content: '\\F0D7\\A0'; /* caret-down, non-breaking space */\n}\n\n.p-Collapse-contents {\n    padding: 15px;\n    background-color: white;\n    color: rgba(0, 0, 0, .8);\n    border-left: 1px solid #9E9E9E;\n    border-right: 1px solid #9E9E9E;\n    border-bottom: 1px solid #9E9E9E;\n    overflow: auto;\n}\n\n.p-Accordion {\n    display: -webkit-box;\n    display: -ms-flexbox;\n    display: flex;\n    -webkit-box-orient: vertical;\n    -webkit-box-direction: normal;\n        -ms-flex-direction: column;\n            flex-direction: column;\n    -webkit-box-align: stretch;\n        -ms-flex-align: stretch;\n            align-items: stretch;\n}\n\n.p-Accordion .p-Collapse {\n    margin-bottom: 0;\n}\n\n.p-Accordion .p-Collapse + .p-Collapse {\n    margin-top: 4px;\n}\n\n/* HTML widget */\n\n.widget-html, .widget-htmlmath {\n    font-size: 13px;\n}\n\n.widget-html > .widget-html-content, .widget-htmlmath > .widget-html-content {\n    /* Fill out the area in the HTML widget */\n    -ms-flex-item-align: stretch;\n        align-self: stretch;\n    -webkit-box-flex: 1;\n        -ms-flex-positive: 1;\n            flex-grow: 1;\n    -ms-flex-negative: 1;\n        flex-shrink: 1;\n    /* Makes sure the baseline is still aligned with other elements */\n    line-height: 28px;\n    /* Make it possible to have absolutely-positioned elements in the html */\n    position: relative;\n}\n", ""]);
 
 // exports
 

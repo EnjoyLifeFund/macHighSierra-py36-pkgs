@@ -241,7 +241,8 @@ class Table(object):
                                     autoincrement=increment)
                     self._table.append_column(column)
                 for column in columns:
-                    self._table.append_column(column)
+                    if not column.name == self._primary_id:
+                        self._table.append_column(column)
                 self._table.create(self.db.executable, checkfirst=True)
         elif len(columns):
             with self.db.lock:
@@ -383,7 +384,7 @@ class Table(object):
             return True
         for column in columns:
             if not self.has_column(column):
-                raise DatasetException("Column does not exist: %s" % column)
+                return False
         indexes = self.db.inspect.get_indexes(self.name, schema=self.db.schema)
         for index in indexes:
             if columns == set(index.get('column_names', [])):
@@ -403,6 +404,10 @@ class Table(object):
         with self.db.lock:
             if not self.exists:
                 raise DatasetException("Table has not been created yet.")
+
+            for column in columns:
+                if not self.has_column(column):
+                    return
 
             if not self.has_index(columns):
                 self._threading_warn()

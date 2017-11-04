@@ -55,7 +55,11 @@ class Base(object):
         self._encoding = encoding
 
     def copy(self):
-        """Return a copied instance of the object."""
+        """Return a copied instance of the object.
+
+        Returns:
+            An independent copy of the current object.
+        """
         kwargs = self._kwargs()
         return self.__class__(**kwargs)
 
@@ -223,16 +227,35 @@ class Source(File):
 
     Args:
         source: The verbatim DOT source code string.
-        filename: Filename for saving the source (defaults to `name` + '.gv').
+        filename: Filename for saving the source (defaults to 'Source.gv').
         directory: (Sub)directory for source saving and rendering.
         format: Rendering output format ('pdf', 'png', ...).
         engine: Layout command used ('dot', 'neato', ...).
         encoding: Encoding for saving the source.
 
     .. note::
-        All parameters except `source` are optional and can be changed under
-        their corresponding attribute name after instance creation.
+        All parameters except `source` are optional. All of them can be changed
+        under their corresponding attribute name after instance creation.
     """
+
+    @classmethod
+    def from_file(cls, filename, directory=None,
+                  format=None, engine=None, encoding=None):
+        """Return an instance with the source string read from the given file.
+
+        Args:
+            filename: Filename for loading/saving the source.
+            directory: (Sub)directory for source loading/saving and rendering.
+            format: Rendering output format ('pdf', 'png', ...).
+            engine: Layout command used ('dot', 'neato', ...).
+            encoding: Encoding for loading/saving the source.
+        """
+        filepath = os.path.join(directory or '', filename)
+        if encoding is None:
+            encoding = cls._encoding
+        with io.open(filepath, encoding=encoding) as fd:
+            source = fd.read()
+        return cls(source, filename, directory, format, engine, encoding)
 
     def __init__(self, source, filename=None, directory=None,
                  format=None, engine=None, encoding=None):

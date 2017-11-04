@@ -279,13 +279,15 @@ class ProjectorPlugin(base_plugin.TBPlugin):
     # The plugin is currently not active. The frontend might check again later.
     # For now, spin off a separate thread to determine whether the plugin is
     # active.
-    new_thread = threading.Thread(target=self._determine_is_active)
+    new_thread = threading.Thread(
+        target=self._determine_is_active,
+        name='ProjectorPluginIsActiveThread')
     self._thread_for_determining_is_active = new_thread
     new_thread.start()
     return False
 
   def _determine_is_active(self):
-    """Determines whether the thread is active.
+    """Determines whether the plugin is active.
 
     This method is run in a separate thread so that the plugin can offer an
     immediate response to whether it is active and determine whether it should
@@ -329,10 +331,10 @@ class ProjectorPlugin(base_plugin.TBPlugin):
         if embedding.tensor_path and not embedding.tensor_shape:
           fpath = _rel_to_abs_asset_path(embedding.tensor_path,
                                          self.config_fpaths[run])
-          tensor = self.tensor_cache.get(embedding.tensor_name)
+          tensor = self.tensor_cache.get((run, embedding.tensor_name))
           if tensor is None:
             tensor = _read_tensor_tsv_file(fpath)
-            self.tensor_cache.set(embedding.tensor_name, tensor)
+            self.tensor_cache.set((run, embedding.tensor_name), tensor)
           embedding.tensor_shape.extend([len(tensor), len(tensor[0])])
 
       reader = self._get_reader_for_run(run)
@@ -539,7 +541,7 @@ class ProjectorPlugin(base_plugin.TBPlugin):
 
     config = self.configs[run]
 
-    tensor = self.tensor_cache.get(name)
+    tensor = self.tensor_cache.get((run, name))
     if tensor is None:
       # See if there is a tensor file in the config.
       embedding = self._get_embedding(name, config)
@@ -564,7 +566,7 @@ class ProjectorPlugin(base_plugin.TBPlugin):
         except tf.errors.InvalidArgumentError as e:
           return Respond(request, str(e), 'text/plain', 400)
 
-      self.tensor_cache.set(name, tensor)
+      self.tensor_cache.set((run, name), tensor)
 
     if num_rows:
       tensor = tensor[:num_rows]

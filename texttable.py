@@ -76,7 +76,7 @@ __all__ = ["Texttable", "ArraySizeError"]
 
 __author__ = 'Gerome Fournier <jef(at)foutaise.org>'
 __license__ = 'LGPL'
-__version__ = '0.8.8'
+__version__ = '1.1.1'
 __credits__ = """\
 Jeff Kowalczyk:
     - textwrap improved import
@@ -109,9 +109,9 @@ import string
 import unicodedata
 
 try:
-    if sys.version >= '2.3':
+    if sys.version_info >= (2, 3):
         import textwrap
-    elif sys.version >= '2.2':
+    elif sys.version_info >= (2, 2):
         from optparse import textwrap
     else:
         from optik import textwrap
@@ -119,10 +119,10 @@ except ImportError:
     sys.stderr.write("Can't import textwrap module!\n")
     raise
 
-if sys.version >= '2.7':
+if sys.version_info >= (2, 7):
     from functools import reduce
 
-if sys.version >= '3.0':
+if sys.version_info >= (3, 0):
     unicode_type = str
     bytes_type = bytes
 else:
@@ -152,7 +152,7 @@ def len(iterable):
         unicode_data = obj2unicode(iterable)
         if hasattr(unicodedata, 'east_asian_width'):
             w = unicodedata.east_asian_width
-            return sum([w(c) in 'WF' and 2 or 0 if unicodedata.combining(c) else 1 for c in unicode_data])
+            return sum([w(c) in 'WF' and 2 or (0 if unicodedata.combining(c) else 1) for c in unicode_data])
         else:
             return unicode_data.__len__()
     else:
@@ -169,6 +169,11 @@ class ArraySizeError(Exception):
 
     def __str__(self):
         return self.msg
+
+
+class FallbackToText(Exception):
+    """Used for failed conversion to float"""
+    pass
 
 
 class Texttable:
@@ -272,13 +277,15 @@ class Texttable:
     def set_cols_dtype(self, array):
         """Set the desired columns datatype for the cols.
 
-        - the elements of the array should be either "a", "t", "f", "e" or "i":
+        - the elements of the array should be either a callable or any of
+          "a", "t", "f", "e" or "i":
 
             * "a": automatic (try to use the most appropriate datatype)
             * "t": treat as text
             * "f": treat as float in decimal format
             * "e": treat as float in exponential format
             * "i": treat as int
+            * a callable: should return formatted string for any value given
 
         - by default, automatic datatyping is used for each column
         """
@@ -387,39 +394,88 @@ class Texttable:
             out += self._hline()
         return out[:-1]
 
+    @classmethod
+    def _to_float(cls, x):
+        if x is None:
+            raise FallbackToText()
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            raise FallbackToText()
+
+    @classmethod
+    def _fmt_int(cls, x, **kw):
+        """Integer formatting class-method.
+
+        - x will be float-converted and then used.
+        """
+        return str(int(round(cls._to_float(x))))
+
+    @classmethod
+    def _fmt_float(cls, x, **kw):
+        """Float formatting class-method.
+
+        - x parameter is ignored. Instead kw-argument f being x float-converted
+          will be used.
+
+        - precision will be taken from `n` kw-argument.
+        """
+        n = kw.get('n')
+        return '%.*f' % (n, cls._to_float(x))
+
+    @classmethod
+    def _fmt_exp(cls, x, **kw):
+        """Exponential formatting class-method.
+
+        - x parameter is ignored. Instead kw-argument f being x float-converted
+          will be used.
+
+        - precision will be taken from `n` kw-argument.
+        """
+        n = kw.get('n')
+        return '%.*e' % (n, cls._to_float(x))
+
+    @classmethod
+    def _fmt_text(cls, x, **kw):
+        """String formatting class-method."""
+        return obj2unicode(x)
+
+    @classmethod
+    def _fmt_auto(cls, x, **kw):
+        """auto formatting class-method."""
+        f = cls._to_float(x)
+        if abs(f) > 1e8:
+            fn = cls._fmt_exp
+        else:
+            if f - round(f) == 0:
+                fn = cls._fmt_int
+            else:
+                fn = cls._fmt_float
+        return fn(x, **kw)
+
     def _str(self, i, x):
         """Handles string formatting of cell data
 
             i - index of the cell datatype in self._dtype
             x - cell data to format
         """
-        try:
-            f = float(x)
-        except:
-            return obj2unicode(x)
+        FMT = {
+            'a':self._fmt_auto,
+            'i':self._fmt_int,
+            'f':self._fmt_float,
+            'e':self._fmt_exp,
+            't':self._fmt_text,
+            }
 
         n = self._precision
         dtype = self._dtype[i]
-
-        if dtype == 'i':
-            return str(int(round(f)))
-        elif dtype == 'f':
-            return '%.*f' % (n, f)
-        elif dtype == 'e':
-            return '%.*e' % (n, f)
-        elif dtype == 't':
-            return obj2unicode(x)
-        else:
-            if f - round(f) == 0:
-                if abs(f) > 1e8:
-                    return '%.*e' % (n, f)
-                else:
-                    return str(int(round(f)))
+        try:
+            if callable(dtype):
+                return dtype(x)
             else:
-                if abs(f) > 1e8:
-                    return '%.*e' % (n, f)
-                else:
-                    return '%.*f' % (n, f)
+                return FMT[dtype](x, n=n)
+        except FallbackToText:
+            return self._fmt_text(x)
 
     def _check_row_size(self, array):
         """Check that the specified array fits the previous rows size

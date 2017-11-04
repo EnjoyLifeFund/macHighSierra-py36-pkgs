@@ -1362,6 +1362,11 @@ def _analyse_name_as_type(name, pos, env):
     type = PyrexTypes.parse_basic_type(name)
     if type is not None:
         return type
+
+    global_entry = env.global_scope().lookup_here(name)
+    if global_entry and global_entry.type and global_entry.type.is_extension_type:
+        return global_entry.type
+
     from .TreeFragment import TreeFragment
     with local_errors(ignore=True):
         pos = (pos[0], pos[1], pos[2]-7)
@@ -1372,7 +1377,9 @@ def _analyse_name_as_type(name, pos, env):
         else:
             sizeof_node = declaration.root.stats[0].expr
             if isinstance(sizeof_node, SizeofTypeNode):
-                return sizeof_node.arg_type.analyse_types(env)
+                sizeof_node = sizeof_node.analyse_types(env)
+                if isinstance(sizeof_node, SizeofTypeNode):
+                    return sizeof_node.arg_type
     return None
 
 
@@ -2865,18 +2872,18 @@ class WithExitCallNode(ExprNode):
     # The __exit__() call of a 'with' statement.  Used in both the
     # except and finally clauses.
 
-    # with_stat  WithStatNode                the surrounding 'with' statement
-    # args       TupleNode or ResultStatNode the exception info tuple
-    # await      AwaitExprNode               the await expression of an 'async with' statement
+    # with_stat   WithStatNode                the surrounding 'with' statement
+    # args        TupleNode or ResultStatNode the exception info tuple
+    # await_expr  AwaitExprNode               the await expression of an 'async with' statement
 
-    subexprs = ['args', 'await']
+    subexprs = ['args', 'await_expr']
     test_if_run = True
-    await = None
+    await_expr = None
 
     def analyse_types(self, env):
         self.args = self.args.analyse_types(env)
-        if self.await:
-            self.await = self.await.analyse_types(env)
+        if self.await_expr:
+            self.await_expr = self.await_expr.analyse_types(env)
         self.type = PyrexTypes.c_bint_type
         self.is_temp = True
         return self
@@ -2903,12 +2910,12 @@ class WithExitCallNode(ExprNode):
         code.putln(code.error_goto_if_null(result_var, self.pos))
         code.put_gotref(result_var)
 
-        if self.await:
+        if self.await_expr:
             # FIXME: result_var temp currently leaks into the closure
-            self.await.generate_evaluation_code(code, source_cname=result_var, decref_source=True)
-            code.putln("%s = %s;" % (result_var, self.await.py_result()))
-            self.await.generate_post_assignment_code(code)
-            self.await.free_temps(code)
+            self.await_expr.generate_evaluation_code(code, source_cname=result_var, decref_source=True)
+            code.putln("%s = %s;" % (result_var, self.await_expr.py_result()))
+            self.await_expr.generate_post_assignment_code(code)
+            self.await_expr.free_temps(code)
 
         if self.result_is_used:
             self.allocate_temp_result(code)
@@ -4191,7 +4198,7 @@ class BufferIndexNode(_IndexingBaseNode):
             # case.
             code.putln("__Pyx_call_destructor(%s);" % obj)
             code.putln("new (&%s) decltype(%s){%s};" % (obj, obj, self.base.pythran_result()))
-            code.putln("%s(%s) %s= %s;" % (
+            code.putln("%s%s %s= %s;" % (
                 obj,
                 pythran_indexing_code(self.indices),
                 op,
@@ -4222,7 +4229,7 @@ class BufferIndexNode(_IndexingBaseNode):
         if is_pythran_expr(self.base.type):
             res = self.result()
             code.putln("__Pyx_call_destructor(%s);" % res)
-            code.putln("new (&%s) decltype(%s){%s[%s]};" % (
+            code.putln("new (&%s) decltype(%s){%s%s};" % (
                 res,
                 res,
                 self.base.pythran_result(),
@@ -7949,8 +7956,7 @@ class ScopedExprNode(ExprNode):
         generate_inner_evaluation_code(code)
 
         # normal (non-error) exit
-        for entry in py_entries:
-            code.put_var_xdecref_clear(entry)
+        self._generate_vars_cleanup(code, py_entries)
 
         # error/loop body exit points
         exit_scope = code.new_label('exit_scope')
@@ -7959,14 +7965,21 @@ class ScopedExprNode(ExprNode):
                                  list(zip(code.get_loop_labels(), old_loop_labels))):
             if code.label_used(label):
                 code.put_label(label)
-                for entry in py_entries:
-                    code.put_var_xdecref_clear(entry)
+                self._generate_vars_cleanup(code, py_entries)
                 code.put_goto(old_label)
         code.put_label(exit_scope)
         code.putln('} /* exit inner scope */')
 
         code.set_loop_labels(old_loop_labels)
         code.error_label = old_error_label
+
+    def _generate_vars_cleanup(self, code, py_entries):
+        for entry in py_entries:
+            if entry.is_cglobal:
+                code.put_var_gotref(entry)
+                code.put_decref_set(entry.cname, "Py_None")
+            else:
+                code.put_var_xdecref_clear(entry)
 
 
 class ComprehensionNode(ScopedExprNode):
@@ -7975,6 +7988,7 @@ class ComprehensionNode(ScopedExprNode):
     child_attrs = ["loop"]
 
     is_temp = True
+    constant_result = not_a_constant
 
     def infer_type(self, env):
         return self.type

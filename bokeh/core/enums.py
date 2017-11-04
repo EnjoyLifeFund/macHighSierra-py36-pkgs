@@ -127,6 +127,9 @@ def enumeration(*values, **kwargs):
 
     return type("Enumeration", (Enumeration,), attrs)()
 
+#: Specify whether events should be combined or collected as-is when a Document hold is in effect
+HoldPolicy = enumeration( "combine", "collect")
+
 #: Specify whether a dimension or coordinate is latitude or longitude
 LatLon = enumeration("lat", "lon")
 
@@ -192,7 +195,7 @@ DashPattern = enumeration("solid", "dashed", "dotted", "dotdash", "dashdot")
 ButtonType = enumeration("default", "primary", "success", "warning", "danger", "link")
 
 #: Specify one of the 137 named CSS colors
-NamedColor = enumeration(*colors.__colors__, case_sensitive=False)
+NamedColor = enumeration(*colors.named.__all__, case_sensitive=False)
 
 #: Specify the name of a palette from :ref:`bokeh.palettes`
 Palette = enumeration(*palettes.__palettes__)
@@ -221,11 +224,6 @@ RenderLevel = enumeration("image", "underlay", "glyph", "annotation", "overlay")
 
 #: Specify a render mode for renderers that support both Canvas or CSS rendering
 RenderMode = enumeration("canvas", "css")
-
-# TODO (bev) Aggregation can probably be deprecated and removed
-
-#: Specify an aggregation type
-Aggregation = enumeration("sum", "mean", "count", "nunique", "median", "min", "max")
 
 #: Specify a start/end value
 StartEnd = enumeration("start", "end")

@@ -43,8 +43,6 @@ class RedisManagementClientConfiguration(AzureConfiguration):
             raise ValueError("Parameter 'credentials' must not be None.")
         if subscription_id is None:
             raise ValueError("Parameter 'subscription_id' must not be None.")
-        if not isinstance(subscription_id, str):
-            raise TypeError("Parameter 'subscription_id' must be str.")
         if not base_url:
             base_url = 'https://management.azure.com'
 
@@ -64,15 +62,15 @@ class RedisManagementClient(object):
     :vartype config: RedisManagementClientConfiguration
 
     :ivar operations: Operations operations
-    :vartype operations: .operations.Operations
+    :vartype operations: azure.mgmt.redis.operations.Operations
     :ivar redis: Redis operations
-    :vartype redis: .operations.RedisOperations
+    :vartype redis: azure.mgmt.redis.operations.RedisOperations
     :ivar firewall_rules: FirewallRules operations
-    :vartype firewall_rules: .operations.FirewallRulesOperations
+    :vartype firewall_rules: azure.mgmt.redis.operations.FirewallRulesOperations
     :ivar redis_firewall_rule: RedisFirewallRule operations
-    :vartype redis_firewall_rule: .operations.RedisFirewallRuleOperations
+    :vartype redis_firewall_rule: azure.mgmt.redis.operations.RedisFirewallRuleOperations
     :ivar patch_schedules: PatchSchedules operations
-    :vartype patch_schedules: .operations.PatchSchedulesOperations
+    :vartype patch_schedules: azure.mgmt.redis.operations.PatchSchedulesOperations
 
     :param credentials: Credentials needed for the client to connect to Azure.
     :type credentials: :mod:`A msrestazure Credentials

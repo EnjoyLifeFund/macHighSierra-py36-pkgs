@@ -28,6 +28,7 @@ def correct_misspelling(token, distance_threshold=2):
         for suggested_word in suggested_words:
             distance = calculate_levenshtein_distance(token, suggested_word)
             num_modified_characters.append(distance)
+        # this min is showing errors since it takes an empy/none variable as inputen    
         min_num_modified_characters = min(num_modified_characters)
         best_arg = num_modified_characters.index(min_num_modified_characters)
         if distance_threshold > min_num_modified_characters:
@@ -59,6 +60,17 @@ def join(tokens):
     """
     joined_tokens = ' '.join(tokens)
     return joined_tokens
+
+
+def compute_jaccard_similarity(query, document):
+    """ function taken explicitly from:
+    http://billchambers.me/tutorials/2014/12/21/tf-idf-explained-in-python.html
+    calculates the intersection over union of a query
+    in a given document.
+    """
+    intersection = set(query).intersection(set(document))
+    union = set(query).union(set(document))
+    return len(intersection)/len(union)
 
 
 def calculate_jaccard_coefficient(a, b):

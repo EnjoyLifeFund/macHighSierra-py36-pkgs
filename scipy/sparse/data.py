@@ -64,8 +64,16 @@ class _data_matrix(spmatrix):
         else:
             return NotImplemented
 
-    def astype(self, t):
-        return self._with_data(self._deduped_data().astype(t))
+    def astype(self, dtype, casting='unsafe', copy=True):
+        dtype = np.dtype(dtype)
+        if self.dtype != dtype:
+            return self._with_data(
+                self._deduped_data().astype(dtype, casting=casting, copy=copy),
+                copy=copy)
+        elif copy:
+            return self.copy()
+        else:
+            return self
 
     astype.__doc__ = spmatrix.astype.__doc__
 
@@ -338,7 +346,7 @@ class _minmax_mixin(object):
         return self._min_or_max(axis, out, np.minimum)
 
     def argmax(self, axis=None, out=None):
-        """Return indices of minimum elements along an axis.
+        """Return indices of maximum elements along an axis.
 
         Implicit zero elements are also taken into account. If there are
         several maximum values, the index of the first occurrence is returned.

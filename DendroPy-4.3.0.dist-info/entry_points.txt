@@ -1,0 +1,3 @@
+[distutils.commands]
+coverage = dendropy.test.support.coverage_analysis:CoverageAnalysis
+

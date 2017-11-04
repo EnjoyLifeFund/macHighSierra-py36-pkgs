@@ -9,9 +9,9 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+import uuid
 from msrest.pipeline import ClientRawResponse
 from msrestazure.azure_exceptions import CloudError
-import uuid
 
 from .. import models
 
@@ -44,17 +44,15 @@ class AlertRulesOperations(object):
         :param rule_name: The name of the rule.
         :type rule_name: str
         :param parameters: The parameters of the rule to create or update.
-        :type parameters: :class:`AlertRuleResource
-         <azure.mgmt.monitor.models.AlertRuleResource>`
+        :type parameters: ~azure.mgmt.monitor.models.AlertRuleResource
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`AlertRuleResource
-         <azure.mgmt.monitor.models.AlertRuleResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: AlertRuleResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.AlertRuleResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises:
          :class:`ErrorResponseException<azure.mgmt.monitor.models.ErrorResponseException>`
         """
@@ -118,9 +116,8 @@ class AlertRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: None
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: None or ClientRawResponse if raw=true
+        :rtype: None or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -172,10 +169,9 @@ class AlertRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`AlertRuleResource
-         <azure.mgmt.monitor.models.AlertRuleResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: AlertRuleResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.AlertRuleResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -231,17 +227,16 @@ class AlertRulesOperations(object):
         :param rule_name: The name of the rule.
         :type rule_name: str
         :param alert_rules_resource: Parameters supplied to the operation.
-        :type alert_rules_resource: :class:`AlertRuleResourcePatch
-         <azure.mgmt.monitor.models.AlertRuleResourcePatch>`
+        :type alert_rules_resource:
+         ~azure.mgmt.monitor.models.AlertRuleResourcePatch
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`AlertRuleResource
-         <azure.mgmt.monitor.models.AlertRuleResource>`
-        :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
-         if raw=true
+        :return: AlertRuleResource or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.monitor.models.AlertRuleResource or
+         ~msrest.pipeline.ClientRawResponse
         :raises:
          :class:`ErrorResponseException<azure.mgmt.monitor.models.ErrorResponseException>`
         """
@@ -276,12 +271,14 @@ class AlertRulesOperations(object):
         response = self._client.send(
             request, header_parameters, body_content, **operation_config)
 
-        if response.status_code not in [200]:
+        if response.status_code not in [200, 201]:
             raise models.ErrorResponseException(self._deserialize, response)
 
         deserialized = None
 
         if response.status_code == 200:
+            deserialized = self._deserialize('AlertRuleResource', response)
+        if response.status_code == 201:
             deserialized = self._deserialize('AlertRuleResource', response)
 
         if raw:
@@ -301,8 +298,9 @@ class AlertRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :rtype: :class:`AlertRuleResourcePaged
-         <azure.mgmt.monitor.models.AlertRuleResourcePaged>`
+        :return: An iterator like instance of AlertRuleResource
+        :rtype:
+         ~azure.mgmt.monitor.models.AlertRuleResourcePaged[~azure.mgmt.monitor.models.AlertRuleResource]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

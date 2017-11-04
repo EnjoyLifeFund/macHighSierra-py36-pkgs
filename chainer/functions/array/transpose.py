@@ -1,10 +1,10 @@
 import numpy
 
-from chainer import function
+from chainer import function_node
 from chainer.utils import type_check
 
 
-class Transpose(function.Function):
+class Transpose(function_node.FunctionNode):
     """Permute the dimensions of an array."""
 
     def __init__(self, axes=None):
@@ -18,19 +18,16 @@ class Transpose(function.Function):
         return 'Transpose'
 
     def forward(self, inputs):
-        self.retain_inputs(())
         x = inputs[0]
         y = x.transpose(self.axes)
         return y,
 
-    def backward(self, inputs, grad_outputs):
-        gy = grad_outputs[0]
+    def backward(self, indexes, grad_outputs):
         inv_axes = self.axes
-        if self.axes:
-            axes = tuple(ax % len(self.axes) for ax in self.axes)
-            inv_axes = tuple(numpy.argsort(axes))
-        gx = gy.transpose(inv_axes)
-        return gx,
+        if inv_axes:
+            axes_len = len(inv_axes)
+            inv_axes = tuple(numpy.argsort([ax % axes_len for ax in inv_axes]))
+        return Transpose(inv_axes).apply(grad_outputs)
 
 
 def transpose(x, axes=None):
@@ -51,10 +48,10 @@ def transpose(x, axes=None):
         >>> x = np.array([[[0, 1, 2], [3, 4, 5]]], 'f')
         >>> x.shape
         (1, 2, 3)
-        >>> y = F.transpose(x).data  # reverse the dimensions
+        >>> y = F.transpose(x)  # reverse the dimensions
         >>> y.shape
         (3, 2, 1)
-        >>> y
+        >>> y.data
         array([[[ 0.],
                 [ 3.]],
         <BLANKLINE>
@@ -63,13 +60,13 @@ def transpose(x, axes=None):
         <BLANKLINE>
                [[ 2.],
                 [ 5.]]], dtype=float32)
-        >>> y = F.transpose(x, axes=(1, 0, 2)).data # swap 1st and 2nd axis
+        >>> y = F.transpose(x, axes=(1, 0, 2)) # swap 1st and 2nd axis
         >>> y.shape
         (2, 1, 3)
-        >>> y
+        >>> y.data
         array([[[ 0.,  1.,  2.]],
         <BLANKLINE>
                [[ 3.,  4.,  5.]]], dtype=float32)
 
     """
-    return Transpose(axes)(x)
+    return Transpose(axes).apply((x,))[0]

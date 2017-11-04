@@ -11,7 +11,7 @@
 import re
 import inspect
 
-__version__ = '0.7.4'
+__version__ = '0.8'
 __author__ = 'Hsiaoming Yang <me@lepture.com>'
 __all__ = [
     'BlockGrammar', 'BlockLexer',
@@ -75,8 +75,9 @@ def escape(text, quote=False, smart_amp=True):
 def escape_link(url):
     """Remove dangerous URL schemes like javascript: and escape afterwards."""
     lower_url = url.lower().strip('\x00\x1a \n\r\t')
+
     for scheme in _scheme_blacklist:
-        if lower_url.startswith(scheme):
+        if re.sub(r'[^A-Za-z0-9\/:]+', '', lower_url).startswith(scheme):
             return ''
     return escape(url, quote=True, smart_amp=False)
 
@@ -84,7 +85,6 @@ def escape_link(url):
 def preprocessing(text, tab=4):
     text = _newline_pattern.sub('\n', text)
     text = text.expandtabs(tab)
-    text = text.replace('\u00a0', ' ')
     text = text.replace('\u2424', '\n')
     pattern = re.compile(r'^ +$', re.M)
     return pattern.sub('', text)
@@ -845,7 +845,7 @@ class Renderer(object):
         :param link: link content or email address.
         :param is_email: whether this is an email or not.
         """
-        text = link = escape(link)
+        text = link = escape_link(link)
         if is_email:
             link = 'mailto:%s' % link
         return '<a href="%s">%s</a>' % (link, text)
@@ -902,7 +902,7 @@ class Renderer(object):
         """
         html = (
             '<sup class="footnote-ref" id="fnref-%s">'
-            '<a href="#fn-%s" rel="footnote">%d</a></sup>'
+            '<a href="#fn-%s">%d</a></sup>'
         ) % (escape(key), escape(key), index)
         return html
 
@@ -913,7 +913,7 @@ class Renderer(object):
         :param text: text content of the footnote.
         """
         back = (
-            '<a href="#fnref-%s" rev="footnote">&#8617;</a>'
+            '<a href="#fnref-%s" class="footnote">&#8617;</a>'
         ) % escape(key)
         text = text.rstrip()
         if text.endswith('</p>'):

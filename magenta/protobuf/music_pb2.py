@@ -19,9 +19,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='magenta/protobuf/music.proto',
   package='tensorflow.magenta',
   syntax='proto3',
-  serialized_pb=_b('\n\x1cmagenta/protobuf/music.proto\x12\x12tensorflow.magenta\"\xca\x1a\n\x0cNoteSequence\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x17\n\x0f\x63ollection_name\x18\x03 \x01(\t\x12\x19\n\x11ticks_per_quarter\x18\x04 \x01(\x05\x12G\n\x0ftime_signatures\x18\x05 \x03(\x0b\x32..tensorflow.magenta.NoteSequence.TimeSignature\x12\x45\n\x0ekey_signatures\x18\x06 \x03(\x0b\x32-.tensorflow.magenta.NoteSequence.KeySignature\x12\x36\n\x06tempos\x18\x07 \x03(\x0b\x32&.tensorflow.magenta.NoteSequence.Tempo\x12\x34\n\x05notes\x18\x08 \x03(\x0b\x32%.tensorflow.magenta.NoteSequence.Note\x12\x12\n\ntotal_time\x18\t \x01(\x01\x12\x1d\n\x15total_quantized_steps\x18\x10 \x01(\x03\x12?\n\x0bpitch_bends\x18\n \x03(\x0b\x32*.tensorflow.magenta.NoteSequence.PitchBend\x12G\n\x0f\x63ontrol_changes\x18\x0b \x03(\x0b\x32..tensorflow.magenta.NoteSequence.ControlChange\x12=\n\npart_infos\x18\x0c \x03(\x0b\x32).tensorflow.magenta.NoteSequence.PartInfo\x12@\n\x0bsource_info\x18\r \x01(\x0b\x32+.tensorflow.magenta.NoteSequence.SourceInfo\x12I\n\x10text_annotations\x18\x0e \x03(\x0b\x32/.tensorflow.magenta.NoteSequence.TextAnnotation\x12L\n\x11quantization_info\x18\x0f \x01(\x0b\x32\x31.tensorflow.magenta.NoteSequence.QuantizationInfo\x12J\n\x10subsequence_info\x18\x11 \x01(\x0b\x32\x30.tensorflow.magenta.NoteSequence.SubsequenceInfo\x1a\xc2\x02\n\x04Note\x12\r\n\x05pitch\x18\x01 \x01(\x05\x12>\n\npitch_name\x18\x0b \x01(\x0e\x32*.tensorflow.magenta.NoteSequence.PitchName\x12\x10\n\x08velocity\x18\x02 \x01(\x05\x12\x12\n\nstart_time\x18\x03 \x01(\x01\x12\x1c\n\x14quantized_start_step\x18\r \x01(\x03\x12\x10\n\x08\x65nd_time\x18\x04 \x01(\x01\x12\x1a\n\x12quantized_end_step\x18\x0e \x01(\x03\x12\x11\n\tnumerator\x18\x05 \x01(\x05\x12\x13\n\x0b\x64\x65nominator\x18\x06 \x01(\x05\x12\x12\n\ninstrument\x18\x07 \x01(\x05\x12\x0f\n\x07program\x18\x08 \x01(\x05\x12\x0f\n\x07is_drum\x18\t \x01(\x08\x12\x0c\n\x04part\x18\n \x01(\x05\x12\r\n\x05voice\x18\x0c \x01(\x05\x1a\x45\n\rTimeSignature\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x11\n\tnumerator\x18\x02 \x01(\x05\x12\x13\n\x0b\x64\x65nominator\x18\x03 \x01(\x05\x1a\x89\x03\n\x0cKeySignature\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12>\n\x03key\x18\x02 \x01(\x0e\x32\x31.tensorflow.magenta.NoteSequence.KeySignature.Key\x12@\n\x04mode\x18\x03 \x01(\x0e\x32\x32.tensorflow.magenta.NoteSequence.KeySignature.Mode\"\xb7\x01\n\x03Key\x12\x05\n\x01\x43\x10\x00\x12\x0b\n\x07\x43_SHARP\x10\x01\x12\n\n\x06\x44_FLAT\x10\x01\x12\x05\n\x01\x44\x10\x02\x12\x0b\n\x07\x44_SHARP\x10\x03\x12\n\n\x06\x45_FLAT\x10\x03\x12\x05\n\x01\x45\x10\x04\x12\x05\n\x01\x46\x10\x05\x12\x0b\n\x07\x46_SHARP\x10\x06\x12\n\n\x06G_FLAT\x10\x06\x12\x05\n\x01G\x10\x07\x12\x0b\n\x07G_SHARP\x10\x08\x12\n\n\x06\x41_FLAT\x10\x08\x12\x05\n\x01\x41\x10\t\x12\x0b\n\x07\x41_SHARP\x10\n\x12\n\n\x06\x42_FLAT\x10\n\x12\x05\n\x01\x42\x10\x0b\x1a\x02\x10\x01\"/\n\x04Mode\x12\t\n\x05MAJOR\x10\x00\x12\t\n\x05MINOR\x10\x01\x12\x11\n\rNOT_SPECIFIED\x10\x02\x1a\"\n\x05Tempo\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x0b\n\x03qpm\x18\x02 \x01(\x01\x1a]\n\tPitchBend\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x0c\n\x04\x62\x65nd\x18\x02 \x01(\x05\x12\x12\n\ninstrument\x18\x03 \x01(\x05\x12\x0f\n\x07program\x18\x04 \x01(\x05\x12\x0f\n\x07is_drum\x18\x05 \x01(\x08\x1a\x82\x01\n\rControlChange\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x16\n\x0e\x63ontrol_number\x18\x02 \x01(\x05\x12\x15\n\rcontrol_value\x18\x03 \x01(\x05\x12\x12\n\ninstrument\x18\x04 \x01(\x05\x12\x0f\n\x07program\x18\x05 \x01(\x05\x12\x0f\n\x07is_drum\x18\x06 \x01(\x08\x1a&\n\x08PartInfo\x12\x0c\n\x04part\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x1a\x81\x04\n\nSourceInfo\x12K\n\x0bsource_type\x18\x01 \x01(\x0e\x32\x36.tensorflow.magenta.NoteSequence.SourceInfo.SourceType\x12O\n\rencoding_type\x18\x02 \x01(\x0e\x32\x38.tensorflow.magenta.NoteSequence.SourceInfo.EncodingType\x12\x42\n\x06parser\x18\x03 \x01(\x0e\x32\x32.tensorflow.magenta.NoteSequence.SourceInfo.Parser\"M\n\nSourceType\x12\x17\n\x13UNKNOWN_SOURCE_TYPE\x10\x00\x12\x0f\n\x0bSCORE_BASED\x10\x01\x12\x15\n\x11PERFORMANCE_BASED\x10\x02\"Y\n\x0c\x45ncodingType\x12\x19\n\x15UNKNOWN_ENCODING_TYPE\x10\x00\x12\r\n\tMUSIC_XML\x10\x01\x12\x07\n\x03\x41\x42\x43\x10\x02\x12\x08\n\x04MIDI\x10\x03\x12\x0c\n\x08MUSICNET\x10\x04\"g\n\x06Parser\x12\x12\n\x0eUNKNOWN_PARSER\x10\x00\x12\x0b\n\x07MUSIC21\x10\x01\x12\x0f\n\x0bPRETTY_MIDI\x10\x02\x12\x15\n\x11MAGENTA_MUSIC_XML\x10\x03\x12\x14\n\x10MAGENTA_MUSICNET\x10\x04\x1a\xd6\x01\n\x0eTextAnnotation\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x16\n\x0equantized_step\x18\x04 \x01(\x03\x12\x0c\n\x04text\x18\x02 \x01(\t\x12[\n\x0f\x61nnotation_type\x18\x03 \x01(\x0e\x32\x42.tensorflow.magenta.NoteSequence.TextAnnotation.TextAnnotationType\"3\n\x12TextAnnotationType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x10\n\x0c\x43HORD_SYMBOL\x10\x01\x1aY\n\x10QuantizationInfo\x12\x1b\n\x11steps_per_quarter\x18\x01 \x01(\x05H\x00\x12\x1a\n\x10steps_per_second\x18\x02 \x01(\x05H\x00\x42\x0c\n\nresolution\x1a\x45\n\x0fSubsequenceInfo\x12\x19\n\x11start_time_offset\x18\x01 \x01(\x01\x12\x17\n\x0f\x65nd_time_offset\x18\x02 \x01(\x01\"\xff\x03\n\tPitchName\x12\x16\n\x12UNKNOWN_PITCH_NAME\x10\x00\x12\x0f\n\x0b\x46_FLAT_FLAT\x10\x01\x12\x0f\n\x0b\x43_FLAT_FLAT\x10\x02\x12\x0f\n\x0bG_FLAT_FLAT\x10\x03\x12\x0f\n\x0b\x44_FLAT_FLAT\x10\x04\x12\x0f\n\x0b\x41_FLAT_FLAT\x10\x05\x12\x0f\n\x0b\x45_FLAT_FLAT\x10\x06\x12\x0f\n\x0b\x42_FLAT_FLAT\x10\x07\x12\n\n\x06\x46_FLAT\x10\x08\x12\n\n\x06\x43_FLAT\x10\t\x12\n\n\x06G_FLAT\x10\n\x12\n\n\x06\x44_FLAT\x10\x0b\x12\n\n\x06\x41_FLAT\x10\x0c\x12\n\n\x06\x45_FLAT\x10\r\x12\n\n\x06\x42_FLAT\x10\x0e\x12\x05\n\x01\x46\x10\x0f\x12\x05\n\x01\x43\x10\x10\x12\x05\n\x01G\x10\x11\x12\x05\n\x01\x44\x10\x12\x12\x05\n\x01\x41\x10\x13\x12\x05\n\x01\x45\x10\x14\x12\x05\n\x01\x42\x10\x15\x12\x0b\n\x07\x46_SHARP\x10\x16\x12\x0b\n\x07\x43_SHARP\x10\x17\x12\x0b\n\x07G_SHARP\x10\x18\x12\x0b\n\x07\x44_SHARP\x10\x19\x12\x0b\n\x07\x41_SHARP\x10\x1a\x12\x0b\n\x07\x45_SHARP\x10\x1b\x12\x0b\n\x07\x42_SHARP\x10\x1c\x12\x11\n\rF_SHARP_SHARP\x10\x1d\x12\x11\n\rC_SHARP_SHARP\x10\x1e\x12\x11\n\rG_SHARP_SHARP\x10\x1f\x12\x11\n\rD_SHARP_SHARP\x10 \x12\x11\n\rA_SHARP_SHARP\x10!\x12\x11\n\rE_SHARP_SHARP\x10\"\x12\x11\n\rB_SHARP_SHARP\x10#b\x06proto3')
+  serialized_pb=_b('\n\x1cmagenta/protobuf/music.proto\x12\x12tensorflow.magenta\"\xb8\x1f\n\x0cNoteSequence\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x18\n\x10reference_number\x18\x12 \x01(\x03\x12\x17\n\x0f\x63ollection_name\x18\x03 \x01(\t\x12\x19\n\x11ticks_per_quarter\x18\x04 \x01(\x05\x12G\n\x0ftime_signatures\x18\x05 \x03(\x0b\x32..tensorflow.magenta.NoteSequence.TimeSignature\x12\x45\n\x0ekey_signatures\x18\x06 \x03(\x0b\x32-.tensorflow.magenta.NoteSequence.KeySignature\x12\x36\n\x06tempos\x18\x07 \x03(\x0b\x32&.tensorflow.magenta.NoteSequence.Tempo\x12\x34\n\x05notes\x18\x08 \x03(\x0b\x32%.tensorflow.magenta.NoteSequence.Note\x12\x12\n\ntotal_time\x18\t \x01(\x01\x12\x1d\n\x15total_quantized_steps\x18\x10 \x01(\x03\x12?\n\x0bpitch_bends\x18\n \x03(\x0b\x32*.tensorflow.magenta.NoteSequence.PitchBend\x12G\n\x0f\x63ontrol_changes\x18\x0b \x03(\x0b\x32..tensorflow.magenta.NoteSequence.ControlChange\x12=\n\npart_infos\x18\x0c \x03(\x0b\x32).tensorflow.magenta.NoteSequence.PartInfo\x12@\n\x0bsource_info\x18\r \x01(\x0b\x32+.tensorflow.magenta.NoteSequence.SourceInfo\x12I\n\x10text_annotations\x18\x0e \x03(\x0b\x32/.tensorflow.magenta.NoteSequence.TextAnnotation\x12O\n\x13section_annotations\x18\x14 \x03(\x0b\x32\x32.tensorflow.magenta.NoteSequence.SectionAnnotation\x12\x45\n\x0esection_groups\x18\x15 \x03(\x0b\x32-.tensorflow.magenta.NoteSequence.SectionGroup\x12L\n\x11quantization_info\x18\x0f \x01(\x0b\x32\x31.tensorflow.magenta.NoteSequence.QuantizationInfo\x12J\n\x10subsequence_info\x18\x11 \x01(\x0b\x32\x30.tensorflow.magenta.NoteSequence.SubsequenceInfo\x12?\n\x11sequence_metadata\x18\x13 \x01(\x0b\x32$.tensorflow.magenta.SequenceMetadata\x1a\xc2\x02\n\x04Note\x12\r\n\x05pitch\x18\x01 \x01(\x05\x12>\n\npitch_name\x18\x0b \x01(\x0e\x32*.tensorflow.magenta.NoteSequence.PitchName\x12\x10\n\x08velocity\x18\x02 \x01(\x05\x12\x12\n\nstart_time\x18\x03 \x01(\x01\x12\x1c\n\x14quantized_start_step\x18\r \x01(\x03\x12\x10\n\x08\x65nd_time\x18\x04 \x01(\x01\x12\x1a\n\x12quantized_end_step\x18\x0e \x01(\x03\x12\x11\n\tnumerator\x18\x05 \x01(\x05\x12\x13\n\x0b\x64\x65nominator\x18\x06 \x01(\x05\x12\x12\n\ninstrument\x18\x07 \x01(\x05\x12\x0f\n\x07program\x18\x08 \x01(\x05\x12\x0f\n\x07is_drum\x18\t \x01(\x08\x12\x0c\n\x04part\x18\n \x01(\x05\x12\r\n\x05voice\x18\x0c \x01(\x05\x1a\x45\n\rTimeSignature\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x11\n\tnumerator\x18\x02 \x01(\x05\x12\x13\n\x0b\x64\x65nominator\x18\x03 \x01(\x05\x1a\xcc\x03\n\x0cKeySignature\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12>\n\x03key\x18\x02 \x01(\x0e\x32\x31.tensorflow.magenta.NoteSequence.KeySignature.Key\x12@\n\x04mode\x18\x03 \x01(\x0e\x32\x32.tensorflow.magenta.NoteSequence.KeySignature.Mode\"\xb7\x01\n\x03Key\x12\x05\n\x01\x43\x10\x00\x12\x0b\n\x07\x43_SHARP\x10\x01\x12\n\n\x06\x44_FLAT\x10\x01\x12\x05\n\x01\x44\x10\x02\x12\x0b\n\x07\x44_SHARP\x10\x03\x12\n\n\x06\x45_FLAT\x10\x03\x12\x05\n\x01\x45\x10\x04\x12\x05\n\x01\x46\x10\x05\x12\x0b\n\x07\x46_SHARP\x10\x06\x12\n\n\x06G_FLAT\x10\x06\x12\x05\n\x01G\x10\x07\x12\x0b\n\x07G_SHARP\x10\x08\x12\n\n\x06\x41_FLAT\x10\x08\x12\x05\n\x01\x41\x10\t\x12\x0b\n\x07\x41_SHARP\x10\n\x12\n\n\x06\x42_FLAT\x10\n\x12\x05\n\x01\x42\x10\x0b\x1a\x02\x10\x01\"r\n\x04Mode\x12\t\n\x05MAJOR\x10\x00\x12\t\n\x05MINOR\x10\x01\x12\x11\n\rNOT_SPECIFIED\x10\x02\x12\x0e\n\nMIXOLYDIAN\x10\x03\x12\n\n\x06\x44ORIAN\x10\x04\x12\x0c\n\x08PHRYGIAN\x10\x05\x12\n\n\x06LYDIAN\x10\x06\x12\x0b\n\x07LOCRIAN\x10\x07\x1a\"\n\x05Tempo\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x0b\n\x03qpm\x18\x02 \x01(\x01\x1a]\n\tPitchBend\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x0c\n\x04\x62\x65nd\x18\x02 \x01(\x05\x12\x12\n\ninstrument\x18\x03 \x01(\x05\x12\x0f\n\x07program\x18\x04 \x01(\x05\x12\x0f\n\x07is_drum\x18\x05 \x01(\x08\x1a\x9a\x01\n\rControlChange\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x16\n\x0equantized_step\x18\x07 \x01(\x03\x12\x16\n\x0e\x63ontrol_number\x18\x02 \x01(\x05\x12\x15\n\rcontrol_value\x18\x03 \x01(\x05\x12\x12\n\ninstrument\x18\x04 \x01(\x05\x12\x0f\n\x07program\x18\x05 \x01(\x05\x12\x0f\n\x07is_drum\x18\x06 \x01(\x08\x1a&\n\x08PartInfo\x12\x0c\n\x04part\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x1a\x92\x04\n\nSourceInfo\x12K\n\x0bsource_type\x18\x01 \x01(\x0e\x32\x36.tensorflow.magenta.NoteSequence.SourceInfo.SourceType\x12O\n\rencoding_type\x18\x02 \x01(\x0e\x32\x38.tensorflow.magenta.NoteSequence.SourceInfo.EncodingType\x12\x42\n\x06parser\x18\x03 \x01(\x0e\x32\x32.tensorflow.magenta.NoteSequence.SourceInfo.Parser\"M\n\nSourceType\x12\x17\n\x13UNKNOWN_SOURCE_TYPE\x10\x00\x12\x0f\n\x0bSCORE_BASED\x10\x01\x12\x15\n\x11PERFORMANCE_BASED\x10\x02\"Y\n\x0c\x45ncodingType\x12\x19\n\x15UNKNOWN_ENCODING_TYPE\x10\x00\x12\r\n\tMUSIC_XML\x10\x01\x12\x07\n\x03\x41\x42\x43\x10\x02\x12\x08\n\x04MIDI\x10\x03\x12\x0c\n\x08MUSICNET\x10\x04\"x\n\x06Parser\x12\x12\n\x0eUNKNOWN_PARSER\x10\x00\x12\x0b\n\x07MUSIC21\x10\x01\x12\x0f\n\x0bPRETTY_MIDI\x10\x02\x12\x15\n\x11MAGENTA_MUSIC_XML\x10\x03\x12\x14\n\x10MAGENTA_MUSICNET\x10\x04\x12\x0f\n\x0bMAGENTA_ABC\x10\x05\x1a\xd6\x01\n\x0eTextAnnotation\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x16\n\x0equantized_step\x18\x04 \x01(\x03\x12\x0c\n\x04text\x18\x02 \x01(\t\x12[\n\x0f\x61nnotation_type\x18\x03 \x01(\x0e\x32\x42.tensorflow.magenta.NoteSequence.TextAnnotation.TextAnnotationType\"3\n\x12TextAnnotationType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x10\n\x0c\x43HORD_SYMBOL\x10\x01\x1aY\n\x10QuantizationInfo\x12\x1b\n\x11steps_per_quarter\x18\x01 \x01(\x05H\x00\x12\x1a\n\x10steps_per_second\x18\x02 \x01(\x05H\x00\x42\x0c\n\nresolution\x1a\x45\n\x0fSubsequenceInfo\x12\x19\n\x11start_time_offset\x18\x01 \x01(\x01\x12\x17\n\x0f\x65nd_time_offset\x18\x02 \x01(\x01\x1a\x35\n\x11SectionAnnotation\x12\x0c\n\x04time\x18\x01 \x01(\x01\x12\x12\n\nsection_id\x18\x04 \x01(\x03\x1aw\n\x07Section\x12\x14\n\nsection_id\x18\x01 \x01(\x03H\x00\x12\x46\n\rsection_group\x18\x02 \x01(\x0b\x32-.tensorflow.magenta.NoteSequence.SectionGroupH\x00\x42\x0e\n\x0csection_type\x1a]\n\x0cSectionGroup\x12:\n\x08sections\x18\x01 \x03(\x0b\x32(.tensorflow.magenta.NoteSequence.Section\x12\x11\n\tnum_times\x18\x02 \x01(\x05\"\xff\x03\n\tPitchName\x12\x16\n\x12UNKNOWN_PITCH_NAME\x10\x00\x12\x0f\n\x0b\x46_FLAT_FLAT\x10\x01\x12\x0f\n\x0b\x43_FLAT_FLAT\x10\x02\x12\x0f\n\x0bG_FLAT_FLAT\x10\x03\x12\x0f\n\x0b\x44_FLAT_FLAT\x10\x04\x12\x0f\n\x0b\x41_FLAT_FLAT\x10\x05\x12\x0f\n\x0b\x45_FLAT_FLAT\x10\x06\x12\x0f\n\x0b\x42_FLAT_FLAT\x10\x07\x12\n\n\x06\x46_FLAT\x10\x08\x12\n\n\x06\x43_FLAT\x10\t\x12\n\n\x06G_FLAT\x10\n\x12\n\n\x06\x44_FLAT\x10\x0b\x12\n\n\x06\x41_FLAT\x10\x0c\x12\n\n\x06\x45_FLAT\x10\r\x12\n\n\x06\x42_FLAT\x10\x0e\x12\x05\n\x01\x46\x10\x0f\x12\x05\n\x01\x43\x10\x10\x12\x05\n\x01G\x10\x11\x12\x05\n\x01\x44\x10\x12\x12\x05\n\x01\x41\x10\x13\x12\x05\n\x01\x45\x10\x14\x12\x05\n\x01\x42\x10\x15\x12\x0b\n\x07\x46_SHARP\x10\x16\x12\x0b\n\x07\x43_SHARP\x10\x17\x12\x0b\n\x07G_SHARP\x10\x18\x12\x0b\n\x07\x44_SHARP\x10\x19\x12\x0b\n\x07\x41_SHARP\x10\x1a\x12\x0b\n\x07\x45_SHARP\x10\x1b\x12\x0b\n\x07\x42_SHARP\x10\x1c\x12\x11\n\rF_SHARP_SHARP\x10\x1d\x12\x11\n\rC_SHARP_SHARP\x10\x1e\x12\x11\n\rG_SHARP_SHARP\x10\x1f\x12\x11\n\rD_SHARP_SHARP\x10 \x12\x11\n\rA_SHARP_SHARP\x10!\x12\x11\n\rE_SHARP_SHARP\x10\"\x12\x11\n\rB_SHARP_SHARP\x10#\"S\n\x10SequenceMetadata\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0e\n\x06\x61rtist\x18\x02 \x01(\t\x12\r\n\x05genre\x18\x03 \x03(\t\x12\x11\n\tcomposers\x18\x04 \x03(\tb\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -102,8 +101,8 @@ _NOTESEQUENCE_KEYSIGNATURE_KEY = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=_descriptor._ParseOptions(descriptor_pb2.EnumOptions(), _b('\020\001')),
-  serialized_start=1510,
-  serialized_end=1693,
+  serialized_start=1753,
+  serialized_end=1936,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_KEYSIGNATURE_KEY)
 
@@ -125,11 +124,31 @@ _NOTESEQUENCE_KEYSIGNATURE_MODE = _descriptor.EnumDescriptor(
       name='NOT_SPECIFIED', index=2, number=2,
       options=None,
       type=None),
+    _descriptor.EnumValueDescriptor(
+      name='MIXOLYDIAN', index=3, number=3,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DORIAN', index=4, number=4,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='PHRYGIAN', index=5, number=5,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='LYDIAN', index=6, number=6,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='LOCRIAN', index=7, number=7,
+      options=None,
+      type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=1695,
-  serialized_end=1742,
+  serialized_start=1938,
+  serialized_end=2052,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_KEYSIGNATURE_MODE)
 
@@ -154,8 +173,8 @@ _NOTESEQUENCE_SOURCEINFO_SOURCETYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2289,
-  serialized_end=2366,
+  serialized_start=2623,
+  serialized_end=2700,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_SOURCEINFO_SOURCETYPE)
 
@@ -188,8 +207,8 @@ _NOTESEQUENCE_SOURCEINFO_ENCODINGTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2368,
-  serialized_end=2457,
+  serialized_start=2702,
+  serialized_end=2791,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_SOURCEINFO_ENCODINGTYPE)
 
@@ -219,11 +238,15 @@ _NOTESEQUENCE_SOURCEINFO_PARSER = _descriptor.EnumDescriptor(
       name='MAGENTA_MUSICNET', index=4, number=4,
       options=None,
       type=None),
+    _descriptor.EnumValueDescriptor(
+      name='MAGENTA_ABC', index=5, number=5,
+      options=None,
+      type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=2459,
-  serialized_end=2562,
+  serialized_start=2793,
+  serialized_end=2913,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_SOURCEINFO_PARSER)
 
@@ -244,8 +267,8 @@ _NOTESEQUENCE_TEXTANNOTATION_TEXTANNOTATIONTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2728,
-  serialized_end=2779,
+  serialized_start=3079,
+  serialized_end=3130,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_TEXTANNOTATION_TEXTANNOTATIONTYPE)
 
@@ -402,8 +425,8 @@ _NOTESEQUENCE_PITCHNAME = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=2944,
-  serialized_end=3455,
+  serialized_start=3566,
+  serialized_end=4077,
 )
 _sym_db.RegisterEnumDescriptor(_NOTESEQUENCE_PITCHNAME)
 
@@ -525,8 +548,8 @@ _NOTESEQUENCE_NOTE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=953,
-  serialized_end=1275,
+  serialized_start=1196,
+  serialized_end=1518,
 )
 
 _NOTESEQUENCE_TIMESIGNATURE = _descriptor.Descriptor(
@@ -569,8 +592,8 @@ _NOTESEQUENCE_TIMESIGNATURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1277,
-  serialized_end=1346,
+  serialized_start=1520,
+  serialized_end=1589,
 )
 
 _NOTESEQUENCE_KEYSIGNATURE = _descriptor.Descriptor(
@@ -615,8 +638,8 @@ _NOTESEQUENCE_KEYSIGNATURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1349,
-  serialized_end=1742,
+  serialized_start=1592,
+  serialized_end=2052,
 )
 
 _NOTESEQUENCE_TEMPO = _descriptor.Descriptor(
@@ -652,8 +675,8 @@ _NOTESEQUENCE_TEMPO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1744,
-  serialized_end=1778,
+  serialized_start=2054,
+  serialized_end=2088,
 )
 
 _NOTESEQUENCE_PITCHBEND = _descriptor.Descriptor(
@@ -710,8 +733,8 @@ _NOTESEQUENCE_PITCHBEND = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1780,
-  serialized_end=1873,
+  serialized_start=2090,
+  serialized_end=2183,
 )
 
 _NOTESEQUENCE_CONTROLCHANGE = _descriptor.Descriptor(
@@ -729,35 +752,42 @@ _NOTESEQUENCE_CONTROLCHANGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='control_number', full_name='tensorflow.magenta.NoteSequence.ControlChange.control_number', index=1,
+      name='quantized_step', full_name='tensorflow.magenta.NoteSequence.ControlChange.quantized_step', index=1,
+      number=7, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='control_number', full_name='tensorflow.magenta.NoteSequence.ControlChange.control_number', index=2,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='control_value', full_name='tensorflow.magenta.NoteSequence.ControlChange.control_value', index=2,
+      name='control_value', full_name='tensorflow.magenta.NoteSequence.ControlChange.control_value', index=3,
       number=3, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='instrument', full_name='tensorflow.magenta.NoteSequence.ControlChange.instrument', index=3,
+      name='instrument', full_name='tensorflow.magenta.NoteSequence.ControlChange.instrument', index=4,
       number=4, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='program', full_name='tensorflow.magenta.NoteSequence.ControlChange.program', index=4,
+      name='program', full_name='tensorflow.magenta.NoteSequence.ControlChange.program', index=5,
       number=5, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='is_drum', full_name='tensorflow.magenta.NoteSequence.ControlChange.is_drum', index=5,
+      name='is_drum', full_name='tensorflow.magenta.NoteSequence.ControlChange.is_drum', index=6,
       number=6, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -775,8 +805,8 @@ _NOTESEQUENCE_CONTROLCHANGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1876,
-  serialized_end=2006,
+  serialized_start=2186,
+  serialized_end=2340,
 )
 
 _NOTESEQUENCE_PARTINFO = _descriptor.Descriptor(
@@ -812,8 +842,8 @@ _NOTESEQUENCE_PARTINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2008,
-  serialized_end=2046,
+  serialized_start=2342,
+  serialized_end=2380,
 )
 
 _NOTESEQUENCE_SOURCEINFO = _descriptor.Descriptor(
@@ -859,8 +889,8 @@ _NOTESEQUENCE_SOURCEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2049,
-  serialized_end=2562,
+  serialized_start=2383,
+  serialized_end=2913,
 )
 
 _NOTESEQUENCE_TEXTANNOTATION = _descriptor.Descriptor(
@@ -911,8 +941,8 @@ _NOTESEQUENCE_TEXTANNOTATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2565,
-  serialized_end=2779,
+  serialized_start=2916,
+  serialized_end=3130,
 )
 
 _NOTESEQUENCE_QUANTIZATIONINFO = _descriptor.Descriptor(
@@ -951,8 +981,8 @@ _NOTESEQUENCE_QUANTIZATIONINFO = _descriptor.Descriptor(
       name='resolution', full_name='tensorflow.magenta.NoteSequence.QuantizationInfo.resolution',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2781,
-  serialized_end=2870,
+  serialized_start=3132,
+  serialized_end=3221,
 )
 
 _NOTESEQUENCE_SUBSEQUENCEINFO = _descriptor.Descriptor(
@@ -988,8 +1018,122 @@ _NOTESEQUENCE_SUBSEQUENCEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2872,
-  serialized_end=2941,
+  serialized_start=3223,
+  serialized_end=3292,
+)
+
+_NOTESEQUENCE_SECTIONANNOTATION = _descriptor.Descriptor(
+  name='SectionAnnotation',
+  full_name='tensorflow.magenta.NoteSequence.SectionAnnotation',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='time', full_name='tensorflow.magenta.NoteSequence.SectionAnnotation.time', index=0,
+      number=1, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='section_id', full_name='tensorflow.magenta.NoteSequence.SectionAnnotation.section_id', index=1,
+      number=4, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3294,
+  serialized_end=3347,
+)
+
+_NOTESEQUENCE_SECTION = _descriptor.Descriptor(
+  name='Section',
+  full_name='tensorflow.magenta.NoteSequence.Section',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='section_id', full_name='tensorflow.magenta.NoteSequence.Section.section_id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='section_group', full_name='tensorflow.magenta.NoteSequence.Section.section_group', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='section_type', full_name='tensorflow.magenta.NoteSequence.Section.section_type',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=3349,
+  serialized_end=3468,
+)
+
+_NOTESEQUENCE_SECTIONGROUP = _descriptor.Descriptor(
+  name='SectionGroup',
+  full_name='tensorflow.magenta.NoteSequence.SectionGroup',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='sections', full_name='tensorflow.magenta.NoteSequence.SectionGroup.sections', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='num_times', full_name='tensorflow.magenta.NoteSequence.SectionGroup.num_times', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3470,
+  serialized_end=3563,
 )
 
 _NOTESEQUENCE = _descriptor.Descriptor(
@@ -1014,106 +1158,134 @@ _NOTESEQUENCE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='collection_name', full_name='tensorflow.magenta.NoteSequence.collection_name', index=2,
+      name='reference_number', full_name='tensorflow.magenta.NoteSequence.reference_number', index=2,
+      number=18, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='collection_name', full_name='tensorflow.magenta.NoteSequence.collection_name', index=3,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ticks_per_quarter', full_name='tensorflow.magenta.NoteSequence.ticks_per_quarter', index=3,
+      name='ticks_per_quarter', full_name='tensorflow.magenta.NoteSequence.ticks_per_quarter', index=4,
       number=4, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_signatures', full_name='tensorflow.magenta.NoteSequence.time_signatures', index=4,
+      name='time_signatures', full_name='tensorflow.magenta.NoteSequence.time_signatures', index=5,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='key_signatures', full_name='tensorflow.magenta.NoteSequence.key_signatures', index=5,
+      name='key_signatures', full_name='tensorflow.magenta.NoteSequence.key_signatures', index=6,
       number=6, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='tempos', full_name='tensorflow.magenta.NoteSequence.tempos', index=6,
+      name='tempos', full_name='tensorflow.magenta.NoteSequence.tempos', index=7,
       number=7, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='notes', full_name='tensorflow.magenta.NoteSequence.notes', index=7,
+      name='notes', full_name='tensorflow.magenta.NoteSequence.notes', index=8,
       number=8, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total_time', full_name='tensorflow.magenta.NoteSequence.total_time', index=8,
+      name='total_time', full_name='tensorflow.magenta.NoteSequence.total_time', index=9,
       number=9, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total_quantized_steps', full_name='tensorflow.magenta.NoteSequence.total_quantized_steps', index=9,
+      name='total_quantized_steps', full_name='tensorflow.magenta.NoteSequence.total_quantized_steps', index=10,
       number=16, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='pitch_bends', full_name='tensorflow.magenta.NoteSequence.pitch_bends', index=10,
+      name='pitch_bends', full_name='tensorflow.magenta.NoteSequence.pitch_bends', index=11,
       number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='control_changes', full_name='tensorflow.magenta.NoteSequence.control_changes', index=11,
+      name='control_changes', full_name='tensorflow.magenta.NoteSequence.control_changes', index=12,
       number=11, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='part_infos', full_name='tensorflow.magenta.NoteSequence.part_infos', index=12,
+      name='part_infos', full_name='tensorflow.magenta.NoteSequence.part_infos', index=13,
       number=12, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='source_info', full_name='tensorflow.magenta.NoteSequence.source_info', index=13,
+      name='source_info', full_name='tensorflow.magenta.NoteSequence.source_info', index=14,
       number=13, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='text_annotations', full_name='tensorflow.magenta.NoteSequence.text_annotations', index=14,
+      name='text_annotations', full_name='tensorflow.magenta.NoteSequence.text_annotations', index=15,
       number=14, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='quantization_info', full_name='tensorflow.magenta.NoteSequence.quantization_info', index=15,
+      name='section_annotations', full_name='tensorflow.magenta.NoteSequence.section_annotations', index=16,
+      number=20, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='section_groups', full_name='tensorflow.magenta.NoteSequence.section_groups', index=17,
+      number=21, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='quantization_info', full_name='tensorflow.magenta.NoteSequence.quantization_info', index=18,
       number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subsequence_info', full_name='tensorflow.magenta.NoteSequence.subsequence_info', index=16,
+      name='subsequence_info', full_name='tensorflow.magenta.NoteSequence.subsequence_info', index=19,
       number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='sequence_metadata', full_name='tensorflow.magenta.NoteSequence.sequence_metadata', index=20,
+      number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -1121,7 +1293,7 @@ _NOTESEQUENCE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_NOTESEQUENCE_NOTE, _NOTESEQUENCE_TIMESIGNATURE, _NOTESEQUENCE_KEYSIGNATURE, _NOTESEQUENCE_TEMPO, _NOTESEQUENCE_PITCHBEND, _NOTESEQUENCE_CONTROLCHANGE, _NOTESEQUENCE_PARTINFO, _NOTESEQUENCE_SOURCEINFO, _NOTESEQUENCE_TEXTANNOTATION, _NOTESEQUENCE_QUANTIZATIONINFO, _NOTESEQUENCE_SUBSEQUENCEINFO, ],
+  nested_types=[_NOTESEQUENCE_NOTE, _NOTESEQUENCE_TIMESIGNATURE, _NOTESEQUENCE_KEYSIGNATURE, _NOTESEQUENCE_TEMPO, _NOTESEQUENCE_PITCHBEND, _NOTESEQUENCE_CONTROLCHANGE, _NOTESEQUENCE_PARTINFO, _NOTESEQUENCE_SOURCEINFO, _NOTESEQUENCE_TEXTANNOTATION, _NOTESEQUENCE_QUANTIZATIONINFO, _NOTESEQUENCE_SUBSEQUENCEINFO, _NOTESEQUENCE_SECTIONANNOTATION, _NOTESEQUENCE_SECTION, _NOTESEQUENCE_SECTIONGROUP, ],
   enum_types=[
     _NOTESEQUENCE_PITCHNAME,
   ],
@@ -1132,7 +1304,59 @@ _NOTESEQUENCE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=53,
-  serialized_end=3455,
+  serialized_end=4077,
+)
+
+
+_SEQUENCEMETADATA = _descriptor.Descriptor(
+  name='SequenceMetadata',
+  full_name='tensorflow.magenta.SequenceMetadata',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='title', full_name='tensorflow.magenta.SequenceMetadata.title', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='artist', full_name='tensorflow.magenta.SequenceMetadata.artist', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='genre', full_name='tensorflow.magenta.SequenceMetadata.genre', index=2,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='composers', full_name='tensorflow.magenta.SequenceMetadata.composers', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4079,
+  serialized_end=4162,
 )
 
 _NOTESEQUENCE_NOTE.fields_by_name['pitch_name'].enum_type = _NOTESEQUENCE_PITCHNAME
@@ -1165,6 +1389,17 @@ _NOTESEQUENCE_QUANTIZATIONINFO.oneofs_by_name['resolution'].fields.append(
   _NOTESEQUENCE_QUANTIZATIONINFO.fields_by_name['steps_per_second'])
 _NOTESEQUENCE_QUANTIZATIONINFO.fields_by_name['steps_per_second'].containing_oneof = _NOTESEQUENCE_QUANTIZATIONINFO.oneofs_by_name['resolution']
 _NOTESEQUENCE_SUBSEQUENCEINFO.containing_type = _NOTESEQUENCE
+_NOTESEQUENCE_SECTIONANNOTATION.containing_type = _NOTESEQUENCE
+_NOTESEQUENCE_SECTION.fields_by_name['section_group'].message_type = _NOTESEQUENCE_SECTIONGROUP
+_NOTESEQUENCE_SECTION.containing_type = _NOTESEQUENCE
+_NOTESEQUENCE_SECTION.oneofs_by_name['section_type'].fields.append(
+  _NOTESEQUENCE_SECTION.fields_by_name['section_id'])
+_NOTESEQUENCE_SECTION.fields_by_name['section_id'].containing_oneof = _NOTESEQUENCE_SECTION.oneofs_by_name['section_type']
+_NOTESEQUENCE_SECTION.oneofs_by_name['section_type'].fields.append(
+  _NOTESEQUENCE_SECTION.fields_by_name['section_group'])
+_NOTESEQUENCE_SECTION.fields_by_name['section_group'].containing_oneof = _NOTESEQUENCE_SECTION.oneofs_by_name['section_type']
+_NOTESEQUENCE_SECTIONGROUP.fields_by_name['sections'].message_type = _NOTESEQUENCE_SECTION
+_NOTESEQUENCE_SECTIONGROUP.containing_type = _NOTESEQUENCE
 _NOTESEQUENCE.fields_by_name['time_signatures'].message_type = _NOTESEQUENCE_TIMESIGNATURE
 _NOTESEQUENCE.fields_by_name['key_signatures'].message_type = _NOTESEQUENCE_KEYSIGNATURE
 _NOTESEQUENCE.fields_by_name['tempos'].message_type = _NOTESEQUENCE_TEMPO
@@ -1174,10 +1409,15 @@ _NOTESEQUENCE.fields_by_name['control_changes'].message_type = _NOTESEQUENCE_CON
 _NOTESEQUENCE.fields_by_name['part_infos'].message_type = _NOTESEQUENCE_PARTINFO
 _NOTESEQUENCE.fields_by_name['source_info'].message_type = _NOTESEQUENCE_SOURCEINFO
 _NOTESEQUENCE.fields_by_name['text_annotations'].message_type = _NOTESEQUENCE_TEXTANNOTATION
+_NOTESEQUENCE.fields_by_name['section_annotations'].message_type = _NOTESEQUENCE_SECTIONANNOTATION
+_NOTESEQUENCE.fields_by_name['section_groups'].message_type = _NOTESEQUENCE_SECTIONGROUP
 _NOTESEQUENCE.fields_by_name['quantization_info'].message_type = _NOTESEQUENCE_QUANTIZATIONINFO
 _NOTESEQUENCE.fields_by_name['subsequence_info'].message_type = _NOTESEQUENCE_SUBSEQUENCEINFO
+_NOTESEQUENCE.fields_by_name['sequence_metadata'].message_type = _SEQUENCEMETADATA
 _NOTESEQUENCE_PITCHNAME.containing_type = _NOTESEQUENCE
 DESCRIPTOR.message_types_by_name['NoteSequence'] = _NOTESEQUENCE
+DESCRIPTOR.message_types_by_name['SequenceMetadata'] = _SEQUENCEMETADATA
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 NoteSequence = _reflection.GeneratedProtocolMessageType('NoteSequence', (_message.Message,), dict(
 
@@ -1257,6 +1497,27 @@ NoteSequence = _reflection.GeneratedProtocolMessageType('NoteSequence', (_messag
     # @@protoc_insertion_point(class_scope:tensorflow.magenta.NoteSequence.SubsequenceInfo)
     ))
   ,
+
+  SectionAnnotation = _reflection.GeneratedProtocolMessageType('SectionAnnotation', (_message.Message,), dict(
+    DESCRIPTOR = _NOTESEQUENCE_SECTIONANNOTATION,
+    __module__ = 'magenta.protobuf.music_pb2'
+    # @@protoc_insertion_point(class_scope:tensorflow.magenta.NoteSequence.SectionAnnotation)
+    ))
+  ,
+
+  Section = _reflection.GeneratedProtocolMessageType('Section', (_message.Message,), dict(
+    DESCRIPTOR = _NOTESEQUENCE_SECTION,
+    __module__ = 'magenta.protobuf.music_pb2'
+    # @@protoc_insertion_point(class_scope:tensorflow.magenta.NoteSequence.Section)
+    ))
+  ,
+
+  SectionGroup = _reflection.GeneratedProtocolMessageType('SectionGroup', (_message.Message,), dict(
+    DESCRIPTOR = _NOTESEQUENCE_SECTIONGROUP,
+    __module__ = 'magenta.protobuf.music_pb2'
+    # @@protoc_insertion_point(class_scope:tensorflow.magenta.NoteSequence.SectionGroup)
+    ))
+  ,
   DESCRIPTOR = _NOTESEQUENCE,
   __module__ = 'magenta.protobuf.music_pb2'
   # @@protoc_insertion_point(class_scope:tensorflow.magenta.NoteSequence)
@@ -1273,6 +1534,16 @@ _sym_db.RegisterMessage(NoteSequence.SourceInfo)
 _sym_db.RegisterMessage(NoteSequence.TextAnnotation)
 _sym_db.RegisterMessage(NoteSequence.QuantizationInfo)
 _sym_db.RegisterMessage(NoteSequence.SubsequenceInfo)
+_sym_db.RegisterMessage(NoteSequence.SectionAnnotation)
+_sym_db.RegisterMessage(NoteSequence.Section)
+_sym_db.RegisterMessage(NoteSequence.SectionGroup)
+
+SequenceMetadata = _reflection.GeneratedProtocolMessageType('SequenceMetadata', (_message.Message,), dict(
+  DESCRIPTOR = _SEQUENCEMETADATA,
+  __module__ = 'magenta.protobuf.music_pb2'
+  # @@protoc_insertion_point(class_scope:tensorflow.magenta.SequenceMetadata)
+  ))
+_sym_db.RegisterMessage(SequenceMetadata)
 
 
 _NOTESEQUENCE_KEYSIGNATURE_KEY.has_options = True

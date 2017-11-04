@@ -21,7 +21,6 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_pb=_b('\n/tensorboard/plugins/histogram/plugin_data.proto\x12\x0btensorboard\"&\n\x13HistogramPluginData\x12\x0f\n\x07version\x18\x01 \x01(\x05\x62\x06proto3')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -57,6 +56,7 @@ _HISTOGRAMPLUGINDATA = _descriptor.Descriptor(
 )
 
 DESCRIPTOR.message_types_by_name['HistogramPluginData'] = _HISTOGRAMPLUGINDATA
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 HistogramPluginData = _reflection.GeneratedProtocolMessageType('HistogramPluginData', (_message.Message,), dict(
   DESCRIPTOR = _HISTOGRAMPLUGINDATA,

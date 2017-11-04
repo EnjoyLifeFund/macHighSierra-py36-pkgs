@@ -10,7 +10,7 @@ from datetime import datetime, date
 
 import pytest
 import numpy as np
-import pandas._libs.lib as lib
+from pandas._libs.tslibs import parsing
 from pandas._libs.lib import Timestamp
 
 import pandas as pd
@@ -53,7 +53,8 @@ KORD,19990127, 23:00:00, 22:56:00, -0.5900, 1.7100, 4.6000, 0.0000, 280.0000
 """
 
         def func(*date_cols):
-            return lib.try_parse_dates(parsers._concat_date_cols(date_cols))
+            res = parsing.try_parse_dates(parsers._concat_date_cols(date_cols))
+            return res
 
         df = self.read_csv(StringIO(data), header=None,
                            date_parser=func,
@@ -461,7 +462,7 @@ KORD6,19990127, 23:00:00, 22:56:00, -0.5900, 1.7100, 4.6000, 0.0000, 280.0000
         data = "Date, test\n2012-01-01, 1\n,2"
         result = self.read_csv(StringIO(data), parse_dates=["Date"],
                                na_filter=False)
-        assert result['Date'].isnull()[1]
+        assert result['Date'].isna()[1]
 
     def test_parse_dates_noconvert_thousands(self):
         # see gh-14066
