@@ -159,6 +159,7 @@ function initmap(){
              enumerate:    { title: "Enumerate"    },
              listing:      { title: " "    },
              textboxa:     { title: " "  },
+             comment:     { title: "Comment -"  },
              proof:        { title: "Proof" }
          };
 
@@ -304,6 +305,10 @@ function thmsInNbConv(marked,text) {
                                wholeMatch = wholeMatch.replace(/&gt;/gm,'>');
                             return wholeMatch
                         })
+                    // Replace $$.$$ by begin-end equation
+                    message = message.replace(/\$\$([\S\s]*?)\$\$/gm,
+                                '\\begin{equation}$1\\end{equation}')   
+
                     //Look for pairs [ ]
                     var message = message.replace(/^(?:<p>)?\[([\s\S]*?)^(?:<p>)?\]/gm,
                         function(wholeMatch, m1) {
@@ -424,6 +429,7 @@ function thmsInNbConv(marked,text) {
                         // ITERATE
                         if (m1 != "listing") {
                             result = restore_maths([math, result])
+
                             result = EnvReplace(result);
                         }; //try to do further replacements
 
@@ -491,6 +497,7 @@ function thmsInNbConv(marked,text) {
 				var keys = keys.split(',');
 				for (var k in keys) {
 				key=keys[k].trim();
+          
                 if (!(key in cit_table)){
 					switch (cite_by) {
 						case 'number':
@@ -503,6 +510,10 @@ function thmsInNbConv(marked,text) {
 							var apacit="?"
 							if (key.toUpperCase() in document.bibliography){
 								var cc=document.bibliography[key.toUpperCase()];
+                                //add a YEAR field if it does not exist but DATE exists
+                                if (typeof cc['YEAR'] === 'undefined' && typeof cc['DATE'] !== 'undefined') {
+                                    document.bibliography[key.toUpperCase()]['YEAR'] = cc['DATE'].slice(0,4); 
+                                } 
 								var apacit=formatAuthors(makeAuthorsArray(cc['AUTHOR']),'Given',2)+', '+ cc['YEAR']}
 							cit_table[key]={'key':apacit, 'citobj':{}}
 							break;
@@ -564,13 +575,13 @@ function thmsInNbConv(marked,text) {
 
                 // This is to replace references by links to the correct environment, 
                 //REFERENCES
-                var text = text.replace(/\\ref{(\S+?):(\S+)}/g, function(wholeMatch, m1, m2) {
+                var text = text.replace(/\\[a-z]{0,1}ref{(\S+?):(\S+)}/g, function(wholeMatch, m1, m2) {
                     m2 = m2.replace(/<[/]?em>/g, "_");
                     if (m1 == "eq") {
                         if (!eqLabelWithNumbers) { // this is for displaying the label
                             return '<a class="latex_lbl_ref" href="#mjx-eqn-' + m1 + m2 + '">' + m2 + '</a>'; //m1 + ':' + m2;
 
-                        } else return wholeMatch;
+                        } else return wholeMatch; // processed by MathJax
                     }
                     if (labelsMap[m1 + m2]) {
                         var indata = labelsMap[m1 + m2]

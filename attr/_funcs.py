@@ -17,7 +17,7 @@ def asdict(inst, recurse=True, filter=None, dict_factory=dict,
     :param inst: Instance of an ``attrs``-decorated class.
     :param bool recurse: Recurse into classes that are also
         ``attrs``-decorated.
-    :param callable filter: A callable whose return code deteremines whether an
+    :param callable filter: A callable whose return code determines whether an
         attribute or element is included (``True``) or dropped (``False``).  Is
         called with the :class:`attr.Attribute` as the first argument and the
         value as the second argument.
@@ -170,7 +170,7 @@ def assoc(inst, **changes):
     """
     import warnings
     warnings.warn("assoc is deprecated and will be removed after 2018/01.",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel=2)
     new = copy.copy(inst)
     attrs = fields(inst.__class__)
     for k, v in iteritems(changes):

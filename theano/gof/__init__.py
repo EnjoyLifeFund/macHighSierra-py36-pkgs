@@ -55,6 +55,8 @@ from theano.gof.link import \
 from theano.gof.op import \
     Op, OpenMPOp, PureOp, COp, ops_with_inner_function
 
+from theano.gof.type import EnumType, EnumList, CEnumType
+
 from theano.gof.opt import (
     Optimizer,
     optimizer, inplace_optimizer,
@@ -63,7 +65,7 @@ from theano.gof.opt import (
     LocalOptimizer, local_optimizer, LocalOptGroup,
     OpSub, OpRemove, PatternSub,
     NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer,
-    OpKeyOptimizer)
+    OpKeyOptimizer, CheckStackTraceOptimization)
 
 from theano.gof.optdb import \
     DB, LocalGroupDB, Query, \
@@ -79,6 +81,8 @@ from theano.gof.type import \
 
 from theano.gof.utils import \
     hashtype, object2, MethodNotDefined
+
+from theano.gof.params_type import ParamsType, Params
 
 import theano
 

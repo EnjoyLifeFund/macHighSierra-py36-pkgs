@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 from theano import function, config
@@ -28,7 +28,7 @@ class T_max_and_argmax(unittest.TestCase):
             'canonicalize', 'fast_run')
 
         for axis in [0, 1, -1]:
-            data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+            data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
             n = tensor.matrix()
 
             f = function([n], tensor.max_and_argmax(n, axis)[0], mode=mode)
@@ -49,7 +49,7 @@ class T_min_max(unittest.TestCase):
             'canonicalize', 'fast_run')
 
     def test_optimization_max(self):
-        data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+        data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
 
         for axis in [0, 1, -1]:
@@ -82,7 +82,7 @@ class T_min_max(unittest.TestCase):
             f(data)
 
     def test_optimization_min(self):
-        data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+        data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
 
         for axis in [0, 1, -1]:
@@ -206,4 +206,10 @@ def test_local_dimshuffle_subtensor():
 
     topo = f.maker.fgraph.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
-    assert f(numpy.random.rand(5, 1, 4, 1), 2).shape == (4,)
+    assert f(np.random.rand(5, 1, 4, 1), 2).shape == (4,)
+
+    # Test a corner case that had Theano return a bug.
+    x = tensor.dtensor4('x')
+    x = tensor.patternbroadcast(x, (False, True, False, False))
+
+    assert x[:,:, 0:3, ::-1].dimshuffle(0,2,3).eval({x: np.ones((5, 1, 6, 7))}).shape == (5, 3, 7)

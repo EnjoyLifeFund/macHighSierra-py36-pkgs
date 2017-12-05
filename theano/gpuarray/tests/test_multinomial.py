@@ -1,11 +1,14 @@
 from __future__ import absolute_import, print_function, division
 
+import os
 import numpy as np
 
 import unittest
 
 import theano
 from theano import config, function, tensor
+from theano.compat import PY3
+from theano.misc.pkl_utils import CompatUnpickler
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
@@ -13,7 +16,7 @@ import theano.tests.unittest_tools as utt
 
 from .config import mode_with_gpu
 from ..multinomial import (GPUAMultinomialFromUniform,
-                           GPUAMultinomialWOReplacementFromUniform)
+                           GPUAChoiceFromUniform)
 
 
 def test_multinomial_output_dtype():
@@ -171,13 +174,12 @@ def test_gpu_opt():
 class test_OP_wor(unittest.TestCase):
 
     def test_select_distinct(self):
-        """
-        Tests that MultinomialWOReplacementFromUniform always selects distinct elements
-        """
+        # Tests that ChoiceFromUniform always selects distinct elements
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -194,14 +196,13 @@ class test_OP_wor(unittest.TestCase):
             assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
-        """
-        Tests that MultinomialWOReplacementFromUniform fails when asked to sample more
-        elements than the actual number of elements
-        """
+        # Tests that ChoiceFromUniform fails when asked to sample more
+        # elements than the actual number of elements
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -214,14 +215,13 @@ class test_OP_wor(unittest.TestCase):
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
     def test_select_proportional_to_weight(self):
-        """
-        Tests that MultinomialWOReplacementFromUniform selects elements, on average,
-        proportional to the their probabilities
-        """
+        # Tests that ChoiceFromUniform selects elements, on average,
+        # proportional to the their probabilities
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -246,9 +246,8 @@ class test_OP_wor(unittest.TestCase):
 class test_function_wor(unittest.TestCase):
 
     def test_select_distinct(self):
-        """
-        Tests that multinomial_wo_replacement always selects distinct elements
-        """
+        # Tests that multinomial_wo_replacement always selects distinct elements
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
@@ -269,10 +268,9 @@ class test_function_wor(unittest.TestCase):
             assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
-        """
-        Tests that multinomial_wo_replacement fails when asked to sample more
-        elements than the actual number of elements
-        """
+        # Tests that multinomial_wo_replacement fails when asked to sample more
+        # elements than the actual number of elements
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
@@ -289,10 +287,9 @@ class test_function_wor(unittest.TestCase):
         self.assertRaises(ValueError, f, pvals, n_selected)
 
     def test_select_proportional_to_weight(self):
-        """
-        Tests that multinomial_wo_replacement selects elements, on average,
-        proportional to the their probabilities
-        """
+        # Tests that multinomial_wo_replacement selects elements, on average,
+        # proportional to the their probabilities
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
@@ -324,27 +321,42 @@ def test_gpu_opt_wor():
     p = tensor.fmatrix()
     u = tensor.fvector()
     n = tensor.iscalar()
-    m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
-    assert m.dtype == 'int64', m.dtype
+    for replace in [False, True]:
+        m = multinomial.ChoiceFromUniform(odtype='auto',
+                                          replace=replace)(p, u, n)
+        assert m.dtype == 'int64', m.dtype
 
-    f = function([p, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
-    assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
-                for node in f.maker.fgraph.toposort()])
-    n_samples = 3
-    pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
-    pval = pval / pval.sum(axis=1)[:, None]
-    uval = np.ones(pval.shape[0] * n_samples) * 0.5
-    f(pval, uval, n_samples)
+        f = function([p, u, n], m, allow_input_downcast=True,
+                     mode=mode_with_gpu)
+        assert any([type(node.op) is GPUAChoiceFromUniform
+                    for node in f.maker.fgraph.toposort()])
+        n_samples = 3
+        pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = pval / pval.sum(axis=1)[:, None]
+        uval = np.ones(pval.shape[0] * n_samples) * 0.5
+        f(pval, uval, n_samples)
 
-    # Test with a row, it was failing in the past.
-    r = tensor.frow()
-    m = multinomial.MultinomialWOReplacementFromUniform('auto')(r, u, n)
-    assert m.dtype == 'int64', m.dtype
+        # Test with a row, it was failing in the past.
+        r = tensor.frow()
+        m = multinomial.ChoiceFromUniform('auto', replace=replace)(r, u, n)
+        assert m.dtype == 'int64', m.dtype
 
-    f = function([r, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
-    assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
-                for node in f.maker.fgraph.toposort()])
-    pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
-    pval = pval / pval.sum(axis=1)[:, None]
-    uval = np.ones_like(pval[:, 0]) * 0.5
-    f(pval, uval, 1)
+        f = function([r, u, n], m, allow_input_downcast=True,
+                     mode=mode_with_gpu)
+        assert any([type(node.op) is GPUAChoiceFromUniform
+                    for node in f.maker.fgraph.toposort()])
+        pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+        pval = pval / pval.sum(axis=1)[:, None]
+        uval = np.ones_like(pval[:, 0]) * 0.5
+        f(pval, uval, 1)
+
+
+def test_unpickle_legacy_op():
+    testfile_dir = os.path.dirname(os.path.realpath(__file__))
+    fname = 'test_gpuarray_multinomial_wo_replacement.pkl'
+
+    if not PY3:
+        with open(os.path.join(testfile_dir, fname), 'r') as fp:
+            u = CompatUnpickler(fp)
+            m = u.load()
+            assert isinstance(m, GPUAChoiceFromUniform)

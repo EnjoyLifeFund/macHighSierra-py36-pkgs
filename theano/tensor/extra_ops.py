@@ -1,15 +1,15 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import numpy
 from six.moves import xrange
 
 import theano
 from theano.tensor import basic
 from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
-from theano.gof import Generic
+from theano.gof import Generic, ParamsType, EnumList
 from theano import gradient
 from theano.gradient import DisconnectedType, disconnected_type
+from theano.scalar import int32 as int_t
 tensor = basic
 
 
@@ -21,6 +21,7 @@ class CpuContiguous(theano.Op):
 
     __props__ = ()
     view_map = {0: [0]}
+    check_input = False
 
     def make_node(self, x):
         x_ = theano.tensor.as_tensor_variable(x)
@@ -82,6 +83,7 @@ class SearchsortedOp(theano.Op):
 
     params_type = Generic()
     __props__ = ("side", )
+    check_input = False
 
     def __init__(self, side='left'):
         if side == 'left' or side == 'right':
@@ -246,12 +248,18 @@ class CumOp(theano.Op):
     # See function cumsum/cumprod for docstring
 
     __props__ = ("axis", "mode")
+    check_input = False
+    params_type = ParamsType(c_axis=int_t,
+                             mode=EnumList(('MODE_ADD', 'add'),
+                                           ('MODE_MUL', 'mul')))
 
     def __init__(self, axis=None, mode='add'):
         if mode not in ('add', 'mul'):
             raise ValueError('%s: Unknown mode "%s"' % (type(self).__name__, mode))
         self.axis = axis
         self.mode = mode
+
+    c_axis = property(lambda self: np.MAXDIMS if self.axis is None else self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -264,7 +272,7 @@ class CumOp(theano.Op):
 
         return theano.Apply(self, [x], [out_type])
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, params):
         x = inputs[0]
         z = output_storage[0]
         z[0] = {'add': np.cumsum, 'mul': np.cumprod}[self.mode](x, axis=self.axis)
@@ -312,49 +320,43 @@ class CumOp(theano.Op):
         z, = onames
         axis = self.axis
         fail = sub['fail']
-        func = dict(mul='CumProd', add='CumSum')[self.mode]
+        params = sub['params']
 
-        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
-            code = """
+        code = """
+                int axis = %(params)s->c_axis;
+                if (axis == 0 && PyArray_NDIM(%(x)s) == 1)
+                    axis = NPY_MAXDIMS;
                 npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
-                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
+                if(axis == NPY_MAXDIMS && !(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
                 {
                     Py_XDECREF(%(z)s);
                     %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
-                if (!%(z)s)
-                    %(fail)s;
-                {
-                    PyObject * t = PyArray_%(func)s(
-                        %(x)s, NPY_MAXDIMS,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    if (!t){
-                       %(fail)s;
-                    }
-                    // Because PyArray_%(func)s returns a newly created reference on t.
-                    Py_XDECREF(t);
-                }
-            """ % locals()
-        else:
-            code = """
-                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s))))
+                else if(axis != NPY_MAXDIMS && !(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s))))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE(%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
 
-                    PyObject * t = PyArray_%(func)s(
-                        %(x)s, %(axis)s,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    PyObject * t = NULL;
+                    if(%(params)s->mode == MODE_ADD)
+                        t = PyArray_CumSum(
+                            %(x)s, axis,
+                            PyArray_TYPE(%(x)s), %(z)s);
+                    else if(%(params)s->mode == MODE_MUL)
+                        t = PyArray_CumProd(
+                            %(x)s, axis,
+                            PyArray_TYPE(%(x)s), %(z)s);
+
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_%(func)s returns a newly created reference on t.
+                    // Because PyArray_CumSum/CumProd returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -362,7 +364,7 @@ class CumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__, self.axis, self.mode)
@@ -778,7 +780,7 @@ def repeat(x, repeats, axis=None):
         shape[axis] = shape[axis] * repeats
 
         # dims_ is the dimension of that intermediate tensor.
-        dims_ = list(numpy.arange(x.ndim))
+        dims_ = list(np.arange(x.ndim))
         dims_.insert(axis + 1, 'x')
 
         # After the original tensor is duplicated along the additional
@@ -806,7 +808,7 @@ class Bartlett(gof.Op):
     def perform(self, node, inputs, out_):
         M = inputs[0]
         out, = out_
-        out[0] = numpy.bartlett(M)
+        out[0] = np.bartlett(M)
 
     def infer_shape(self, node, in_shapes):
         temp = node.inputs[0]
@@ -882,7 +884,7 @@ class FillDiagonal(gof.Op):
             # Write the value out into the diagonal.
             a.flat[:end:step] = val
         else:
-            numpy.fill_diagonal(a, val)
+            np.fill_diagonal(a, val)
 
         output_storage[0][0] = a
 
@@ -1132,7 +1134,7 @@ class Unique(theano.Op):
         self.return_index = return_index
         self.return_inverse = return_inverse
         self.return_counts = return_counts
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
         if self.return_counts and bool(numpy_ver < [1, 9]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
@@ -1180,3 +1182,174 @@ class Unique(theano.Op):
             ret[1] = shape
             return ret
         return ret
+
+
+class UnravelIndex(gof.Op):
+    __props__ = ('ndim', 'order')
+
+    def __init__(self, ndim, order='C'):
+        assert order in ('C', 'F')
+        if not isinstance(ndim, int) or ndim < 1:
+            raise ValueError('ndim must be an integer greater than 0')
+        self.ndim = int(ndim)
+        self.order = order
+
+    def make_node(self, indices, dims):
+        indices = basic.as_tensor_variable(indices)
+        dims = basic.as_tensor_variable(dims)
+
+        if indices.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(indices.dtype))
+        if dims.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(dims.dtype))
+        if dims.ndim != 1:
+            raise TypeError("dims must be a 1D array")
+
+        return gof.Apply(
+            self, [indices, dims],
+            [basic.TensorType(dtype='int64', broadcastable=(False,) * indices.ndim)()
+             for i in xrange(self.ndim)])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]] * len(node.outputs)
+
+    def perform(self, node, inp, out):
+        indices, dims = inp
+        res = np.unravel_index(indices, dims)
+        assert len(res) == len(out)
+        for i in xrange(len(out)):
+            ret = theano._asarray(res[i], node.outputs[0].dtype)
+            if ret.base is not None:
+                # NumPy will return a view when it can.
+                # But we don't want that.
+                ret = ret.copy()
+            out[i][0] = ret
+
+
+def unravel_index(indices, dims, order='C', ndim=None):
+    """
+    Converts a flat index or array of flat indices into a tuple
+    of coordinate arrays.
+
+    This method is similar to the NumPy version, except for the
+    additional ``ndim`` parameter. This parameter is required if
+    the length of ``dims`` cannot be determined automatically.
+
+    Parameters
+    ----------
+    indices : Theano or NumPy array
+        An integer array whose elements are indices into the flattened
+        version of an array of dimensions ``dims``.
+    dims : tuple of ints
+        The shape of the array to use for unraveling ``indices``.
+    order : {'C', 'F'}, optional
+        Determines whether the indices should be viewed as indexing in
+        row-major (C-style) or column-major (Fortran-style) order.
+    ndim : int, optional
+        Specifies the number of dimensions, i.e., the length of
+        ``dims``. This is required if the dimensions cannot be determined
+        automatically from ``dims`` itself.
+
+    Returns
+    -------
+    unraveled_coords : tuple of ndarray
+        Each array in the tuple has the same shape as the ``indices``
+        array.
+
+    See Also
+    --------
+    ravel_multi_index
+
+    """
+    if ndim is None:
+        try:
+            ndim = basic.get_vector_length(dims)
+        except ValueError:
+            raise ValueError(
+                "The length of the provided dimension list (%s) cannot "
+                "be automatically determined, so Theano is not able "
+                "to know what the number of dimensions of the unraveled "
+                "index will be. You can provide the 'ndim' keyword "
+                "argument to 'unravel_index' to avoid this problem." % str(dims))
+
+    res = UnravelIndex(ndim=ndim, order=order)(indices, dims)
+    if ndim == 1:
+        return (res,)
+    else:
+        return tuple(res)
+
+
+class RavelMultiIndex(gof.Op):
+    __props__ = ('mode', 'order')
+
+    def __init__(self, mode='raise', order='C'):
+        assert mode in ('raise', 'wrap', 'clip')
+        assert order in ('C', 'F')
+        self.mode = mode
+        self.order = order
+
+    def make_node(self, *inp):
+        multi_index = [basic.as_tensor_variable(i) for i in inp[:-1]]
+        dims = basic.as_tensor_variable(inp[-1])
+
+        for i in multi_index:
+            if i.dtype not in basic.int_dtypes:
+                raise TypeError("'%s' object cannot be interpreted as an index" % str(i.dtype))
+        if dims.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(dims.dtype))
+        if dims.ndim != 1:
+            raise TypeError("dims must be a 1D array")
+
+        return gof.Apply(
+            self, multi_index + [dims],
+            [basic.TensorType(dtype='int64', broadcastable=(False,) * multi_index[0].ndim)()])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
+
+    def perform(self, node, inp, out):
+        multi_index, dims = inp[:-1], inp[-1]
+        res = np.ravel_multi_index(multi_index, dims,
+                                   mode=self.mode, order=self.order)
+        out[0][0] = theano._asarray(res, node.outputs[0].dtype)
+
+
+def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
+    """
+    Converts a tuple of index arrays into an array of flat
+    indices, applying boundary modes to the multi-index.
+
+    Parameters
+    ----------
+    multi_index : tuple of Theano or NumPy arrays
+        A tuple of integer arrays, one array for each dimension.
+    dims : tuple of ints
+        The shape of array into which the indices from ``multi_index`` apply.
+    mode : {'raise', 'wrap', 'clip'}, optional
+        Specifies how out-of-bounds indices are handled.  Can specify
+        either one mode or a tuple of modes, one mode per index.
+        * 'raise' -- raise an error (default)
+        * 'wrap' -- wrap around
+        * 'clip' -- clip to the range
+        In 'clip' mode, a negative index which would normally
+        wrap will clip to 0 instead.
+    order : {'C', 'F'}, optional
+        Determines whether the multi-index should be viewed as
+        indexing in row-major (C-style) or column-major
+        (Fortran-style) order.
+
+    Returns
+    -------
+    raveled_indices : Theano array
+        An array of indices into the flattened version of an array
+        of dimensions ``dims``.
+
+    See Also
+    --------
+    unravel_index
+
+    """
+    if not isinstance(multi_index, (tuple, list)):
+        raise TypeError('multi_index must be a tuple or a list.')
+    args = tuple(multi_index) + (dims,)
+    return RavelMultiIndex(mode=mode, order=order)(*args)

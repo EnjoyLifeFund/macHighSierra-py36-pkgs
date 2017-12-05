@@ -1,1 +1,1 @@
-../../../../Cellar/pyqt/5.9.1/lib/python3.6/site-packages/PyQt5/QtQuickWidgets.pyi
+../../../../Cellar/pyqt/5.9.2/lib/python3.6/site-packages/PyQt5/QtQuickWidgets.pyi

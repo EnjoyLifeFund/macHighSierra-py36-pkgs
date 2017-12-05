@@ -1,0 +1,17 @@
+csvmapper/__init__.py,sha256=9s0gSULO8WBrAQUda6tA0xDeeGkmBo4dkMqyW6Tc5yQ,287
+csvmapper/converter.py,sha256=6YF7TBpV7cHx5nXVHI5UnLg6boANpf0cW5pRY1nxl2U,1751
+csvmapper/csv_parser.py,sha256=QgMjx77JgeeVkxzfaQNxbLNlfwSslXojj6GxalhM--U,2773
+csvmapper/mapper.py,sha256=P3zGrnYZkZgldhyIyoAiWhNy7ETwX3yhUSeVeNibgMw,1767
+csvmapper/utils.py,sha256=83C8mIxxzx5PN40pEP0JpPQ9I0A63spcgJu4dQC49rM,195
+csvmapper-0.5.dist-info/DESCRIPTION.rst,sha256=OCTuuN6LcWulhHS3d5rfjdsQtW22n7HENFRh6jC6ego,10
+csvmapper-0.5.dist-info/METADATA,sha256=DsGuxiQ54Zf6fKI0Rj48_l8HIhtI0b1MX89nKjzq2SU,414
+csvmapper-0.5.dist-info/RECORD,,
+csvmapper-0.5.dist-info/WHEEL,sha256=0mO7-aKM6K9CHeURc5NDYZyLWH5lmR-r4TtPinHxz7Y,93
+csvmapper-0.5.dist-info/metadata.json,sha256=NDSUmpNbupagc1T4Wr9zTHFMa_RZLfA3pK49W7l_ZWk,597
+csvmapper-0.5.dist-info/top_level.txt,sha256=bXc6IpfrAJug3ASgiufnONqhdysZjV1jkaCcU79f63w,10
+csvmapper-0.5.dist-info/INSTALLER,sha256=zuuue4knoyJ-UwPPXg8fezS7VCrXJQrAP7zeNuwvFQg,4
+csvmapper/__pycache__/converter.cpython-36.pyc,,
+csvmapper/__pycache__/utils.cpython-36.pyc,,
+csvmapper/__pycache__/csv_parser.cpython-36.pyc,,
+csvmapper/__pycache__/__init__.cpython-36.pyc,,
+csvmapper/__pycache__/mapper.cpython-36.pyc,,

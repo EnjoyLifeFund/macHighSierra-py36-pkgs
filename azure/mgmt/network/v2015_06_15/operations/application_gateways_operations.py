@@ -27,6 +27,8 @@ class ApplicationGatewaysOperations(object):
     :ivar api_version: Client API version. Constant value: "2015-06-15".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -47,14 +49,10 @@ class ApplicationGatewaysOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -96,7 +94,7 @@ class ApplicationGatewaysOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [202, 204, 200]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -129,13 +127,9 @@ class ApplicationGatewaysOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: ApplicationGateway or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2015_06_15.models.ApplicationGateway or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -191,20 +185,16 @@ class ApplicationGatewaysOperations(object):
         :type application_gateway_name: str
         :param parameters: Parameters supplied to the create or update
          application gateway operation.
-        :type parameters: :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>`
+        :type parameters:
+         ~azure.mgmt.network.v2015_06_15.models.ApplicationGateway
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns
+         ApplicationGateway or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2015_06_15.models.ApplicationGateway]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -250,16 +240,16 @@ class ApplicationGatewaysOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [201, 200]:
+            if response.status_code not in [200, 201]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
 
             deserialized = None
 
-            if response.status_code == 201:
-                deserialized = self._deserialize('ApplicationGateway', response)
             if response.status_code == 200:
+                deserialized = self._deserialize('ApplicationGateway', response)
+            if response.status_code == 201:
                 deserialized = self._deserialize('ApplicationGateway', response)
 
             if raw:
@@ -290,10 +280,9 @@ class ApplicationGatewaysOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>`
-        :rtype: :class:`ApplicationGatewayPaged
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGatewayPaged>`
+        :return: An iterator like instance of ApplicationGateway
+        :rtype:
+         ~azure.mgmt.network.v2015_06_15.models.ApplicationGatewayPaged[~azure.mgmt.network.v2015_06_15.models.ApplicationGateway]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -356,10 +345,9 @@ class ApplicationGatewaysOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`ApplicationGateway
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGateway>`
-        :rtype: :class:`ApplicationGatewayPaged
-         <azure.mgmt.network.v2015_06_15.models.ApplicationGatewayPaged>`
+        :return: An iterator like instance of ApplicationGateway
+        :rtype:
+         ~azure.mgmt.network.v2015_06_15.models.ApplicationGatewayPaged[~azure.mgmt.network.v2015_06_15.models.ApplicationGateway]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -423,14 +411,10 @@ class ApplicationGatewaysOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -503,14 +487,10 @@ class ApplicationGatewaysOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL

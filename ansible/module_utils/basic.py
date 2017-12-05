@@ -87,7 +87,7 @@ import errno
 import datetime
 from collections import deque
 from collections import Mapping, MutableMapping, Sequence, MutableSequence, Set, MutableSet
-from itertools import repeat, chain
+from itertools import chain, repeat
 
 try:
     import syslog
@@ -137,6 +137,11 @@ except ImportError:
     except SyntaxError:
         print('\n{"msg": "SyntaxError: probably due to installed simplejson being for a different python version", "failed": true}')
         sys.exit(1)
+    else:
+        sj_version = json.__version__.split('.')
+        if sj_version < ['1', '6']:
+            # Version 1.5 released 2007-01-18 does not have the encoding parameter which we need
+            print('\n{"msg": "Error: Ansible requires the stdlib json or simplejson >= 1.6.  Neither was found!", "failed": true}')
 
 AVAILABLE_HASH_ALGORITHMS = dict()
 try:
@@ -763,15 +768,32 @@ def get_flags_from_attributes(attributes):
     return ''.join(flags)
 
 
+def _json_encode_fallback(obj):
+    if isinstance(obj, Set):
+        return list(obj)
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    raise TypeError("Cannot json serialize %s" % to_native(obj))
+
+
+def jsonify(data, **kwargs):
+    for encoding in ("utf-8", "latin-1"):
+        try:
+            return json.dumps(data, encoding=encoding, default=_json_encode_fallback, **kwargs)
+        # Old systems using old simplejson module does not support encoding keyword.
+        except TypeError:
+            try:
+                new_data = json_dict_bytes_to_unicode(data, encoding=encoding)
+            except UnicodeDecodeError:
+                continue
+            return json.dumps(new_data, default=_json_encode_fallback, **kwargs)
+        except UnicodeDecodeError:
+            continue
+    raise UnicodeError('Invalid unicode encoding encountered')
+
+
 class AnsibleFallbackNotFound(Exception):
     pass
-
-
-class _SetEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Set):
-            return list(obj)
-        return super(_SetEncoder, self).default(obj)
 
 
 class AnsibleModule(object):
@@ -801,6 +823,7 @@ class AnsibleModule(object):
         self._debug = False
         self._diff = False
         self._socket_path = None
+        self._shell = None
         self._verbosity = 0
         # May be used to set modifications to the environment for any
         # run_command invocation
@@ -811,7 +834,7 @@ class AnsibleModule(object):
         self.aliases = {}
         self._legal_inputs = ['_ansible_check_mode', '_ansible_no_log', '_ansible_debug', '_ansible_diff', '_ansible_verbosity',
                               '_ansible_selinux_special_fs', '_ansible_module_name', '_ansible_version', '_ansible_syslog_facility',
-                              '_ansible_socket']
+                              '_ansible_socket', '_ansible_shell_executable']
         self._options_context = list()
 
         if add_file_common_args:
@@ -1613,6 +1636,9 @@ class AnsibleModule(object):
             elif k == '_ansible_socket':
                 self._socket_path = v
 
+            elif k == '_ansible_shell_executable' and v:
+                self._shell = v
+
             elif check_invalid_arguments and k not in legal_inputs:
                 unsupported_parameters.add(k)
 
@@ -2197,19 +2223,10 @@ class AnsibleModule(object):
             self.fail_json(msg=to_native(e))
 
     def jsonify(self, data):
-        for encoding in ("utf-8", "latin-1"):
-            try:
-                return json.dumps(data, encoding=encoding, cls=_SetEncoder)
-            # Old systems using old simplejson module does not support encoding keyword.
-            except TypeError:
-                try:
-                    new_data = json_dict_bytes_to_unicode(data, encoding=encoding)
-                except UnicodeDecodeError:
-                    continue
-                return json.dumps(new_data, cls=_SetEncoder)
-            except UnicodeDecodeError:
-                continue
-        self.fail_json(msg='Invalid unicode encoding encountered')
+        try:
+            return jsonify(data)
+        except UnicodeError as e:
+            self.fail_json(msg=to_text(e))
 
     def from_json(self, data):
         return json.loads(data)
@@ -2602,24 +2619,37 @@ class AnsibleModule(object):
             strings on python3, use encoding=None to turn decoding to text off.
         '''
 
-        shell = False
-        if isinstance(args, list):
-            if use_unsafe_shell:
-                args = " ".join([shlex_quote(x) for x in args])
-                shell = True
-        elif isinstance(args, (binary_type, text_type)) and use_unsafe_shell:
-            shell = True
-        elif isinstance(args, (binary_type, text_type)):
-            # On python2.6 and below, shlex has problems with text type
-            # On python3, shlex needs a text type.
-            if PY2:
-                args = to_bytes(args, errors='surrogate_or_strict')
-            elif PY3:
-                args = to_text(args, errors='surrogateescape')
-            args = shlex.split(args)
-        else:
+        if not isinstance(args, (list, binary_type, text_type)):
             msg = "Argument 'args' to run_command must be list or string"
             self.fail_json(rc=257, cmd=args, msg=msg)
+
+        shell = False
+        if use_unsafe_shell:
+
+            # stringify args for unsafe/direct shell usage
+            if isinstance(args, list):
+                args = " ".join([shlex_quote(x) for x in args])
+
+            # not set explicitly, check if set by controller
+            if executable:
+                args = [executable, '-c', args]
+            elif self._shell not in (None, '/bin/sh'):
+                args = [self._shell, '-c', args]
+            else:
+                shell = True
+        else:
+            # ensure args are a list
+            if isinstance(args, (binary_type, text_type)):
+                # On python2.6 and below, shlex has problems with text type
+                # On python3, shlex needs a text type.
+                if PY2:
+                    args = to_bytes(args, errors='surrogate_or_strict')
+                elif PY3:
+                    args = to_text(args, errors='surrogateescape')
+                args = shlex.split(args)
+
+            # expand shellisms
+            args = [os.path.expanduser(os.path.expandvars(x)) for x in args if x is not None]
 
         prompt_re = None
         if prompt_regex:
@@ -2632,10 +2662,6 @@ class AnsibleModule(object):
                 prompt_re = re.compile(prompt_regex, re.MULTILINE)
             except re.error:
                 self.fail_json(msg="invalid prompt regular expression given to run_command")
-
-        # expand things like $HOME and ~
-        if not shell:
-            args = [os.path.expanduser(os.path.expandvars(x)) for x in args if x is not None]
 
         rc = 0
         msg = None

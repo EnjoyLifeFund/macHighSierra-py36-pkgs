@@ -17,44 +17,29 @@
     }
   })
 ({
-402: /* models/widgets/tables/cell_editors */ function(require, module, exports) {
+405: /* models/widgets/tables/cell_editors */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend1 = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-var object_1 = require(29    /* core/util/object */);
+var object_1 = require(30    /* core/util/object */);
 var dom_view_1 = require(6    /* core/dom_view */);
-var model_1 = require(49    /* ../../../model */);
-var data_table_1 = require(404    /* ./data_table */);
-exports.CellEditorView = function (superClass) {
-    extend1(CellEditorView, superClass);
-    CellEditorView.prototype.className = 'bk-cell-editor';
-    CellEditorView.prototype.inputEl = null;
-    CellEditorView.prototype.emptyValue = null;
-    CellEditorView.prototype.defaultValue = null;
+var model_1 = require(50    /* ../../../model */);
+var data_table_1 = require(407    /* ./data_table */);
+var CellEditorView = function (_super) {
+    tslib_1.__extends(CellEditorView, _super);
     function CellEditorView(options) {
-        this.args = options;
-        CellEditorView.__super__.constructor.call(this, object_1.extend({ model: options.column.editor }, options));
+        var _this = _super.call(this, object_1.extend({ model: options.column.editor }, options)) || this;
+        _this.args = options;
+        return _this;
     }
     CellEditorView.prototype.initialize = function (options) {
-        CellEditorView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     CellEditorView.prototype.render = function () {
-        CellEditorView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         this.args.container.appendChild(this.el);
         this.el.appendChild(this.inputEl);
         this.renderEditor();
@@ -64,19 +49,17 @@ exports.CellEditorView = function (superClass) {
     CellEditorView.prototype.renderEditor = function () {
     };
     CellEditorView.prototype.disableNavigation = function () {
-        return this.inputEl.addEventListener('keydown', function (_this) {
-            return function (event) {
-                switch (event.keyCode) {
-                case dom_1.Keys.Left:
-                case dom_1.Keys.Right:
-                case dom_1.Keys.Up:
-                case dom_1.Keys.Down:
-                case dom_1.Keys.PageUp:
-                case dom_1.Keys.PageDown:
-                    return event.stopImmediatePropagation();
-                }
-            };
-        }(this));
+        return this.inputEl.addEventListener('keydown', function (event) {
+            switch (event.keyCode) {
+            case dom_1.Keys.Left:
+            case dom_1.Keys.Right:
+            case dom_1.Keys.Up:
+            case dom_1.Keys.Down:
+            case dom_1.Keys.PageUp:
+            case dom_1.Keys.PageDown:
+                return event.stopImmediatePropagation();
+            }
+        });
     };
     CellEditorView.prototype.destroy = function () {
         return this.remove();
@@ -129,70 +112,88 @@ exports.CellEditorView = function (superClass) {
     };
     return CellEditorView;
 }(dom_view_1.DOMView);
-exports.CellEditor = function (superClass) {
-    extend1(CellEditor, superClass);
+exports.CellEditorView = CellEditorView;
+;
+CellEditorView.prototype.className = 'bk-cell-editor';
+CellEditorView.prototype.inputEl = null;
+CellEditorView.prototype.emptyValue = null;
+CellEditorView.prototype.defaultValue = null;
+var CellEditor = function (_super) {
+    tslib_1.__extends(CellEditor, _super);
     function CellEditor() {
-        return CellEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    CellEditor.prototype.type = 'CellEditor';
-    CellEditor.prototype.default_view = exports.CellEditorView;
     return CellEditor;
 }(model_1.Model);
-exports.StringEditorView = function (superClass) {
-    extend1(StringEditorView, superClass);
+exports.CellEditor = CellEditor;
+;
+CellEditor.prototype.type = 'CellEditor';
+CellEditor.prototype.default_view = CellEditorView;
+var StringEditorView = function (_super) {
+    tslib_1.__extends(StringEditorView, _super);
     function StringEditorView() {
-        return StringEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    StringEditorView.prototype.emptyValue = '';
-    StringEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
     StringEditorView.prototype.renderEditor = function () {
+        //completions = @model.completions
+        //if completions.length != 0
+        //  @inputEl.classList.add("bk-cell-editor-completion")
+        //  $(@inputEl).autocomplete({source: completions})
+        //  $(@inputEl).autocomplete("widget")
         this.inputEl.focus();
         return this.inputEl.select();
     };
     StringEditorView.prototype.loadValue = function (item) {
-        StringEditorView.__super__.loadValue.call(this, item);
+        _super.prototype.loadValue.call(this, item);
         this.inputEl.defaultValue = this.defaultValue;
         return this.inputEl.select();
     };
     return StringEditorView;
-}(exports.CellEditorView);
-exports.StringEditor = function (superClass) {
-    extend1(StringEditor, superClass);
+}(CellEditorView);
+exports.StringEditorView = StringEditorView;
+;
+StringEditorView.prototype.emptyValue = '';
+StringEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
+var StringEditor = function (_super) {
+    tslib_1.__extends(StringEditor, _super);
     function StringEditor() {
-        return StringEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    StringEditor.prototype.type = 'StringEditor';
-    StringEditor.prototype.default_view = exports.StringEditorView;
-    StringEditor.define({
-        completions: [
-            p.Array,
-            []
-        ]
-    });
     return StringEditor;
-}(exports.CellEditor);
-exports.TextEditorView = function (superClass) {
-    extend1(TextEditorView, superClass);
+}(CellEditor);
+exports.StringEditor = StringEditor;
+;
+StringEditor.prototype.type = 'StringEditor';
+StringEditor.prototype.default_view = StringEditorView;
+StringEditor.define({
+    completions: [
+        p.Array,
+        []
+    ]
+});
+exports.TextEditorView = function (_super) {
+    tslib_1.__extends(TextEditorView, _super);
     function TextEditorView() {
-        return TextEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     return TextEditorView;
-}(exports.CellEditorView);
-exports.TextEditor = function (superClass) {
-    extend1(TextEditor, superClass);
+}(CellEditorView);
+var TextEditor = function (_super) {
+    tslib_1.__extends(TextEditor, _super);
     function TextEditor() {
-        return TextEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TextEditor.prototype.type = 'TextEditor';
-    TextEditor.prototype.default_view = exports.TextEditorView;
     return TextEditor;
-}(exports.CellEditor);
-exports.SelectEditorView = function (superClass) {
-    extend1(SelectEditorView, superClass);
+}(CellEditor);
+exports.TextEditor = TextEditor;
+;
+TextEditor.prototype.type = 'TextEditor';
+TextEditor.prototype.default_view = exports.TextEditorView;
+var SelectEditorView = function (_super) {
+    tslib_1.__extends(SelectEditorView, _super);
     function SelectEditorView() {
-        return SelectEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    SelectEditorView.prototype.inputEl = dom_1.select();
     SelectEditorView.prototype.renderEditor = function () {
         var i, len, ref;
         ref = this.model.options;
@@ -203,51 +204,54 @@ exports.SelectEditorView = function (superClass) {
         return this.focus();
     };
     SelectEditorView.prototype.loadValue = function (item) {
-        SelectEditorView.__super__.loadValue.call(this, item);
+        _super.prototype.loadValue.call(this, item);
         return this.inputEl.select();
     };
     return SelectEditorView;
-}(exports.CellEditorView);
-exports.SelectEditor = function (superClass) {
-    extend1(SelectEditor, superClass);
+}(CellEditorView);
+exports.SelectEditorView = SelectEditorView;
+;
+SelectEditorView.prototype.inputEl = dom_1.select();
+var SelectEditor = function (_super) {
+    tslib_1.__extends(SelectEditor, _super);
     function SelectEditor() {
-        return SelectEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    SelectEditor.prototype.type = 'SelectEditor';
-    SelectEditor.prototype.default_view = exports.SelectEditorView;
-    SelectEditor.define({
-        options: [
-            p.Array,
-            []
-        ]
-    });
     return SelectEditor;
-}(exports.CellEditor);
-exports.PercentEditorView = function (superClass) {
-    extend1(PercentEditorView, superClass);
+}(CellEditor);
+exports.SelectEditor = SelectEditor;
+;
+SelectEditor.prototype.type = 'SelectEditor';
+SelectEditor.prototype.default_view = SelectEditorView;
+SelectEditor.define({
+    options: [
+        p.Array,
+        []
+    ]
+});
+exports.PercentEditorView = function (_super) {
+    tslib_1.__extends(PercentEditorView, _super);
     function PercentEditorView() {
-        return PercentEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     return PercentEditorView;
-}(exports.CellEditorView);
-exports.PercentEditor = function (superClass) {
-    extend1(PercentEditor, superClass);
+}(CellEditorView);
+var PercentEditor = function (_super) {
+    tslib_1.__extends(PercentEditor, _super);
     function PercentEditor() {
-        return PercentEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    PercentEditor.prototype.type = 'PercentEditor';
-    PercentEditor.prototype.default_view = exports.PercentEditorView;
     return PercentEditor;
-}(exports.CellEditor);
-exports.CheckboxEditorView = function (superClass) {
-    extend1(CheckboxEditorView, superClass);
+}(CellEditor);
+exports.PercentEditor = PercentEditor;
+;
+PercentEditor.prototype.type = 'PercentEditor';
+PercentEditor.prototype.default_view = exports.PercentEditorView;
+var CheckboxEditorView = function (_super) {
+    tslib_1.__extends(CheckboxEditorView, _super);
     function CheckboxEditorView() {
-        return CheckboxEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    CheckboxEditorView.prototype.inputEl = dom_1.input({
-        type: 'checkbox',
-        value: 'true'
-    });
     CheckboxEditorView.prototype.renderEditor = function () {
         return this.focus();
     };
@@ -259,34 +263,43 @@ exports.CheckboxEditorView = function (superClass) {
         return this.inputEl.checked;
     };
     return CheckboxEditorView;
-}(exports.CellEditorView);
-exports.CheckboxEditor = function (superClass) {
-    extend1(CheckboxEditor, superClass);
+}(CellEditorView);
+exports.CheckboxEditorView = CheckboxEditorView;
+;
+CheckboxEditorView.prototype.inputEl = dom_1.input({
+    type: 'checkbox',
+    value: 'true'
+});
+var CheckboxEditor = function (_super) {
+    tslib_1.__extends(CheckboxEditor, _super);
     function CheckboxEditor() {
-        return CheckboxEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    CheckboxEditor.prototype.type = 'CheckboxEditor';
-    CheckboxEditor.prototype.default_view = exports.CheckboxEditorView;
     return CheckboxEditor;
-}(exports.CellEditor);
-exports.IntEditorView = function (superClass) {
-    extend1(IntEditorView, superClass);
+}(CellEditor);
+exports.CheckboxEditor = CheckboxEditor;
+;
+CheckboxEditor.prototype.type = 'CheckboxEditor';
+CheckboxEditor.prototype.default_view = CheckboxEditorView;
+var IntEditorView = function (_super) {
+    tslib_1.__extends(IntEditorView, _super);
     function IntEditorView() {
-        return IntEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    IntEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
     IntEditorView.prototype.renderEditor = function () {
+        //$(@inputEl).spinner({step: @model.step})
         this.inputEl.focus();
         return this.inputEl.select();
     };
     IntEditorView.prototype.remove = function () {
-        return IntEditorView.__super__.remove.call(this);
+        //$(@inputEl).spinner("destroy")
+        return _super.prototype.remove.call(this);
     };
     IntEditorView.prototype.serializeValue = function () {
         return parseInt(this.getValue(), 10) || 0;
     };
     IntEditorView.prototype.loadValue = function (item) {
-        IntEditorView.__super__.loadValue.call(this, item);
+        _super.prototype.loadValue.call(this, item);
         this.inputEl.defaultValue = this.defaultValue;
         return this.inputEl.select();
     };
@@ -297,44 +310,50 @@ exports.IntEditorView = function (superClass) {
                 msg: 'Please enter a valid integer'
             };
         } else {
-            return IntEditorView.__super__.validateValue.call(this, value);
+            return _super.prototype.validateValue.call(this, value);
         }
     };
     return IntEditorView;
-}(exports.CellEditorView);
-exports.IntEditor = function (superClass) {
-    extend1(IntEditor, superClass);
+}(CellEditorView);
+exports.IntEditorView = IntEditorView;
+;
+IntEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
+var IntEditor = function (_super) {
+    tslib_1.__extends(IntEditor, _super);
     function IntEditor() {
-        return IntEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    IntEditor.prototype.type = 'IntEditor';
-    IntEditor.prototype.default_view = exports.IntEditorView;
-    IntEditor.define({
-        step: [
-            p.Number,
-            1
-        ]
-    });
     return IntEditor;
-}(exports.CellEditor);
-exports.NumberEditorView = function (superClass) {
-    extend1(NumberEditorView, superClass);
+}(CellEditor);
+exports.IntEditor = IntEditor;
+;
+IntEditor.prototype.type = 'IntEditor';
+IntEditor.prototype.default_view = IntEditorView;
+IntEditor.define({
+    step: [
+        p.Number,
+        1
+    ]
+});
+var NumberEditorView = function (_super) {
+    tslib_1.__extends(NumberEditorView, _super);
     function NumberEditorView() {
-        return NumberEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    NumberEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
     NumberEditorView.prototype.renderEditor = function () {
+        //$(@inputEl).spinner({step: @model.step})
         this.inputEl.focus();
         return this.inputEl.select();
     };
     NumberEditorView.prototype.remove = function () {
-        return NumberEditorView.__super__.remove.call(this);
+        //$(@inputEl).spinner("destroy")
+        return _super.prototype.remove.call(this);
     };
     NumberEditorView.prototype.serializeValue = function () {
         return parseFloat(this.getValue()) || 0;
     };
     NumberEditorView.prototype.loadValue = function (item) {
-        NumberEditorView.__super__.loadValue.call(this, item);
+        _super.prototype.loadValue.call(this, item);
         this.inputEl.defaultValue = this.defaultValue;
         return this.inputEl.select();
     };
@@ -345,110 +364,127 @@ exports.NumberEditorView = function (superClass) {
                 msg: 'Please enter a valid number'
             };
         } else {
-            return NumberEditorView.__super__.validateValue.call(this, value);
+            return _super.prototype.validateValue.call(this, value);
         }
     };
     return NumberEditorView;
-}(exports.CellEditorView);
-exports.NumberEditor = function (superClass) {
-    extend1(NumberEditor, superClass);
+}(CellEditorView);
+exports.NumberEditorView = NumberEditorView;
+;
+NumberEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
+var NumberEditor = function (_super) {
+    tslib_1.__extends(NumberEditor, _super);
     function NumberEditor() {
-        return NumberEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    NumberEditor.prototype.type = 'NumberEditor';
-    NumberEditor.prototype.default_view = exports.NumberEditorView;
-    NumberEditor.define({
-        step: [
-            p.Number,
-            0.01
-        ]
-    });
     return NumberEditor;
-}(exports.CellEditor);
-exports.TimeEditorView = function (superClass) {
-    extend1(TimeEditorView, superClass);
+}(CellEditor);
+exports.NumberEditor = NumberEditor;
+;
+NumberEditor.prototype.type = 'NumberEditor';
+NumberEditor.prototype.default_view = NumberEditorView;
+NumberEditor.define({
+    step: [
+        p.Number,
+        0.01
+    ]
+});
+exports.TimeEditorView = function (_super) {
+    tslib_1.__extends(TimeEditorView, _super);
     function TimeEditorView() {
-        return TimeEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     return TimeEditorView;
-}(exports.CellEditorView);
-exports.TimeEditor = function (superClass) {
-    extend1(TimeEditor, superClass);
+}(CellEditorView);
+var TimeEditor = function (_super) {
+    tslib_1.__extends(TimeEditor, _super);
     function TimeEditor() {
-        return TimeEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TimeEditor.prototype.type = 'TimeEditor';
-    TimeEditor.prototype.default_view = exports.TimeEditorView;
     return TimeEditor;
-}(exports.CellEditor);
-exports.DateEditorView = function (superClass) {
-    extend1(DateEditorView, superClass);
+}(CellEditor);
+exports.TimeEditor = TimeEditor;
+;
+TimeEditor.prototype.type = 'TimeEditor';
+TimeEditor.prototype.default_view = exports.TimeEditorView;
+var DateEditorView = function (_super) {
+    tslib_1.__extends(DateEditorView, _super);
     function DateEditorView() {
-        return DateEditorView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DateEditorView.prototype.emptyValue = new Date();
-    DateEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
     DateEditorView.prototype.renderEditor = function () {
         this.calendarOpen = false;
+        //@$datepicker = $(@inputEl).datepicker({
+        //  showOn: "button"
+        //  buttonImageOnly: true
+        //  beforeShow: () => @calendarOpen = true
+        //  onClose: () => @calendarOpen = false
+        //})
+        //@$datepicker.siblings(".ui-datepicker-trigger").css("vertical-align": "middle")
+        //@$datepicker.width(@$datepicker.width() - (14 + 2*4 + 4)) # img width + margins + edge distance
         this.inputEl.focus();
         return this.inputEl.select();
     };
     DateEditorView.prototype.destroy = function () {
-        return DateEditorView.__super__.destroy.call(this);
+        //$.datepicker.dpDiv.stop(true, true)
+        //@$datepicker.datepicker("hide")
+        //@$datepicker.datepicker("destroy")
+        return _super.prototype.destroy.call(this);
     };
     DateEditorView.prototype.show = function () {
-        return DateEditorView.__super__.show.call(this);
+        //if @calendarOpen
+        //  $.datepicker.dpDiv.stop(true, true).show()
+        return _super.prototype.show.call(this);
     };
     DateEditorView.prototype.hide = function () {
-        return DateEditorView.__super__.hide.call(this);
+        //if @calendarOpen
+        //  $.datepicker.dpDiv.stop(true, true).hide()
+        return _super.prototype.hide.call(this);
     };
     DateEditorView.prototype.position = function (position) {
-        return DateEditorView.__super__.position.call(this);
+        //if @calendarOpen
+        //  $.datepicker.dpDiv.css(top: position.top + 30, left: position.left)
+        return _super.prototype.position.call(this);
     };
     DateEditorView.prototype.getValue = function () {
     };
+    //return @$datepicker.datepicker("getDate").getTime()
     DateEditorView.prototype.setValue = function (val) {
     };
     return DateEditorView;
-}(exports.CellEditorView);
-exports.DateEditor = function (superClass) {
-    extend1(DateEditor, superClass);
+}(CellEditorView);
+exports.DateEditorView = DateEditorView;
+;
+DateEditorView.prototype.emptyValue = new Date();
+DateEditorView.prototype.inputEl = dom_1.input({ type: 'text' });
+var DateEditor = function (_super) {
+    tslib_1.__extends(DateEditor, _super);
     function DateEditor() {
-        return DateEditor.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DateEditor.prototype.type = 'DateEditor';
-    DateEditor.prototype.default_view = exports.DateEditorView;
     return DateEditor;
-}(exports.CellEditor);    
+}(CellEditor);
+exports.DateEditor = DateEditor;
+;
+DateEditor.prototype.type = 'DateEditor';
+DateEditor.prototype.default_view = DateEditorView;    
 },
-403: /* models/widgets/tables/cell_formatters */ function(require, module, exports) {
+406: /* models/widgets/tables/cell_formatters */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend1 = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var Numbro = require(329    /* numbro */);
-var compile_template = require(418    /* underscore.template */);
-var tz = require(360    /* timezone */);
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var Numbro = require(332    /* numbro */);
+var compile_template = require(421    /* underscore.template */);
+var tz = require(363    /* timezone */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-var object_1 = require(29    /* core/util/object */);
-var types_1 = require(41    /* core/util/types */);
-var model_1 = require(49    /* ../../../model */);
-exports.CellFormatter = function (superClass) {
-    extend1(CellFormatter, superClass);
+var object_1 = require(30    /* core/util/object */);
+var types_1 = require(42    /* core/util/types */);
+var model_1 = require(50    /* ../../../model */);
+exports.CellFormatter = function (_super) {
+    tslib_1.__extends(CellFormatter, _super);
     function CellFormatter() {
-        return CellFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     CellFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         if (value == null) {
@@ -459,23 +495,11 @@ exports.CellFormatter = function (superClass) {
     };
     return CellFormatter;
 }(model_1.Model);
-exports.StringFormatter = function (superClass) {
-    extend1(StringFormatter, superClass);
+var StringFormatter = function (_super) {
+    tslib_1.__extends(StringFormatter, _super);
     function StringFormatter() {
-        return StringFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    StringFormatter.prototype.type = 'StringFormatter';
-    StringFormatter.define({
-        font_style: [
-            p.FontStyle,
-            'normal'
-        ],
-        text_align: [
-            p.TextAlign,
-            'left'
-        ],
-        text_color: [p.Color]
-    });
     StringFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         var font_style, text, text_align, text_color;
         font_style = this.font_style;
@@ -500,26 +524,25 @@ exports.StringFormatter = function (superClass) {
     };
     return StringFormatter;
 }(exports.CellFormatter);
-exports.NumberFormatter = function (superClass) {
-    extend1(NumberFormatter, superClass);
+exports.StringFormatter = StringFormatter;
+;
+StringFormatter.prototype.type = 'StringFormatter';
+StringFormatter.define({
+    font_style: [
+        p.FontStyle,
+        'normal'
+    ],
+    text_align: [
+        p.TextAlign,
+        'left'
+    ],
+    text_color: [p.Color]
+});
+var NumberFormatter = function (_super) {
+    tslib_1.__extends(NumberFormatter, _super);
     function NumberFormatter() {
-        return NumberFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    NumberFormatter.prototype.type = 'NumberFormatter';
-    NumberFormatter.define({
-        format: [
-            p.String,
-            '0,0'
-        ],
-        language: [
-            p.String,
-            'en'
-        ],
-        rounding: [
-            p.String,
-            'round'
-        ]
-    });
     NumberFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         var format, language, rounding;
         format = this.format;
@@ -538,45 +561,59 @@ exports.NumberFormatter = function (superClass) {
             }
         }.call(this);
         value = Numbro.format(value, format, language, rounding);
-        return NumberFormatter.__super__.doFormat.call(this, row, cell, value, columnDef, dataContext);
+        return _super.prototype.doFormat.call(this, row, cell, value, columnDef, dataContext);
     };
     return NumberFormatter;
-}(exports.StringFormatter);
-exports.BooleanFormatter = function (superClass) {
-    extend1(BooleanFormatter, superClass);
+}(StringFormatter);
+exports.NumberFormatter = NumberFormatter;
+;
+NumberFormatter.prototype.type = 'NumberFormatter';
+NumberFormatter.define({
+    format: [
+        p.String,
+        '0,0'    // TODO (bev)
+    ],
+    language: [
+        p.String,
+        'en'    // TODO (bev)
+    ],
+    rounding: [
+        p.String,
+        'round'    // TODO (bev)
+    ]
+});
+var BooleanFormatter = function (_super) {
+    tslib_1.__extends(BooleanFormatter, _super);
     function BooleanFormatter() {
-        return BooleanFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    BooleanFormatter.prototype.type = 'BooleanFormatter';
-    BooleanFormatter.define({
-        icon: [
-            p.String,
-            'check'
-        ]
-    });
     BooleanFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         if (!!value) {
-            return dom_1.i({ 'class': this.icon }).outerHTML;
+            return dom_1.i({ class: this.icon }).outerHTML;
         } else {
             return '';
         }
     };
     return BooleanFormatter;
 }(exports.CellFormatter);
-exports.DateFormatter = function (superClass) {
-    extend1(DateFormatter, superClass);
+exports.BooleanFormatter = BooleanFormatter;
+;
+BooleanFormatter.prototype.type = 'BooleanFormatter';
+BooleanFormatter.define({
+    icon: [
+        p.String,
+        'check'
+    ]
+});
+var DateFormatter = function (_super) {
+    tslib_1.__extends(DateFormatter, _super);
     function DateFormatter() {
-        return DateFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DateFormatter.prototype.type = 'DateFormatter';
-    DateFormatter.define({
-        format: [
-            p.String,
-            'ISO-8601'
-        ]
-    });
     DateFormatter.prototype.getFormat = function () {
         var fmt;
+        // using definitions provided here: https://api.jqueryui.com/datepicker/
+        // except not implementing TICKS
         fmt = function () {
             switch (this.format) {
             case 'ATOM':
@@ -611,22 +648,24 @@ exports.DateFormatter = function (superClass) {
         var date;
         value = types_1.isString(value) ? parseInt(value, 10) : value;
         date = tz(value, this.getFormat());
-        return DateFormatter.__super__.doFormat.call(this, row, cell, date, columnDef, dataContext);
+        return _super.prototype.doFormat.call(this, row, cell, date, columnDef, dataContext);
     };
     return DateFormatter;
 }(exports.CellFormatter);
-exports.HTMLTemplateFormatter = function (superClass) {
-    extend1(HTMLTemplateFormatter, superClass);
+exports.DateFormatter = DateFormatter;
+;
+DateFormatter.prototype.type = 'DateFormatter';
+DateFormatter.define({
+    format: [
+        p.String,
+        'ISO-8601'
+    ]
+});
+var HTMLTemplateFormatter = function (_super) {
+    tslib_1.__extends(HTMLTemplateFormatter, _super);
     function HTMLTemplateFormatter() {
-        return HTMLTemplateFormatter.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    HTMLTemplateFormatter.prototype.type = 'HTMLTemplateFormatter';
-    HTMLTemplateFormatter.define({
-        template: [
-            p.String,
-            '<%= value %>'
-        ]
-    });
     HTMLTemplateFormatter.prototype.doFormat = function (row, cell, value, columnDef, dataContext) {
         var compiled_template, template;
         template = this.template;
@@ -639,34 +678,31 @@ exports.HTMLTemplateFormatter = function (superClass) {
         }
     };
     return HTMLTemplateFormatter;
-}(exports.CellFormatter);    
+}(exports.CellFormatter);
+exports.HTMLTemplateFormatter = HTMLTemplateFormatter;
+;
+HTMLTemplateFormatter.prototype.type = 'HTMLTemplateFormatter';
+HTMLTemplateFormatter.define({
+    template: [
+        p.String,
+        '<%= value %>'
+    ]
+});    
 },
-404: /* models/widgets/tables/data_table */ function(require, module, exports) {
+407: /* models/widgets/tables/data_table */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var slickgrid_1 = require(416    /* slickgrid */);
-var slick_rowselectionmodel_1 = require(414    /* slickgrid/plugins/slick.rowselectionmodel */);
-var slick_checkboxselectcolumn_1 = require(413    /* slickgrid/plugins/slick.checkboxselectcolumn */);
+var tslib_1 = require(364    /* tslib */);
+var slickgrid_1 = require(419    /* slickgrid */);
+var slick_rowselectionmodel_1 = require(417    /* slickgrid/plugins/slick.rowselectionmodel */);
+var slick_checkboxselectcolumn_1 = require(416    /* slickgrid/plugins/slick.checkboxselectcolumn */);
 var hittest = require(9    /* core/hittest */);
-var p = require(14    /* core/properties */);
-var string_1 = require(36    /* core/util/string */);
-var array_1 = require(21    /* core/util/array */);
-var logging_1 = require(13    /* core/logging */);
-var table_widget_1 = require(408    /* ./table_widget */);
-var widget_1 = require(409    /* ../widget */);
+var p = require(15    /* core/properties */);
+var string_1 = require(37    /* core/util/string */);
+var array_1 = require(22    /* core/util/array */);
+var logging_1 = require(14    /* core/logging */);
+var table_widget_1 = require(411    /* ./table_widget */);
+var widget_1 = require(412    /* ../widget */);
 exports.DTINDEX_NAME = '__bkdt_internal_index__';
 exports.DataProvider = function () {
     function DataProvider(source, view) {
@@ -695,6 +731,7 @@ exports.DataProvider = function () {
         var field, value;
         for (field in item) {
             value = item[field];
+            // internal index is maintained independently, ignore
             if (field !== exports.DTINDEX_NAME) {
                 this.source.data[field][this.index[offset]] = value;
             }
@@ -709,6 +746,7 @@ exports.DataProvider = function () {
         return this.source.data[field][this.index[offset]];
     };
     DataProvider.prototype.setField = function (offset, field, value) {
+        // field assumed never to be internal index name (ctor would throw)
         this.source.data[field][this.index[offset]] = value;
         this._update_source_inplace();
         return null;
@@ -749,10 +787,11 @@ exports.DataProvider = function () {
         }
         records = this.getRecords();
         old_index = this.index.slice();
+        // TODO (bev) this sort is unstable, which is not great
         return this.index.sort(function (i1, i2) {
-            var field, j, len, ref, result, sign, value1, value2;
+            var field, j, len, result, sign, value1, value2;
             for (j = 0, len = cols.length; j < len; j++) {
-                ref = cols[j], field = ref[0], sign = ref[1];
+                _a = cols[j], field = _a[0], sign = _a[1];
                 value1 = records[old_index.indexOf(i1)][field];
                 value2 = records[old_index.indexOf(i2)][field];
                 result = value1 === value2 ? 0 : value1 > value2 ? sign : -sign;
@@ -761,6 +800,7 @@ exports.DataProvider = function () {
                 }
             }
             return 0;
+            var _a;
         });
     };
     DataProvider.prototype._update_source_inplace = function () {
@@ -768,49 +808,44 @@ exports.DataProvider = function () {
     };
     return DataProvider;
 }();
-exports.DataTableView = function (superClass) {
-    extend(DataTableView, superClass);
+var DataTableView = function (_super) {
+    tslib_1.__extends(DataTableView, _super);
     function DataTableView() {
-        return DataTableView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DataTableView.prototype.className = 'bk-data-table';
     DataTableView.prototype.initialize = function (options) {
-        DataTableView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.in_selection_update = false;
     };
     DataTableView.prototype.connect_signals = function () {
-        DataTableView.__super__.connect_signals.call(this);
-        this.connect(this.model.change, function (_this) {
-            return function () {
-                return _this.render();
-            };
-        }(this));
-        this.connect(this.model.source.properties.data.change, function (_this) {
-            return function () {
-                return _this.updateGrid();
-            };
-        }(this));
-        this.connect(this.model.source.streaming, function (_this) {
-            return function () {
-                return _this.updateGrid();
-            };
-        }(this));
-        this.connect(this.model.source.patching, function (_this) {
-            return function () {
-                return _this.updateGrid();
-            };
-        }(this));
-        return this.connect(this.model.source.change, function (_this) {
-            return function () {
-                return _this.updateSelection();
-            };
-        }(this));
+        var _this = this;
+        _super.prototype.connect_signals.call(this);
+        this.connect(this.model.change, function () {
+            return _this.render();
+        });
+        this.connect(this.model.source.properties.data.change, function () {
+            return _this.updateGrid();
+        });
+        this.connect(this.model.source.streaming, function () {
+            return _this.updateGrid();
+        });
+        this.connect(this.model.source.patching, function () {
+            return _this.updateGrid();
+        });
+        return this.connect(this.model.source.change, function () {
+            return _this.updateSelection();
+        });
     };
     DataTableView.prototype.updateGrid = function () {
+        // TODO (bev) This is to enure that CDSView indices are properly computed
+        // before passing to the DataProvider. This will result in extra calls to
+        // compute_indices. This "over execution" will be addressed in a more
+        // general look at events
         this.model.view.compute_indices();
         this.data.constructor(this.model.source, this.model.view);
         this.grid.invalidate();
         this.grid.render();
+        // This is only needed to call @_tell_document_about_change()
         this.model.source.data = this.model.source.data;
         return this.model.source.change.emit();
     };
@@ -833,6 +868,11 @@ exports.DataTableView = function (superClass) {
         this.in_selection_update = true;
         this.grid.setSelectedRows(permuted_indices);
         this.in_selection_update = false;
+        // If the selection is not in the current slickgrid viewport, scroll the
+        // datatable to start at the row before the first selected row, so that
+        // the selection is immediately brought into view. We don't scroll when
+        // the selection is already in the viewport so that selecting from the
+        // datatable itself does not re-scroll.
         cur_grid_range = this.grid.getViewport();
         if (this.model.scroll_to_selection && !array_1.any(permuted_indices, function (i) {
                 return cur_grid_range.top <= i && i <= cur_grid_range.bottom;
@@ -856,6 +896,7 @@ exports.DataTableView = function (superClass) {
         };
     };
     DataTableView.prototype.render = function () {
+        var _this = this;
         var checkboxSelector, column, columns, options, ref, reorderable;
         columns = function () {
             var j, len, ref, results;
@@ -876,7 +917,10 @@ exports.DataTableView = function (superClass) {
         }
         reorderable = this.model.reorderable;
         if (reorderable && (typeof $ !== 'undefined' && $ !== null ? (ref = $.fn) != null ? ref.sortable : void 0 : void 0) == null) {
-            logging_1.logger.warn('jquery-ui is required to enable DataTable.reorderable');
+            if (this._warned_not_reorderable == null) {
+                logging_1.logger.warn('jquery-ui is required to enable DataTable.reorderable');
+                this._warned_not_reorderable = true;
+            }
             reorderable = false;
         }
         options = {
@@ -898,174 +942,133 @@ exports.DataTableView = function (superClass) {
         }
         this.data = new exports.DataProvider(this.model.source, this.model.view);
         this.grid = new slickgrid_1.Grid(this.el, this.data, columns, options);
-        this.grid.onSort.subscribe(function (_this) {
-            return function (event, args) {
-                columns = args.sortCols;
-                _this.data.sort(columns);
-                _this.grid.invalidate();
-                _this.updateSelection();
-                return _this.grid.render();
-            };
-        }(this));
+        this.grid.onSort.subscribe(function (event, args) {
+            columns = args.sortCols;
+            _this.data.sort(columns);
+            _this.grid.invalidate();
+            _this.updateSelection();
+            return _this.grid.render();
+        });
         if (this.model.selectable !== false) {
             this.grid.setSelectionModel(new slick_rowselectionmodel_1.RowSelectionModel({ selectActiveRow: checkboxSelector == null }));
             if (checkboxSelector != null) {
                 this.grid.registerPlugin(checkboxSelector);
             }
-            this.grid.onSelectedRowsChanged.subscribe(function (_this) {
-                return function (event, args) {
-                    var i, selected;
-                    if (_this.in_selection_update) {
-                        return;
+            this.grid.onSelectedRowsChanged.subscribe(function (event, args) {
+                var i, selected;
+                if (_this.in_selection_update) {
+                    return;
+                }
+                selected = hittest.create_hit_test_result();
+                selected['1d'].indices = function () {
+                    var j, len, ref1, results;
+                    ref1 = args.rows;
+                    results = [];
+                    for (j = 0, len = ref1.length; j < len; j++) {
+                        i = ref1[j];
+                        results.push(this.data.index[i]);
                     }
-                    selected = hittest.create_hit_test_result();
-                    selected['1d'].indices = function () {
-                        var j, len, ref1, results;
-                        ref1 = args.rows;
-                        results = [];
-                        for (j = 0, len = ref1.length; j < len; j++) {
-                            i = ref1[j];
-                            results.push(this.data.index[i]);
-                        }
-                        return results;
-                    }.call(_this);
-                    return _this.model.source.selected = selected;
-                };
-            }(this));
+                    return results;
+                }.call(_this);
+                return _this.model.source.selected = selected;
+            });
             this.updateSelection();
         }
         return this;
     };
     return DataTableView;
 }(widget_1.WidgetView);
-exports.DataTable = function (superClass) {
-    extend(DataTable, superClass);
+exports.DataTableView = DataTableView;
+;
+DataTableView.prototype.className = 'bk-data-table';
+var DataTable = function (_super) {
+    tslib_1.__extends(DataTable, _super);
     function DataTable() {
-        return DataTable.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DataTable.prototype.type = 'DataTable';
-    DataTable.prototype.default_view = exports.DataTableView;
-    DataTable.define({
-        columns: [
-            p.Array,
-            []
-        ],
-        fit_columns: [
-            p.Bool,
-            true
-        ],
-        sortable: [
-            p.Bool,
-            true
-        ],
-        reorderable: [
-            p.Bool,
-            true
-        ],
-        editable: [
-            p.Bool,
-            false
-        ],
-        selectable: [
-            p.Bool,
-            true
-        ],
-        row_headers: [
-            p.Bool,
-            true
-        ],
-        scroll_to_selection: [
-            p.Bool,
-            true
-        ]
-    });
-    DataTable.override({ height: 400 });
-    DataTable.internal({
-        default_width: [
-            p.Number,
-            600
-        ]
-    });
     return DataTable;
-}(table_widget_1.TableWidget);    
+}(table_widget_1.TableWidget);
+exports.DataTable = DataTable;
+;
+DataTable.prototype.type = 'DataTable';
+DataTable.prototype.default_view = DataTableView;
+DataTable.define({
+    columns: [
+        p.Array,
+        []
+    ],
+    fit_columns: [
+        p.Bool,
+        true
+    ],
+    sortable: [
+        p.Bool,
+        true
+    ],
+    reorderable: [
+        p.Bool,
+        true
+    ],
+    editable: [
+        p.Bool,
+        false
+    ],
+    selectable: [
+        p.Bool,
+        true
+    ],
+    row_headers: [
+        p.Bool,
+        true
+    ],
+    scroll_to_selection: [
+        p.Bool,
+        true
+    ]
+});
+DataTable.override({ height: 400 });
+DataTable.internal({
+    default_width: [
+        p.Number,
+        600
+    ]
+});    
 },
-405: /* models/widgets/tables/index */ function(require, module, exports) {
+408: /* models/widgets/tables/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(361    /* tslib */);
-tslib_1.__exportStar(require(402    /* ./cell_editors */), exports);
-tslib_1.__exportStar(require(403    /* ./cell_formatters */), exports);
-var data_table_1 = require(404    /* ./data_table */);
+var tslib_1 = require(364    /* tslib */);
+tslib_1.__exportStar(require(405    /* ./cell_editors */), exports);
+tslib_1.__exportStar(require(406    /* ./cell_formatters */), exports);
+var data_table_1 = require(407    /* ./data_table */);
 exports.DataTable = data_table_1.DataTable;
-var table_column_1 = require(407    /* ./table_column */);
+var table_column_1 = require(410    /* ./table_column */);
 exports.TableColumn = table_column_1.TableColumn;
-var table_widget_1 = require(408    /* ./table_widget */);
+var table_widget_1 = require(411    /* ./table_widget */);
 exports.TableWidget = table_widget_1.TableWidget;    
 },
-406: /* models/widgets/tables/main */ function(require, module, exports) {
+409: /* models/widgets/tables/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var Tables = require(405    /* ./index */);
+var Tables = require(408    /* ./index */);
 exports.Tables = Tables;
 var base_1 = require(0    /* ../../../base */);
 base_1.register_models(Tables);    
 },
-407: /* models/widgets/tables/table_column */ function(require, module, exports) {
+410: /* models/widgets/tables/table_column */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var cell_formatters_1 = require(403    /* ./cell_formatters */);
-var cell_editors_1 = require(402    /* ./cell_editors */);
-var p = require(14    /* core/properties */);
-var string_1 = require(36    /* core/util/string */);
-var model_1 = require(49    /* ../../../model */);
-exports.TableColumn = function (superClass) {
-    extend(TableColumn, superClass);
+var tslib_1 = require(364    /* tslib */);
+var cell_formatters_1 = require(406    /* ./cell_formatters */);
+var cell_editors_1 = require(405    /* ./cell_editors */);
+var p = require(15    /* core/properties */);
+var string_1 = require(37    /* core/util/string */);
+var model_1 = require(50    /* ../../../model */);
+var TableColumn = function (_super) {
+    tslib_1.__extends(TableColumn, _super);
     function TableColumn() {
-        return TableColumn.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TableColumn.prototype.type = 'TableColumn';
-    TableColumn.prototype.default_view = null;
-    TableColumn.define({
-        field: [p.String],
-        title: [p.String],
-        width: [
-            p.Number,
-            300
-        ],
-        formatter: [
-            p.Instance,
-            function () {
-                return new cell_formatters_1.StringFormatter();
-            }
-        ],
-        editor: [
-            p.Instance,
-            function () {
-                return new cell_editors_1.StringEditor();
-            }
-        ],
-        sortable: [
-            p.Bool,
-            true
-        ],
-        default_sort: [
-            p.String,
-            'ascending'
-        ]
-    });
     TableColumn.prototype.toColumn = function () {
         var ref;
         return {
@@ -1080,77 +1083,90 @@ exports.TableColumn = function (superClass) {
         };
     };
     return TableColumn;
-}(model_1.Model);    
+}(model_1.Model);
+exports.TableColumn = TableColumn;
+;
+TableColumn.prototype.type = 'TableColumn';
+TableColumn.prototype.default_view = null;
+TableColumn.define({
+    field: [p.String],
+    title: [p.String],
+    width: [
+        p.Number,
+        300
+    ],
+    formatter: [
+        p.Instance,
+        function () {
+            return new cell_formatters_1.StringFormatter();
+        }
+    ],
+    editor: [
+        p.Instance,
+        function () {
+            return new cell_editors_1.StringEditor();
+        }
+    ],
+    sortable: [
+        p.Bool,
+        true
+    ],
+    default_sort: [
+        p.String,
+        'ascending'
+    ]
+});    
 },
-408: /* models/widgets/tables/table_widget */ function(require, module, exports) {
+411: /* models/widgets/tables/table_widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(409    /* ../widget */);
-var cds_view_1 = require(169    /* ../../sources/cds_view */);
-var p = require(14    /* core/properties */);
-exports.TableWidget = function (superClass) {
-    extend(TableWidget, superClass);
+var tslib_1 = require(364    /* tslib */);
+var widget_1 = require(412    /* ../widget */);
+var cds_view_1 = require(172    /* ../../sources/cds_view */);
+var p = require(15    /* core/properties */);
+var TableWidget = function (_super) {
+    tslib_1.__extends(TableWidget, _super);
     function TableWidget() {
-        return TableWidget.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TableWidget.prototype.type = 'TableWidget';
     TableWidget.prototype.initialize = function (options) {
-        TableWidget.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         if (this.view.source == null) {
             this.view.source = this.source;
             return this.view.compute_indices();
         }
     };
-    TableWidget.define({
-        source: [p.Instance],
-        view: [
-            p.Instance,
-            function () {
-                return new cds_view_1.CDSView();
-            }
-        ]
-    });
     return TableWidget;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.TableWidget = TableWidget;
+;
+TableWidget.prototype.type = 'TableWidget';
+TableWidget.define({
+    source: [p.Instance],
+    view: [
+        p.Instance,
+        function () {
+            return new cds_view_1.CDSView();
+        }
+    ]
+});    
 },
-409: /* models/widgets/widget */ function(require, module, exports) {
+412: /* models/widgets/widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
-exports.WidgetView = function (superClass) {
-    extend(WidgetView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var layout_dom_1 = require(139    /* ../layouts/layout_dom */);
+var WidgetView = function (_super) {
+    tslib_1.__extends(WidgetView, _super);
     function WidgetView() {
-        return WidgetView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    WidgetView.prototype.className = 'bk-widget';
     WidgetView.prototype.render = function () {
         this._render_classes();
+        // XXX: because no super()
+        // LayoutDOMView sets up lots of helpful things, but
+        // it's render method is not suitable for widgets - who
+        // should provide their own.
         if (this.model.height != null) {
             this.el.style.height = this.model.height + 'px';
         }
@@ -1160,17 +1176,22 @@ exports.WidgetView = function (superClass) {
     };
     return WidgetView;
 }(layout_dom_1.LayoutDOMView);
-exports.Widget = function (superClass) {
-    extend(Widget, superClass);
+exports.WidgetView = WidgetView;
+;
+WidgetView.prototype.className = 'bk-widget';
+var Widget = function (_super) {
+    tslib_1.__extends(Widget, _super);
     function Widget() {
-        return Widget.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Widget.prototype.type = 'Widget';
-    Widget.prototype.default_view = exports.WidgetView;
     return Widget;
-}(layout_dom_1.LayoutDOM);    
+}(layout_dom_1.LayoutDOM);
+exports.Widget = Widget;
+;
+Widget.prototype.type = 'Widget';
+Widget.prototype.default_view = WidgetView;    
 },
-410: /* jquery/dist/jquery */ function(require, module, exports) {
+413: /* jquery/dist/jquery */ function(require, module, exports) {
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -8768,7 +8789,7 @@ exports.Widget = function (superClass) {
     }
     return jQuery;
 }));},
-411: /* slickgrid/lib/jquery.event.drag-2.3.0 */ function(require, module, exports) {
+414: /* slickgrid/lib/jquery.event.drag-2.3.0 */ function(require, module, exports) {
 /*!
  * jquery.event.drag - v 2.3.0
  * Copyright (c) 2010 Three Dub Media - http://threedubmedia.com
@@ -8779,7 +8800,7 @@ exports.Widget = function (superClass) {
 // Updated: 2016-08-16   Luiz Gonzaga dos Santos Filho
 // REQUIRES: jquery 1.8 +, , event.drag 2.3.0
 // TESTED WITH: jQuery 1.8.3, 1.11.2, 2.2.4, and 3.1.0
-var $ = require(417    /* ../slick.jquery */);
+var $ = require(420    /* ../slick.jquery */);
 // add the jquery instance method
 $.fn.drag = function (str, arg, opts) {
     // figure out the event type
@@ -9154,7 +9175,7 @@ $event.dispatch = function (event) {
 };
 // share the same special event configuration with related events...
 $special.draginit = $special.dragstart = $special.dragend = drag;},
-412: /* slickgrid/lib/jquery.event.drop-2.3.0 */ function(require, module, exports) {
+415: /* slickgrid/lib/jquery.event.drop-2.3.0 */ function(require, module, exports) {
 /*!
  * jquery.event.drop - v 2.3.0
  * Copyright (c) 2010 Three Dub Media - http://threedubmedia.com
@@ -9165,7 +9186,7 @@ $special.draginit = $special.dragstart = $special.dragend = drag;},
 // Updated: 2016-08-16   Luiz Gonzaga dos Santos Filho
 // REQUIRES: jquery 1.8 +, , event.drag 2.3.0
 // TESTED WITH: jQuery 1.8.3, 1.11.2, 2.2.4, and 3.1.0
-var $ = require(417    /* ../slick.jquery */);
+var $ = require(420    /* ../slick.jquery */);
 // Events: drop, dropstart, dropend
 // add the jquery instance method
 $.fn.drop = function (str, arg, opts) {
@@ -9454,10 +9475,10 @@ var $event = $.event, $special = $event.special,
     };
 // share the same special event configuration with related events...
 $special.dropinit = $special.dropstart = $special.dropend = drop;},
-413: /* slickgrid/plugins/slick.checkboxselectcolumn */ function(require, module, exports) {
+416: /* slickgrid/plugins/slick.checkboxselectcolumn */ function(require, module, exports) {
 'use strict';
-var $ = require(417    /* ../slick.jquery */);
-var Slick = require(415    /* ../slick.core */);
+var $ = require(420    /* ../slick.jquery */);
+var Slick = require(418    /* ../slick.core */);
 function CheckboxSelectColumn(options) {
     var _grid;
     var _self = this;
@@ -9603,10 +9624,10 @@ function CheckboxSelectColumn(options) {
     });
 }
 module.exports = { 'CheckboxSelectColumn': CheckboxSelectColumn };},
-414: /* slickgrid/plugins/slick.rowselectionmodel */ function(require, module, exports) {
+417: /* slickgrid/plugins/slick.rowselectionmodel */ function(require, module, exports) {
 'use strict';
-var $ = require(417    /* ../slick.jquery */);
-var Slick = require(415    /* ../slick.core */);
+var $ = require(420    /* ../slick.jquery */);
+var Slick = require(418    /* ../slick.core */);
 function RowSelectionModel(options) {
     var _grid;
     var _ranges = [];
@@ -9757,7 +9778,7 @@ function RowSelectionModel(options) {
     });
 }
 module.exports = { 'RowSelectionModel': RowSelectionModel };},
-415: /* slickgrid/slick.core */ function(require, module, exports) {
+418: /* slickgrid/slick.core */ function(require, module, exports) {
 'use strict';
 /***
  * Contains core SlickGrid classes.
@@ -10186,7 +10207,7 @@ module.exports = {
     },
     'preClickClassName': 'slick-edit-preclick'
 };},
-416: /* slickgrid/slick.grid */ function(require, module, exports) {
+419: /* slickgrid/slick.grid */ function(require, module, exports) {
 'use strict';
 /**
  * @license
@@ -10205,8 +10226,8 @@ module.exports = {
  *     or data associated with any cell/row DOM nodes.  Cell editors must make sure they implement .destroy()
  *     and do proper cleanup.
  */
-var $ = require(417    /* ./slick.jquery */);
-var Slick = require(415    /* ./slick.core */);
+var $ = require(420    /* ./slick.jquery */);
+var Slick = require(418    /* ./slick.core */);
 // shared across all grids on the page
 var scrollbarDimensions;
 var maxSupportedCssHeight;
@@ -10224,10 +10245,10 @@ var maxSupportedCssHeight;
    **/
 function SlickGrid(container, data, columns, options) {
     if (!$.fn.drag) {
-        require(411    /* ./lib/jquery.event.drag-2.3.0 */);
+        require(414    /* ./lib/jquery.event.drag-2.3.0 */);
     }
     if (!$.fn.drop) {
-        require(412    /* ./lib/jquery.event.drop-2.3.0 */);
+        require(415    /* ./lib/jquery.event.drop-2.3.0 */);
     }
     // settings
     var defaults = {
@@ -13564,11 +13585,11 @@ function SlickGrid(container, data, columns, options) {
     init();
 }
 module.exports = { Grid: SlickGrid };},
-417: /* slickgrid/slick.jquery */ function(require, module, exports) {
-module.exports = typeof $ !== 'undefined' ? $ : require(410    /* jquery */);},
-418: /* underscore.template/lib/index */ function(require, module, exports) {
+420: /* slickgrid/slick.jquery */ function(require, module, exports) {
+module.exports = typeof $ !== 'undefined' ? $ : require(413    /* jquery */);},
+421: /* underscore.template/lib/index */ function(require, module, exports) {
 'use strict';
-var _ = require(419    /* ./underscore.template */);
+var _ = require(422    /* ./underscore.template */);
 var UnderscoreTemplate = _.template;
 function Template(text, data, settings) {
     return UnderscoreTemplate(text, data, settings);
@@ -13584,7 +13605,7 @@ if (typeof define === 'function' && define.amd) {
 } else if (typeof window !== 'undefined' || typeof navigator !== 'undefined') {
     window.UnderscoreTemplate = Template;
 }},
-419: /* underscore.template/lib/underscore.template */ function(require, module, exports) {
+422: /* underscore.template/lib/underscore.template */ function(require, module, exports) {
 'use strict';
 //     Underscore.js 1.5.2
 //     http://underscorejs.org
@@ -13768,7 +13789,7 @@ _.template = function (text, data, settings) {
     return template;
 };
 module.exports = _;}
-}, {"models/widgets/tables/cell_editors":402,"models/widgets/tables/cell_formatters":403,"models/widgets/tables/data_table":404,"models/widgets/tables/index":405,"models/widgets/tables/main":406,"models/widgets/tables/table_column":407,"models/widgets/tables/table_widget":408,"models/widgets/widget":409}, 406);
+}, {"models/widgets/tables/cell_editors":405,"models/widgets/tables/cell_formatters":406,"models/widgets/tables/data_table":407,"models/widgets/tables/index":408,"models/widgets/tables/main":409,"models/widgets/tables/table_column":410,"models/widgets/tables/table_widget":411,"models/widgets/widget":412}, 409);
 })
 
 //# sourceMappingURL=bokeh-tables.js.map

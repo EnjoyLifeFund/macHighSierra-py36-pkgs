@@ -71,6 +71,9 @@ class AuthHandler (object):
         self.gss_host = None
         self.gss_deleg_creds = True
 
+    def _log(self, *args):
+        return self.transport._log(*args)
+
     def is_authenticated(self):
         return self.authenticated
 
@@ -245,7 +248,7 @@ class AuthHandler (object):
     def _parse_service_accept(self, m):
         service = m.get_text()
         if service == 'ssh-userauth':
-            self.transport._log(DEBUG, 'userauth is OK')
+            self._log(DEBUG, 'userauth is OK')
             m = Message()
             m.add_byte(cMSG_USERAUTH_REQUEST)
             m.add_string(self.username)
@@ -320,7 +323,8 @@ class AuthHandler (object):
                                 self.transport.send_message(m)
                     else:
                         raise SSHException(
-                            "Received Package: %s" % MSG_NAMES[ptype])
+                            "Received Package: {}".format(MSG_NAMES[ptype])
+                        )
                     m = Message()
                     m.add_byte(cMSG_USERAUTH_GSSAPI_MIC)
                     # send the MIC to the server
@@ -336,17 +340,17 @@ class AuthHandler (object):
                     min_status = m.get_int()
                     err_msg = m.get_string()
                     m.get_string()  # Lang tag - discarded
-                    raise SSHException("GSS-API Error:\nMajor Status: %s\n\
-                                        Minor Status: %s\ \nError Message:\
-                                         %s\n") % (str(maj_status),
-                                                   str(min_status),
-                                                   err_msg)
+                    raise SSHException("""GSS-API Error:
+Major Status: {}
+Minor Status: {}
+Error Message: {}
+""".format(maj_status, min_status, err_msg))
                 elif ptype == MSG_USERAUTH_FAILURE:
                     self._parse_userauth_failure(m)
                     return
                 else:
                     raise SSHException(
-                        "Received Package: %s" % MSG_NAMES[ptype])
+                        "Received Package: {}".format(MSG_NAMES[ptype]))
             elif (
                 self.auth_method == 'gssapi-keyex' and
                 self.transport.gss_kex_used
@@ -359,22 +363,22 @@ class AuthHandler (object):
                 pass
             else:
                 raise SSHException(
-                    'Unknown auth method "%s"' % self.auth_method)
+                    'Unknown auth method "{}"'.format(self.auth_method))
             self.transport._send_message(m)
         else:
-            self.transport._log(
+            self._log(
                 DEBUG,
-                'Service request "%s" accepted (?)' % service)
+                'Service request "{}" accepted (?)'.format(service))
 
     def _send_auth_result(self, username, method, result):
         # okay, send result
         m = Message()
         if result == AUTH_SUCCESSFUL:
-            self.transport._log(INFO, 'Auth granted (%s).' % method)
+            self._log(INFO, 'Auth granted ({}).'.format(method))
             m.add_byte(cMSG_USERAUTH_SUCCESS)
             self.authenticated = True
         else:
-            self.transport._log(INFO, 'Auth rejected (%s).' % method)
+            self._log(INFO, 'Auth rejected ({}).'.format(method))
             m.add_byte(cMSG_USERAUTH_FAILURE)
             m.add_string(
                 self.transport.server_object.get_allowed_auths(username))
@@ -417,16 +421,18 @@ class AuthHandler (object):
         username = m.get_text()
         service = m.get_text()
         method = m.get_text()
-        self.transport._log(
+        self._log(
             DEBUG,
-            'Auth request (type=%s) service=%s, username=%s' % (
-                method, service, username))
+            'Auth request (type={}) service={}, username={}'.format(
+                method, service, username
+            )
+        )
         if service != 'ssh-connection':
             self._disconnect_service_not_available()
             return
         if ((self.auth_username is not None) and
                 (self.auth_username != username)):
-            self.transport._log(
+            self._log(
                 WARNING,
                 'Auth rejected because the client attempted to change username in mid-flight'  # noqa
             )
@@ -451,7 +457,7 @@ class AuthHandler (object):
                 # always treated as failure, since we don't support changing
                 # passwords, but collect the list of valid auth types from
                 # the callback anyway
-                self.transport._log(
+                self._log(
                     DEBUG,
                     'Auth request to change passwords (rejected)')
                 newpassword = m.get_binary()
@@ -470,13 +476,13 @@ class AuthHandler (object):
             try:
                 key = self.transport._key_info[keytype](Message(keyblob))
             except SSHException as e:
-                self.transport._log(
+                self._log(
                     INFO,
-                    'Auth rejected: public key: %s' % str(e))
+                    'Auth rejected: public key: {}'.format(str(e)))
                 key = None
             except Exception as e:
-                msg = 'Auth rejected: unsupported or mangled public key ({0}: {1})' # noqa
-                self.transport._log(INFO, msg.format(e.__class__.__name__, e))
+                msg = 'Auth rejected: unsupported or mangled public key ({}: {})' # noqa
+                self._log(INFO, msg.format(e.__class__.__name__, e))
                 key = None
             if key is None:
                 self._disconnect_no_more_auth()
@@ -498,7 +504,7 @@ class AuthHandler (object):
                 sig = Message(m.get_binary())
                 blob = self._get_session_blob(key, service, username)
                 if not key.verify_ssh_sig(blob, sig):
-                    self.transport._log(
+                    self._log(
                         INFO,
                         'Auth rejected: invalid signature')
                     result = AUTH_FAILED
@@ -519,7 +525,7 @@ class AuthHandler (object):
             # We can't accept more than one OID, so if the SSH client sends
             # more than one, disconnect.
             if mechs > 1:
-                self.transport._log(
+                self._log(
                     INFO,
                     'Disconnect: Received more than one GSS-API OID mechanism')
                 self._disconnect_no_more_auth()
@@ -527,7 +533,7 @@ class AuthHandler (object):
             mech_ok = sshgss.ssh_check_mech(desired_mech)
             # if we don't support the mechanism, disconnect.
             if not mech_ok:
-                self.transport._log(
+                self._log(
                     INFO,
                     'Disconnect: Received an invalid GSS-API OID mechanism')
                 self._disconnect_no_more_auth()
@@ -569,9 +575,9 @@ class AuthHandler (object):
         self._send_auth_result(username, method, result)
 
     def _parse_userauth_success(self, m):
-        self.transport._log(
+        self._log(
             INFO,
-            'Authentication (%s) successful!' % self.auth_method)
+            'Authentication ({}) successful!'.format(self.auth_method))
         self.authenticated = True
         self.transport._auth_trigger()
         if self.auth_event is not None:
@@ -581,22 +587,25 @@ class AuthHandler (object):
         authlist = m.get_list()
         partial = m.get_boolean()
         if partial:
-            self.transport._log(INFO, 'Authentication continues...')
-            self.transport._log(DEBUG, 'Methods: ' + str(authlist))
+            self._log(INFO, 'Authentication continues...')
+            self._log(DEBUG, 'Methods: ' + str(authlist))
             self.transport.saved_exception = PartialAuthentication(authlist)
         elif self.auth_method not in authlist:
-            self.transport._log(
-                DEBUG,
-                'Authentication type (%s) not permitted.' % self.auth_method)
-            self.transport._log(
-                DEBUG,
-                'Allowed methods: ' + str(authlist))
+            for msg in (
+                'Authentication type ({}) not permitted.'.format(
+                    self.auth_method
+                ),
+                'Allowed methods: {}'.format(authlist),
+            ):
+                self._log(DEBUG, msg)
             self.transport.saved_exception = BadAuthenticationType(
-                'Bad authentication type', authlist)
+                'Bad authentication type', authlist
+            )
         else:
-            self.transport._log(
+            self._log(
                 INFO,
-                'Authentication (%s) failed.' % self.auth_method)
+                'Authentication ({}) failed.'.format(self.auth_method)
+            )
         self.authenticated = False
         self.username = None
         if self.auth_event is not None:
@@ -605,7 +614,7 @@ class AuthHandler (object):
     def _parse_userauth_banner(self, m):
         banner = m.get_string()
         self.banner = banner
-        self.transport._log(INFO, 'Auth banner: %s' % banner)
+        self._log(INFO, 'Auth banner: {}'.format(banner))
         # who cares.
 
     def _parse_userauth_info_request(self, m):
@@ -646,9 +655,9 @@ class AuthHandler (object):
 
     def _handle_local_gss_failure(self, e):
         self.transport.saved_exception = e
-        self.transport._log(DEBUG, "GSSAPI failure: %s" % str(e))
-        self.transport._log(INFO, 'Authentication (%s) failed.' %
-                            self.auth_method)
+        self._log(DEBUG, "GSSAPI failure: {}".format(e))
+        self._log(INFO, 'Authentication ({}) failed.'.format(
+            self.auth_method))
         self.authenticated = False
         self.username = None
         if self.auth_event is not None:

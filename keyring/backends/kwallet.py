@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 
+import sys
+import os
+
 from ..backend import KeyringBackend
 from ..errors import PasswordDeleteError
 from ..errors import PasswordSetError
@@ -17,7 +20,7 @@ class DBusKeyring(KeyringBackend):
     KDE KWallet 5 via D-Bus
     """
 
-    appid = 'Python program'
+    appid = os.path.basename(sys.argv[0]) or 'Python keyring library'
     wallet = None
     bus_name = 'org.kde.kwalletd5'
     object_path = '/modules/kwalletd5'
@@ -48,7 +51,7 @@ class DBusKeyring(KeyringBackend):
         entry_list = []
         if self.iface.hasFolder(self.handle, old_folder, self.appid):
             entry_list = self.iface.readPasswordList(
-                    self.handle, old_folder, '*@*', self.appid)
+                self.handle, old_folder, '*@*', self.appid)
 
             for entry in entry_list.items():
                 key = entry[0]
@@ -56,12 +59,13 @@ class DBusKeyring(KeyringBackend):
 
                 username, service = key.rsplit('@', 1)
                 ret = self.iface.writePassword(
-                        self.handle, service, username, password, self.appid)
+                    self.handle, service, username, password, self.appid)
                 if ret == 0:
-                    self.iface.removeEntry(self.handle, old_folder, key, self.appid)
+                    self.iface.removeEntry(
+                        self.handle, old_folder, key, self.appid)
 
             entry_list = self.iface.readPasswordList(
-                    self.handle, old_folder, '*', self.appid)
+                self.handle, old_folder, '*', self.appid)
             if not entry_list:
                 self.iface.removeFolder(self.handle, old_folder, self.appid)
 
@@ -74,7 +78,7 @@ class DBusKeyring(KeyringBackend):
             remote_obj = bus.get_object(self.bus_name, self.object_path)
             self.iface = dbus.Interface(remote_obj, 'org.kde.KWallet')
             self.handle = self.iface.open(
-                        self.iface.networkWallet(), wId, self.appid)
+                self.iface.networkWallet(), wId, self.appid)
         except dbus.DBusException:
             self.handle = -1
         if self.handle < 0:

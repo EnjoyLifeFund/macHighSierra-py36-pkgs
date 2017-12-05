@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
 const ts = require("typescript");
-const coffee = require("coffee-script");
+const coffee = require("coffeescript");
 const detective = require("detective");
 const less = require("less");
 const yargs_1 = require("yargs");

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 from theano import Apply, Op
 from theano.gof import local_optimizer
@@ -14,7 +14,7 @@ from theano.scalar import add, sub, true_div, mul
 class BNComposite(Composite):
     init_param = ('dtype',)
 
-    @theano.configparser.change_flags(compute_test_value='off')
+    @theano.change_flags(compute_test_value='off')
     def __init__(self, dtype):
         self.dtype = dtype
         x = theano.scalar.Scalar(dtype=dtype).make_variable()
@@ -89,7 +89,7 @@ def _prepare_batch_normalization_axes(axes, ndim):
         axes = (0,)
     elif axes == 'spatial':
         axes = (0,) + tuple(range(2, ndim))
-    elif isinstance(axes, (tuple, list, numpy.ndarray)):
+    elif isinstance(axes, (tuple, list, np.ndarray)):
         axes = tuple(int(a) for a in axes)
     else:
         raise ValueError('invalid axes: %s', str(axes))
@@ -215,7 +215,7 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
 
     # epsilon will be converted to floatX later. we need to check
     # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
-    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    epsilon = np.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
@@ -337,7 +337,7 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
 
     # epsilon will be converted to floatX later. we need to check
     # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
-    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    epsilon = np.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
@@ -480,7 +480,7 @@ class AbstractBatchNormTrain(Op):
 
         mean = x.mean(axes, keepdims=True)
         var = x.var(axes, keepdims=True)
-        invstd = 1.0 / numpy.sqrt(var + epsilon)
+        invstd = 1.0 / np.sqrt(var + epsilon)
         out = (x - mean) * (scale * invstd) + bias
 
         output_storage[0][0] = out
@@ -493,7 +493,7 @@ class AbstractBatchNormTrain(Op):
                 mean * running_average_factor
             output_storage[3][0] = running_mean
         if len(inputs) > 6:
-            m = float(numpy.prod(x.shape) / numpy.prod(scale.shape))
+            m = float(np.prod(x.shape) / np.prod(scale.shape))
             running_var = inputs[6]
             running_var = running_var * (1.0 - running_average_factor) + \
                 (m / (m - 1)) * var * running_average_factor
@@ -568,7 +568,7 @@ class AbstractBatchNormInference(Op):
 
     def perform(self, node, inputs, output_storage):
         x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
-        out = (x - estimated_mean) * (scale / numpy.sqrt(estimated_variance + epsilon)) + bias
+        out = (x - estimated_mean) * (scale / np.sqrt(estimated_variance + epsilon)) + bias
         output_storage[0][0] = out
 
 
@@ -597,6 +597,62 @@ class AbstractBatchNormTrainGrad(Op):
         return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon],
                      [x.type(), scale.type(), scale.type()])
 
+    def grad(self, inp, grads):
+        x, dy, scale, x_mean, x_invstd, epsilon = inp
+        ddinputs, ddscale, ddbias = grads
+
+        x_diff = x - x_mean
+        mean_dy_x_diff = T.mean(dy * x_diff, axis=self.axes, keepdims=True)
+
+        # compute gradients given each of the output gradients
+        g_wrt_x = 0
+        g_wrt_dy = 0
+        g_wrt_scale = 0
+        g_wrt_x_mean = 0
+        g_wrt_x_invstd = 0
+
+        if not isinstance(ddinputs.type, theano.gradient.DisconnectedType):
+            ccc = scale * (ddinputs - T.mean(ddinputs, axis=self.axes, keepdims=True))
+            ddd = (x_invstd ** 3) * (ccc * T.mean(dy * x_diff, axis=self.axes, keepdims=True) +
+                                     dy * T.mean(ccc * x_diff, axis=self.axes, keepdims=True))
+
+            g_wrt_x = g_wrt_x - ddd
+            g_wrt_dy = g_wrt_dy + ((ccc * x_invstd) -
+                                   ((x_invstd ** 3) * x_diff *
+                                    T.mean(ccc * x_diff, axis=self.axes, keepdims=True)))
+
+            eee = (dy * x_invstd) - ((x_invstd ** 3) * x_diff * mean_dy_x_diff)
+            g_wrt_scale = g_wrt_scale + T.sum(ddinputs * (eee - T.mean(eee, axis=self.axes, keepdims=True)),
+                                              axis=self.axes, keepdims=True)
+
+            g_wrt_x_mean = g_wrt_x_mean + T.sum(ddd, axis=self.axes, keepdims=True)
+            g_wrt_x_invstd = g_wrt_x_invstd + T.sum(ccc * (dy - 3 * (x_invstd ** 2) * x_diff * mean_dy_x_diff),
+                                                    axis=self.axes, keepdims=True)
+
+        if not isinstance(ddscale.type, theano.gradient.DisconnectedType):
+            g_wrt_x = g_wrt_x + (x_invstd * ddscale * dy)
+            g_wrt_dy = g_wrt_dy + (x_invstd * ddscale * x_diff)
+            g_wrt_x_mean = g_wrt_x_mean - (x_invstd * ddscale * T.sum(dy, axis=self.axes, keepdims=True))
+            g_wrt_x_invstd = g_wrt_x_invstd + (ddscale * T.sum(dy * x_diff, axis=self.axes, keepdims=True))
+
+        if not isinstance(ddbias.type, theano.gradient.DisconnectedType):
+            g_wrt_dy = g_wrt_dy + T.fill(dy, ddbias)
+
+        # depending on which output gradients are given,
+        # some inputs should be disconnected
+        results = [g_wrt_x, g_wrt_dy, g_wrt_scale, g_wrt_x_mean, g_wrt_x_invstd,
+                   theano.gradient.DisconnectedType()()]
+        return [theano.gradient.DisconnectedType()() if r is 0 else r
+                for r in results]
+
+    def connection_pattern(self, node):
+        return [[True, True, False],    # x
+                [True, True, True],     # dy
+                [True, False, False],   # scale
+                [True, True, False],    # x_mean
+                [True, True, False],    # x_invstd
+                [False, False, False]]  # epsilon
+
     def infer_shape(self, node, shape):
         return [shape[0], shape[2], shape[2]]
 
@@ -607,12 +663,12 @@ class AbstractBatchNormTrainGrad(Op):
             raise ValueError('axes should be less than ndim (<%d), but %s given' % (x.ndim, str(axes)))
 
         x_diff = x - x_mean
-        mean_dy_x_diff = numpy.mean(dy * x_diff, axis=axes, keepdims=True)
+        mean_dy_x_diff = np.mean(dy * x_diff, axis=axes, keepdims=True)
         c = (dy * x_invstd) - (x_diff * mean_dy_x_diff * (x_invstd ** 3))
 
-        g_wrt_inputs = scale * (c - numpy.mean(c, axis=axes, keepdims=True))
-        g_wrt_scale = numpy.sum(dy * x_invstd * x_diff, axis=axes, keepdims=True)
-        g_wrt_bias = numpy.sum(dy, axis=axes, keepdims=True)
+        g_wrt_inputs = scale * (c - np.mean(c, axis=axes, keepdims=True))
+        g_wrt_scale = np.sum(dy * x_invstd * x_diff, axis=axes, keepdims=True)
+        g_wrt_bias = np.sum(dy, axis=axes, keepdims=True)
 
         output_storage[0][0] = g_wrt_inputs
         output_storage[1][0] = g_wrt_scale

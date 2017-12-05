@@ -546,30 +546,47 @@ if PY3:
     import hashlib
 
     def hash_from_code(msg):
-        # hashlib.md5() requires an object that supports buffer interface,
+        # hashlib.sha256() requires an object that supports buffer interface,
         # but Python 3 (unicode) strings don't.
         if isinstance(msg, str):
             msg = msg.encode()
         # Python 3 does not like module names that start with
         # a digit.
-        return 'm' + hashlib.md5(msg).hexdigest()
+        return 'm' + hashlib.sha256(msg).hexdigest()
 
 else:
     import hashlib
 
     def hash_from_code(msg):
         try:
-            return hashlib.md5(msg).hexdigest()
+            return hashlib.sha256(msg).hexdigest()
         except TypeError:
             assert isinstance(msg, np.ndarray)
-            return hashlib.md5(np.getbuffer(msg)).hexdigest()
+            return hashlib.sha256(np.getbuffer(msg)).hexdigest()
 
 
 def hash_from_file(file_path):
     """
-    Return the MD5 hash of a file.
+    Return the SHA256 hash of a file.
 
     """
     with open(file_path, 'rb') as f:
         file_content = f.read()
     return hash_from_code(file_content)
+
+
+# Set of C and C++ keywords as defined (at March 2nd, 2017) in the pages below:
+# - http://fr.cppreference.com/w/c/keyword
+# - http://fr.cppreference.com/w/cpp/keyword
+# Added `NULL` and `_Pragma` keywords.
+c_cpp_keywords = {'_Alignas', '_Alignof', '_Atomic', '_Bool', '_Complex', '_Generic', '_Imaginary', '_Noreturn',
+                  '_Pragma', '_Static_assert', '_Thread_local', 'alignas', 'alignof', 'and', 'and_eq', 'asm', 'auto',
+                  'bitand', 'bitor', 'bool', 'break', 'case', 'catch', 'char', 'char16_t', 'char32_t', 'class', 'compl',
+                  'const', 'const_cast', 'constexpr', 'continue', 'decltype', 'default', 'delete', 'do', 'double',
+                  'dynamic_cast', 'else', 'enum', 'explicit', 'export', 'extern', 'false', 'float', 'for', 'friend',
+                  'goto', 'if', 'inline', 'int', 'long', 'mutable', 'namespace', 'new', 'noexcept', 'not', 'not_eq',
+                  'NULL', 'nullptr', 'operator', 'or', 'or_eq', 'private', 'protected', 'public', 'register',
+                  'reinterpret_cast', 'restrict', 'return', 'short', 'signed', 'sizeof', 'static', 'static_assert',
+                  'static_cast', 'struct', 'switch', 'template', 'this', 'thread_local', 'throw', 'true', 'try',
+                  'typedef', 'typeid', 'typename', 'union', 'unsigned', 'using', 'virtual', 'void', 'volatile',
+                  'wchar_t', 'while', 'xor', 'xor_eq'}

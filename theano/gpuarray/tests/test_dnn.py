@@ -3,7 +3,8 @@ import logging
 from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
-from nose_parameterized import parameterized
+from nose.tools import assert_raises
+from parameterized import parameterized
 import numpy as np
 from itertools import product, chain
 
@@ -13,22 +14,43 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape, get_conv_gradinputs_shape
 from theano.tensor.nnet import bn
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
-from ..type import gpuarray_shared_constructor
+from ..type import gpuarray_shared_constructor, GpuArrayType
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv3d_noOptim
+
+try:
+    import pygpu
+except ImportError:
+    pass
 
 mode_with_gpu = mode_with_gpu.including()
 # Globally disabled for mode_without_gpu
 mode_with_gpu.check_py_code = False
+
+
+# This variable will store the list of pooling modes available with the current runtime cuDNN version.
+# Don't use this variable directly, always call `get_dnn_pool_modes()` instead.
+dnn_pool_modes = None
+
+
+def get_dnn_pool_modes():
+    # This function is called only by pooling tests to initialize and/or get dnn_pool_modes.
+    global dnn_pool_modes
+    if dnn_pool_modes is None:
+        from .. import cudnn_defs
+        dnn_pool_modes = cudnn_defs.get_definitions(dnn.version(raises=False)).cudnnPoolingMode_t.get_aliases()
+    return dnn_pool_modes
 
 
 # If using float16, set CUDNN precision to float32
@@ -45,14 +67,15 @@ def test_dnn_conv_desc_merge():
         raise SkipTest(dnn.dnn_available.msg)
     kern_shp = T.as_tensor_variable(
         np.asarray([3, 1, 2, 2]).astype('int64'))
-    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
+    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2), dilation=(1, 1),
                                conv_mode='conv')(kern_shp)
-    desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
+    desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1), dilation=(1, 1),
                                conv_mode='cross')(kern_shp)
     # CDataType is not DeepCopyable so this will crash if we don't use
     # borrow=True
     f = theano.function([], [theano.Out(desc1, borrow=True),
-                             theano.Out(desc2, borrow=True)])
+                             theano.Out(desc2, borrow=True)],
+                        mode=mode_with_gpu)
 
     d1, d2 = f()
 
@@ -96,10 +119,9 @@ def test_dnn_conv_merge():
 
 
 def test_dnn_conv_inplace():
-    """This test that we have inplace work correctly even when
-    GpuAllocEmpty get merged together.
+    # This test that we have inplace work correctly even when
+    # GpuAllocEmpty get merged together.
 
-    """
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
@@ -149,16 +171,61 @@ def test_dnn_conv_inplace():
     assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
 
 
+def run_dnn_conv_invalid_precision(ndim):
+    bc = (False,) * (ndim + 2)
+    img = T.tensor(theano.config.floatX, broadcastable=bc)
+    kerns = T.tensor(theano.config.floatX, broadcastable=bc)
+    topgrad = T.tensor(theano.config.floatX, broadcastable=bc)
+    shape = np.arange(ndim + 2)
+    if ndim == 2:
+        dnn_conv_func = dnn.dnn_conv
+        dnn_gradw_func = dnn.dnn_gradweight
+        dnn_gradi_func = dnn.dnn_gradinput
+    elif ndim == 3:
+        dnn_conv_func = dnn.dnn_conv3d
+        dnn_gradw_func = dnn.dnn_gradweight3d
+        dnn_gradi_func = dnn.dnn_gradinput3d
+
+    def dnn_gradw(precision):
+        return dnn_gradw_func(img, topgrad, shape, precision=precision)
+
+    def dnn_gradi(precision):
+        return dnn_gradi_func(kerns, topgrad, shape, precision=precision)
+
+    def dnn_conv(precision, border_mode, direction_hint):
+        return dnn_conv_func(img, kerns, border_mode=border_mode, direction_hint=direction_hint, precision=precision)
+
+    dnn_gradw('float64')
+    dnn_gradw('float32')
+    assert_raises(TypeError, dnn_gradw, 'float16')
+
+    dnn_gradi('float64')
+    dnn_gradi('float32')
+    assert_raises(TypeError, dnn_gradi, 'float16')
+
+    for precision in ('float64', 'float32'):
+        dnn_conv(precision, 'valid', None)
+        dnn_conv(precision, 'valid', 'bprop weights')
+        dnn_conv(precision, 'full', None)
+        dnn_conv(precision, 'full', 'forward!')
+
+    dnn_conv('float16', 'valid', None)
+    assert_raises(TypeError, dnn_conv, 'float16', 'valid', 'bprop weights')
+    assert_raises(TypeError, dnn_conv, 'float16', 'full', None)
+    dnn_conv('float16', 'full', 'forward!')
+
+
+def test_dnn_conv_invalid_precision():
+    yield (run_dnn_conv_invalid_precision, 2)
+    yield (run_dnn_conv_invalid_precision, 3)
+
+
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     x = T.tensor4()
     for mode, pad in product(modes,
@@ -241,7 +308,9 @@ def test_pooling():
                         for node in fg.maker.fgraph.toposort()])
 
 
-def test_pooling_with_tensor_vars():
+# This test will be run with different values of 'mode'
+# (see next test below).
+def run_pooling_with_tensor_vars(mode):
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
@@ -250,7 +319,6 @@ def test_pooling_with_tensor_vars():
     ws = theano.shared(np.array([2, 2], dtype='int32'))
     stride = theano.shared(np.array([1, 1], dtype='int32'))
     pad = theano.shared(np.array([0, 0], dtype='int32'))
-    mode = 'max'
 
     def fn(x):
         dnn_op = dnn.dnn_pool(
@@ -296,6 +364,12 @@ def test_pooling_with_tensor_vars():
         i += 1
 
 
+def test_pooling_with_tensor_vars():
+    # Let's test for mode 'max' and also for 'max_deterministic' if available.
+    for mode in [m for m in get_dnn_pool_modes() if m in ('max', 'max_deterministic')]:
+        yield (run_pooling_with_tensor_vars, mode)
+
+
 def test_pooling3d():
     # 3d pooling requires version 3 or newer.
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 3000:
@@ -306,11 +380,7 @@ def test_pooling3d():
     mode_without_gpu_ref = theano.compile.mode.get_mode(
         'FAST_RUN').excluding('gpuarray')
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     x = T.tensor5()
     for mode, pad in product(modes,
@@ -466,11 +536,7 @@ def test_pooling_opt_arbitrary_dimensions():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     for n_non_pool_dims in (0, 1, 2, 3):
         for ws in ((2, 2), (3, 3, 3)):
@@ -497,7 +563,7 @@ def test_pooling_opt_arbitrary_dimensions():
                 fc = theano.function([], out, mode=mode_without_gpu)
                 assert any([isinstance(node.op, Pool)
                            for node in fc.maker.fgraph.toposort()])
-                if mode == 'max':
+                if mode in ('max', 'max_deterministic'):
                     assert any([isinstance(node.op, MaxPoolGrad)
                                for node in fc.maker.fgraph.toposort()])
                 else:
@@ -529,9 +595,8 @@ def test_pooling_empty_batch():
 
 
 def test_dnn_tag():
-    """
-    Test that if cudnn isn't avail we crash and that if it is avail, we use it.
-    """
+    # Test that if cudnn isn't avail we crash and that if it is avail, we use it.
+
     x = T.tensor4()
     old = theano.config.on_opt_error
     theano.config.on_opt_error = "raise"
@@ -568,6 +633,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
     conv_modes = ['conv', 'cross']
 
     def setUp(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
 
@@ -601,32 +668,35 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, algo):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, dilations, algo):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
         img_val = np.asarray(img_val, dtype=theano.config.floatX)
         kern_vals = np.asarray(kern_vals, dtype=theano.config.floatX)
 
-        for subsample in subsamples:
-            out_vals = np.zeros(
-                dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
-                                             border_mode=border_mode,
-                                             subsample=subsample),
-                dtype=theano.config.floatX)
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=border_mode,
-                subsample=subsample,
-                conv_mode=conv_mode,
-                precision=set_precision(theano.config.floatX)
-            )(kerns.shape)
-            conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
-            self._compile_and_check(
-                [img, kerns, out],
-                [conv],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConv
-            )
+        for dilation in dilations:
+            for subsample in subsamples:
+                out_vals = np.zeros(
+                    dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
+                                                 border_mode=border_mode,
+                                                 subsample=subsample,
+                                                 dilation=dilation),
+                    dtype=theano.config.floatX)
+                desc = dnn.GpuDnnConvDesc(
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    dilation=dilation,
+                    conv_mode=conv_mode,
+                    precision=set_precision(theano.config.floatX)
+                )(kerns.shape)
+                conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
+                self._compile_and_check(
+                    [img, kerns, out],
+                    [conv],
+                    [img_val, kern_vals, out_vals],
+                    dnn.GpuDnnConv
+                )
 
     @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
                                         border_modes,
@@ -636,67 +706,83 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
+        # Currently only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM (algo 'none')
+        # supports dilation > 1. 'time*' and 'guess*' should fallback to it.
+        dilations = [(1, 1)]
+        if dnn.version() >= 6000 and (algo == "none" or "time_" in algo or "guess_" in algo):
+            dilations += [(2, 2)]
+
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
                         T.tensor4('out'),
-                        np.random.rand(7, 2, 8, 4),
+                        np.random.rand(7, 2, 12, 16),
                         np.random.rand(8, 2, 4, 3),
                         border_mode,
                         conv_mode,
                         [(1, 1), (2, 2)],
+                        dilations,
                         algo)
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
+        dilations = [(1, 1, 1), (2, 2, 2)] if dnn.version() >= 6000 else [(1, 1, 1)]
+
         self._test_conv(T.tensor5('img'),
                         T.tensor5('kerns'),
                         T.tensor5('out'),
-                        np.random.rand(10, 2, 6, 4, 11),
+                        np.random.rand(10, 2, 15, 16, 17),
                         np.random.rand(8, 2, 4, 3, 1),
                         border_mode,
                         conv_mode,
                         [(1, 1, 1), (2, 2, 2)],
+                        dilations,
                         'none')
 
-    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsamples, dilations):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
-        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
-                                              border_mode, subsample)
-
-        img_val = np.asarray(
-            np.random.rand(*img_shape),
-            dtype=theano.config.floatX
-        )
-        topgrad_vals = np.asarray(
-            np.random.rand(*topgrad_shape),
-            dtype=theano.config.floatX
-        )
-
         kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
-        kerns_shape = theano.shared(np.asarray(kerns_shape))
-        desc = dnn.GpuDnnConvDesc(
-            border_mode=border_mode,
-            subsample=subsample,
-            conv_mode=conv_mode,
-            precision=set_precision(theano.config.floatX)
-        )(kerns_shape)
-        conv_grad_w = dnn.GpuDnnConvGradW()(
-            img,
-            topgrad,
-            kerns,
-            desc,
-        )
-        self._compile_and_check(
-            [img, topgrad, kerns],
-            [conv_grad_w],
-            [img_val, topgrad_vals, kerns_vals],
-            dnn.GpuDnnConvGradW
-        )
+        kerns_shape_shared = theano.shared(np.asarray(kerns_shape))
+
+        for dilation in dilations:
+            for subsample in subsamples:
+                topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                                      border_mode, subsample, dilation)
+
+                img_val = np.asarray(
+                    np.random.rand(*img_shape),
+                    dtype=theano.config.floatX
+                )
+                topgrad_vals = np.asarray(
+                    np.random.rand(*topgrad_shape),
+                    dtype=theano.config.floatX
+                )
+
+                desc = dnn.GpuDnnConvDesc(
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    dilation=dilation,
+                    conv_mode=conv_mode,
+                    precision=set_precision(theano.config.floatX)
+                )(kerns_shape_shared)
+                conv_grad_w = dnn.GpuDnnConvGradW()(
+                    img,
+                    topgrad,
+                    kerns,
+                    desc,
+                )
+                self._compile_and_check(
+                    [img, topgrad, kerns],
+                    [conv_grad_w],
+                    [img_val, topgrad_vals, kerns_vals],
+                    dnn.GpuDnnConvGradW
+                )
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
+        dilations = [(1, 1), (2, 2)] if dnn.version() >= 6000 else [(1, 1)]
+
         self._test_conv_gradw(T.tensor4('img'),
                               T.tensor4('topgrad'),
                               T.tensor4('kerns'),
@@ -704,7 +790,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
                               (1, 2, 3, 7),
                               border_mode,
                               conv_mode,
-                              (1, 1))
+                              [(1, 1)],
+                              dilations)
 
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
@@ -713,29 +800,28 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = T.tensor4('kerns')
         out = T.tensor4('out')
         kern_vals = np.asarray(
-            np.random.rand(13, 14, 15, 16),
+            np.random.rand(13, 4, 5, 6),
             dtype=theano.config.floatX
         )
         out_vals = np.asarray(
-            np.random.rand(3, 13, 5, 6),
+            np.random.rand(3, 13, 9, 11),
             dtype=theano.config.floatX
         )
 
-        for params in product(
-            ['valid'],  # Should this work for 'full'?
+        dilations = [(1, 1), (2, 2)] if dnn.version() >= 6000 else [(1, 1)]
+        for border_mode, subsample, dilation, conv_mode in product(
+            ['valid', 'full'],
             [(1, 1)],
+            dilations,
             ['conv', 'cross']
         ):
-            shape = (
-                out_vals.shape[0], kern_vals.shape[1],
-                out_vals.shape[2] + kern_vals.shape[2] - 1,
-                out_vals.shape[3] + kern_vals.shape[3] - 1
-            )
+            shape = get_conv_gradinputs_shape(kern_vals.shape, out_vals.shape, border_mode, subsample, dilation)
             img_vals = np.zeros(shape, dtype=theano.config.floatX)
             desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2],
+                border_mode=border_mode,
+                subsample=subsample,
+                dilation=dilation,
+                conv_mode=conv_mode,
                 precision=set_precision(theano.config.floatX)
             )(kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
@@ -760,11 +846,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype=theano.config.floatX
         )
 
-        # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version(raises=False) < 4004:
-            modes = ['max', 'average_inc_pad']
-        else:
-            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+        modes = get_dnn_pool_modes()
 
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
@@ -787,11 +869,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype=theano.config.floatX
         )
 
-        # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version(raises=False) < 4004:
-            modes = ['max', 'average_inc_pad']
-        else:
-            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+        modes = get_dnn_pool_modes()
 
         for params in product(
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
@@ -827,7 +905,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average_inc_pad']
+            # modes without `average_exc_pad`
+            [m for m in get_dnn_pool_modes() if m != 'average_exc_pad']
         ):
             pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
@@ -866,7 +945,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
-            ['max', 'average_inc_pad']
+            # modes without `average_exc_pad`
+            [m for m in get_dnn_pool_modes() if m != 'average_exc_pad']
         ):
             pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
@@ -981,52 +1061,62 @@ def test_dnn_conv_grad():
                                 iw - kw + 1)).astype(theano.config.floatX)
 
     def dconv(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
-    utt.verify_grad(dconv, [img_val, kern_val, out_val], eps=1e-3)
-    utt.verify_grad(dconvi, [img_val, kern_val, out_val], eps=1e-3)
-    utt.verify_grad(dconvw, [img_val, kern_val, out_val], eps=1e-3)
+    utt.verify_grad(dconv, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
 
 
 def get_conv3d_test_cases():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     # Every element of test_shapes follows the format
-    # [input_shape, filter_shape, subsample]
-    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
-                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+    # [input_shape, filter_shape, subsample, dilation]
+    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1), (1, 1, 1)],
+                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2), (1, 1, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3), (1, 1, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1), (1, 1, 1)],
                    # Test with 1x1x1 filters
-                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)],
                    # Test with dimensions larger than 1024 (thread block dim)
-                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1)],
-                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1)],
-                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1)],
-                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1)],
-                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1)],
-                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1)],
+                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1), (1, 1, 1)],
                    # The equivalent of this caused a crash with conv2d
-                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1)]]
+                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)]]
 
     # With border mode 'full', test with kernel bigger than image in some/all
     # dimensions
-    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
+    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (1, 1, 1)]]
+
+    if dnn.version() >= 6000:
+        test_shapes.extend([
+            [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (1, 1, 2), (3, 2, 1)],
+            [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (2, 2, 1), (1, 2, 3)]])
+        test_shapes_full.append(
+            [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (3, 2, 1)])
+
     border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
@@ -1036,6 +1126,67 @@ def get_conv3d_test_cases():
     return itt
 
 
+def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub):
+    # Function to check issue #5985 (see tests below): https://github.com/Theano/Theano/issues/5985
+
+    # Error occurs with algorithm `small` (CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM)
+    algo = 'small'
+
+    batch_size = inputs_shape[0]
+
+    utt.seed_rng()
+    inputs_val = np.random.random(inputs_shape).astype('float32')
+    filters_val = np.random.random(filters_shape).astype('float32')
+    # Scale down the input values to prevent very large absolute errors
+    # due to float rounding
+    inputs_val /= 10
+    filters_val /= 10
+    inputs = theano.shared(inputs_val)
+    filters = theano.shared(filters_val)
+
+    if len(inputs_shape) == 5:
+        dnn_func = dnn.dnn_conv3d
+    else:
+        dnn_func = dnn.dnn_conv
+    conv = dnn_func(img=inputs, kerns=filters, algo=algo)
+    # Just compute first and last outputs, to reduce execution time.
+    sub_conv_top = dnn_func(img=inputs[:batch_sub], kerns=filters, algo=algo)
+    sub_conv_bottom = dnn_func(img=inputs[(batch_size - batch_sub):], kerns=filters, algo=algo)
+    f = theano.function([], [conv, sub_conv_top, sub_conv_bottom], mode=mode_with_gpu)
+    res_all, res_batch_top, res_batch_bottom = f()
+    for i in range(batch_sub):
+        # Check first ouputs.
+        utt.assert_allclose(res_batch_top[i], res_all[i])
+        # Then check last outputs.
+        p = batch_size - batch_sub + i
+        # It seems there is a limit batch size of 65536  with algorithm `small`.
+        checked_limit = 2**16
+        if p >= checked_limit:
+            # It seems results are repeated in the entire conv.
+            # It should not happen.
+            if np.allclose(res_all[p % checked_limit], res_all[p]):
+                print('\nconv[%d] == conv[%d] == %s' % (p % checked_limit, p, res_all[p]))
+        utt.assert_allclose(res_batch_bottom[i], res_all[p])
+
+
+def test_batched_conv_small():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5)
+    # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5)
+
+
+def test_batched_conv3d_small():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
+    # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
+
+
 def test_conv3d_fwd():
 
     if not dnn.dnn_available(test_ctx_name):
@@ -1043,7 +1194,7 @@ def test_conv3d_fwd():
     utt.seed_rng()
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
-                       border_mode, conv_mode):
+                       dilation, border_mode, conv_mode):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
@@ -1059,11 +1210,12 @@ def test_conv3d_fwd():
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
                               border_mode=border_mode, subsample=subsample,
+                              dilation=dilation,
                               conv_mode=conv_mode)
         f = theano.function([], conv, mode=mode_with_gpu)
 
         # If conv_mode is 'conv' the reference implementation should use
-        # filters filpped according to the width, height and time axis
+        # filters flipped according to the width, height and time axis
         if conv_mode == 'conv':
             flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
@@ -1071,7 +1223,8 @@ def test_conv3d_fwd():
 
         # Compile a theano function for the reference implementation
         conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
-                                                      subsample=subsample
+                                                      subsample=subsample,
+                                                      filter_dilation=dilation,
                                                       )(ref_cast(inputs), flipped_filters)
         f_ref = theano.function([], conv_ref, mode="FAST_RUN")
 
@@ -1086,8 +1239,8 @@ def test_conv3d_fwd():
         utt.assert_allclose(res_ref, res, rtol=rtol)
 
     test_cases = get_conv3d_test_cases()
-    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
-        yield (run_conv3d_fwd, i_shape, f_shape, subsample, border_mode,
+    for (i_shape, f_shape, subsample, dilation), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_fwd, i_shape, f_shape, subsample, dilation, border_mode,
                conv_mode)
 
 
@@ -1098,7 +1251,7 @@ def test_conv3d_bwd():
     utt.seed_rng()
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
-                       border_mode, conv_mode):
+                       dilation, border_mode, conv_mode):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
@@ -1108,7 +1261,9 @@ def test_conv3d_bwd():
 
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
-                              border_mode=border_mode, subsample=subsample,
+                              border_mode=border_mode,
+                              subsample=subsample,
+                              dilation=dilation,
                               conv_mode=conv_mode)
 
         grad_i, grad_w = theano.tensor.grad(conv.sum(), [inputs, filters])
@@ -1116,7 +1271,7 @@ def test_conv3d_bwd():
         f = theano.function([], [grad_i, grad_w], mode=mode_with_gpu)
 
         # If conv_mode is 'conv' the reference implementation should use
-        # filters filpped according to the width, height and time axis
+        # filters flipped according to the width, height and time axis
         if conv_mode == 'conv':
             flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
@@ -1124,7 +1279,8 @@ def test_conv3d_bwd():
 
         # Compile a theano function for the reference implementation
         conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
-                                                      subsample=subsample
+                                                      subsample=subsample,
+                                                      filter_dilation=dilation,
                                                       )(ref_cast(inputs), flipped_filters)
         (grad_i_ref,
          grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
@@ -1144,8 +1300,8 @@ def test_conv3d_bwd():
         utt.assert_allclose(res_ref[1], res[1], rtol=rtol)
 
     test_cases = get_conv3d_test_cases()
-    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
-        yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
+    for (i_shape, f_shape, subsample, dilation), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_bwd, i_shape, f_shape, subsample, dilation, border_mode,
                conv_mode)
 
 
@@ -1153,26 +1309,6 @@ def test_version():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     assert isinstance(dnn.version(), int)
-
-
-def test_nvcc_compiler_bindir_and_flags():
-    # This tests if the options nvcc.compiler_bindir and nvcc.flags from
-    # the old sandbox.cuda backend are not passed to the g++ compiler in
-    # the new backend. (Regression test for issues GH-4978 and GH-5373.)
-    if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
-    old_nvcc_compiler_bindir = theano.config.nvcc.compiler_bindir
-    old_nvcc_flags = theano.config.nvcc.flags
-    try:
-        theano.config.nvcc.compiler_bindir = "/usr/bin"
-        theano.config.nvcc.flags = "--cuda"
-        # compiling should still work, which means that the options
-        # have not been passed to the compiler
-        ret, msg = dnn._dnn_check_compile()
-        assert ret, msg
-    finally:
-        theano.config.nvcc.compiler_bindir = old_nvcc_compiler_bindir
-        theano.config.nvcc.flags = old_nvcc_flags
 
 
 class test_SoftMax(test_nnet.test_SoftMax):
@@ -1412,15 +1548,147 @@ class test_SoftMax(test_nnet.test_SoftMax):
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
+def dnn_reduction(nd, idtype, acc_dtype, odtype):
+    inp = T.TensorType(idtype, (False,) * nd)()
+    res = inp.sum(acc_dtype=acc_dtype, dtype=odtype)
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+
+
+def test_dnn_reduction_opt():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for nd in range(1, 9):
+        yield dnn_reduction, nd, 'float32', 'float32', 'float32'
+
+    for idtype, adtype, odtype in (('float64', 'float64', 'float64'),
+                                   ('float16', 'float32', 'float16'),
+                                   ('float16', 'float32', 'float32')):
+        yield dnn_reduction, 2, idtype, adtype, odtype
+
+
+def test_dnn_reduction_sum_squares():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    M = T.matrix()
+    for axis in (None, 0, 1):
+        out = (M**2).sum(axis=axis)
+        f = theano.function([M], out, mode=mode_with_gpu)
+        assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == 'norm2'
+                   for node in f.maker.fgraph.apply_nodes)
+        M_val = np.random.random((4, 5)).astype(theano.config.floatX)
+        utt.assert_allclose((M_val**2).sum(axis=axis), f(M_val))
+
+
+def test_dnn_reduction_sum_abs():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    M = T.matrix()
+    for axis in (None, 0, 1):
+        out = abs(M).sum(axis=axis)
+        f = theano.function([M], out, mode=mode_with_gpu)
+        assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == 'norm1'
+                   for node in f.maker.fgraph.apply_nodes)
+        M_val = np.random.random((4, 5)).astype(theano.config.floatX)
+        utt.assert_allclose(np.abs(M_val).sum(axis=axis), f(M_val))
+
+
+def test_dnn_reduction_absmax():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    M = T.matrix()
+    for axis in (None, 0, 1):
+        out = abs(M).max(axis=axis)
+        f = theano.function([M], out, mode=mode_with_gpu)
+        assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == 'absmax'
+                   for node in f.maker.fgraph.apply_nodes)
+        M_val = np.random.random((4, 5)).astype(theano.config.floatX)
+        utt.assert_allclose(np.max(np.abs(M_val), axis=axis), f(M_val))
+
+
+def dnn_reduction_strides(shp, shuffle, slice):
+    utt.fetch_seed()
+    inp = GpuArrayType('float32', (False,) * len(shp),
+                       context_name=test_ctx_name)()
+    tmp = inp.dimshuffle(shuffle)[slice]
+    res = tmp.sum(acc_dtype='float32', dtype='float32')
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+    data = np.random.random(shp).astype('float32')
+    res = np.sum(data)
+    gdata = pygpu.array(data, context=inp.type.context)
+    gres = f(gdata)
+    utt.assert_allclose(res, np.array(gres))
+
+
+def test_dnn_reduction_strides():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), slice(None, None, None)
+    yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
+
+
+def test_dnn_reduction_error():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    nLoops = 5
+    vec = np.arange(0, 10, dtype=np.float32)
+    slow_output = np.zeros((5, 10))
+    for i in range(nLoops):
+        slow_output[i, :] = 2.0 * vec
+
+    slow_output = np.sum(slow_output.transpose(), axis=1)
+
+    vecT = T.vector(dtype=theano.config.floatX)
+    outputT = T.alloc(2.0 * vecT, 5, vecT.shape[0])
+    outputSummedT = T.sum(T.transpose(outputT), axis=1)
+    f3 = theano.function(inputs=[vecT], outputs=outputSummedT)
+
+    output = f3(vec)
+    utt.assert_allclose(slow_output, output)
+
+
+def dnn_maxargmax(nd, idtype, axis):
+    inp = T.TensorType(idtype, (False,) * nd)()
+    res = T.max_and_argmax(inp, axis=axis)
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+
+
+def test_dnn_maxandargmax_opt():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for nd in range(1, 9):
+        yield dnn_maxargmax, nd, 'float32', None
+
+    for idtype in ('float64', 'float16'):
+        yield dnn_maxargmax, 2, idtype, None
+
+    yield dnn_maxargmax, 3, 'float32', (0, 1)
+    yield dnn_maxargmax, 3, 'float32', (0, 2)
+    yield dnn_maxargmax, 3, 'float32', (1, 2)
+    yield dnn_maxargmax, 3, 'float32', (0, 1, 2)
+    yield dnn_maxargmax, 3, 'float32', (0,)
+    yield dnn_maxargmax, 3, 'float32', (1,)
+    yield dnn_maxargmax, 3, 'float32', (2,)
+    yield dnn_maxargmax, 3, 'float32', ()
+
+
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
-
     for mode in ('per-activation', 'spatial'):
-        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, running_mean, running_var = (vartype(n)
                                                          for n in ('x', 'scale', 'bias',
                                                                    'running_mean',
@@ -1605,6 +1873,7 @@ def test_without_dnn_batchnorm_train_without_running_averages():
     f_abstract(X, Scale, Bias, Dy)
 
 
+@utt.assertFailure_fast
 def test_dnn_batchnorm_train_inplace():
     # test inplace_running_mean and inplace_running_var
     if not dnn.dnn_available(test_ctx_name):
@@ -1654,10 +1923,8 @@ def test_batchnorm_inference():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
-
     for mode in ('per-activation', 'spatial'):
-        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
@@ -1727,6 +1994,7 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
 
 
+@utt.assertFailure_fast
 def test_batchnorm_inference_inplace():
     # test inplace
     if not dnn.dnn_available(test_ctx_name):
@@ -2115,3 +2383,465 @@ def test_dnn_rnn_lstm_grad_c():
                                            (i + 1) * len(cudnn_grads_layer)]
         for j, g in enumerate(cudnn_grads_layer):
             utt.assert_allclose(ref_grads_layer[j], g)
+
+
+class Cudnn_grouped_conv(Grouped_conv_noOptim):
+    mode = mode_with_gpu.excluding('conv_gemm')
+    conv_op = dnn.GpuDnnConv
+    conv_gradw_op = dnn.GpuDnnConvGradW
+    conv_gradi_op = dnn.GpuDnnConvGradI
+
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv, self).__init__(*args, **kwargs)
+
+
+class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
+    mode = mode_with_gpu.excluding('conv_gemm')
+    conv_op = dnn.GpuDnnConv
+    conv_gradw_op = dnn.GpuDnnConvGradW
+    conv_gradi_op = dnn.GpuDnnConvGradI
+
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv3d, self).__init__(*args, **kwargs)
+
+
+def test_dnn_spatialtf():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    utt.seed_rng()
+
+    """
+    Spatial Transformer implementation using Theano from Lasagne
+    Original author: skaae (https://github.com/skaae)
+    """
+    def spatialtf_cpu(inp, theta, scale_height, scale_width, border_mode='nearest'):
+        num_batch, num_channels, height, width = inp.shape
+        theta = T.reshape(theta, (-1, 2, 3))
+
+        # grid of (x_t, y_t, 1), eq (1) in ref [1]
+        out_height = T.cast(T.ceil(height * scale_height), 'int64')
+        out_width = T.cast(T.ceil(width * scale_width), 'int64')
+        grid = _meshgrid(out_height, out_width)
+        # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
+        t_g = T.dot(theta, grid)
+        x_s = t_g[:, 0]
+        y_s = t_g[:, 1]
+        x_s_flat = x_s.flatten()
+        y_s_flat = y_s.flatten()
+
+        # dimshuffle input to  (bs, height, width, channels)
+        input_dim = inp.dimshuffle(0, 2, 3, 1)
+        input_transformed = _interpolate(
+            input_dim, x_s_flat, y_s_flat,
+            out_height, out_width, border_mode)
+
+        output = T.reshape(
+            input_transformed, (num_batch, out_height, out_width, num_channels))
+        output = output.dimshuffle(0, 3, 1, 2)  # dimshuffle to conv format
+        return output
+
+    def _interpolate(im, x, y, out_height, out_width, border_mode):
+        # *_f are floats
+        num_batch, height, width, channels = im.shape
+        height_f = T.cast(height, theano.config.floatX)
+        width_f = T.cast(width, theano.config.floatX)
+
+        # scale coordinates from [-1, 1] to [0, dimension - 1], where dimension
+        # can be the width or height
+        x = (x + 1) / 2 * (width_f - 1)
+        y = (y + 1) / 2 * (height_f - 1)
+
+        # obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
+        # we need those in floatX for interpolation and in int64 for indexing.
+        x0_f = T.floor(x)
+        y0_f = T.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
+
+        # for indexing, we need to take care of the border mode for outside pixels.
+        if border_mode == 'nearest':
+            x0 = T.clip(x0_f, 0, width_f - 1)
+            x1 = T.clip(x1_f, 0, width_f - 1)
+            y0 = T.clip(y0_f, 0, height_f - 1)
+            y1 = T.clip(y1_f, 0, height_f - 1)
+        elif border_mode == 'mirror':
+            w = 2 * (width_f - 1)
+            x0 = T.minimum(x0_f % w, -x0_f % w)
+            x1 = T.minimum(x1_f % w, -x1_f % w)
+            h = 2 * (height_f - 1)
+            y0 = T.minimum(y0_f % h, -y0_f % h)
+            y1 = T.minimum(y1_f % h, -y1_f % h)
+        elif border_mode == 'wrap':
+            x0 = T.mod(x0_f, width_f)
+            x1 = T.mod(x1_f, width_f)
+            y0 = T.mod(y0_f, height_f)
+            y1 = T.mod(y1_f, height_f)
+        else:
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
+        x0, x1, y0, y1 = (T.cast(v, 'int64') for v in (x0, x1, y0, y1))
+
+        # The input is [num_batch, height, width, channels]. We do the lookup in
+        # the flattened input, i.e [num_batch*height*width, channels]. We need
+        # to offset all indices to match the flat version
+        dim2 = width
+        dim1 = width * height
+        base = T.repeat(
+            T.arange(num_batch, dtype='int64') * dim1, out_height * out_width)
+        base_y0 = base + y0 * dim2
+        base_y1 = base + y1 * dim2
+        idx_a = base_y0 + x0
+        idx_b = base_y1 + x0
+        idx_c = base_y0 + x1
+        idx_d = base_y1 + x1
+
+        # use indices to lookup pixels for all samples
+        im_flat = im.reshape((-1, channels))
+        Ia = im_flat[idx_a]
+        Ib = im_flat[idx_b]
+        Ic = im_flat[idx_c]
+        Id = im_flat[idx_d]
+
+        # calculate interpolated values
+        wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
+        wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
+        wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
+        wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
+        output = T.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
+        return output
+
+    def _linspace(start, stop, num):
+        # Theano linspace. Behaves similar to np.linspace
+        start = T.cast(start, theano.config.floatX)
+        stop = T.cast(stop, theano.config.floatX)
+        num = T.cast(num, theano.config.floatX)
+        step = (stop - start) / (num - 1)
+        return T.arange(num, dtype=theano.config.floatX) * step + start
+
+    def _meshgrid(height, width):
+        # This function is the grid generator from eq. (1) in reference [1].
+        # It is equivalent to the following numpy code:
+        #  x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
+        #                         np.linspace(-1, 1, height))
+        #  ones = np.ones(np.prod(x_t.shape))
+        #  grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
+        # It is implemented in Theano instead to support symbolic grid sizes.
+        # Note: If the image size is known at layer construction time, we could
+        # compute the meshgrid offline in numpy instead of doing it dynamically
+        # in Theano. However, it hardly affected performance when we tried.
+        x_t = T.dot(T.ones((height, 1)),
+                    _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
+        y_t = T.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
+                    T.ones((1, width)))
+
+        x_t_flat = x_t.reshape((1, -1))
+        y_t_flat = y_t.reshape((1, -1))
+        ones = T.ones_like(x_t_flat)
+        grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
+        return grid
+
+    img_dims = (5, 3, 16, 16)
+    img = np.random.random(size=img_dims).astype(theano.config.floatX)
+
+    scale_height = 0.25
+    scale_width = 0.75
+
+    # Transformation matrix
+    transform = [[-1, 0, 0],
+                 [0, -1, 0]]
+    theta = np.asarray(img_dims[0] * [transform], dtype=theano.config.floatX)
+
+    # Create symbolic variables for inputs and transformations
+    t_img = T.tensor4('img')
+    t_theta = T.tensor3('theta')
+
+    st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height, scale_width=scale_width)
+    st_dnn_func = theano.function([t_img, t_theta], st_dnn, mode=mode_with_gpu)
+    # Check if function graph contains the spatial transformer's grid and sampler Ops
+    apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid) for node in apply_nodes])
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerSampler) for node in apply_nodes])
+
+    img_out_gpu = st_dnn_func(img, theta)
+    img_out_gpu = np.asarray(img_out_gpu)
+
+    # Setup CPU Op
+    st_cpu = spatialtf_cpu(t_img, t_theta, scale_height, scale_width, 'nearest')
+    st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
+    img_out_cpu = st_cpu_func(img, theta)
+
+    atol, rtol = None, None
+    if theano.config.floatX == 'float16':
+        # Raise relative error tolerance when using float16
+        rtol = 5e-2
+    utt.assert_allclose(img_out_cpu, img_out_gpu, atol=atol, rtol=rtol)
+
+
+def test_dnn_spatialtf_invalid_shapes():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    inputs = T.tensor4('inputs')
+    theta = T.tensor3('theta')
+
+    st_dnn = dnn.dnn_spatialtf(inputs, theta)
+    st_dnn_func = theano.function([inputs, theta], st_dnn, mode=mode_with_gpu)
+
+    inputs_val = np.ones((3, 5, 7, 7), dtype=theano.config.floatX)
+
+    def try_theta_shp(theta_shp):
+        theta_val = np.ones(theta_shp, dtype=theano.config.floatX)
+        return st_dnn_func(inputs_val, theta_val)
+
+    # the theta shape for this input should be (3, 2, 3)
+    try_theta_shp((3, 2, 3))
+
+    # incorrect parameter dimensions
+    assert_raises(RuntimeError, try_theta_shp, (3, 1, 3))
+    assert_raises(RuntimeError, try_theta_shp, (3, 2, 1))
+
+    # number of rows does not match the number of input rows
+    assert_raises(RuntimeError, try_theta_shp, (1, 2, 3))
+    assert_raises(RuntimeError, try_theta_shp, (4, 2, 3))
+
+
+def test_dnn_spatialtf_grad():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    utt.seed_rng()
+
+    inputs = T.tensor4('inputs')
+    theta = T.tensor3('theta')
+
+    out = dnn.dnn_spatialtf(inputs, theta, scale_height=0.25, scale_width=0.75)
+    out_mean = T.mean(out)
+    mean_gi = T.grad(out_mean, [inputs])
+    mean_gt = T.grad(out_mean, [theta])
+
+    f_gi = theano.function([inputs, theta], mean_gi, mode=mode_with_gpu)
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
+                for node in f_gi.maker.fgraph.apply_nodes])
+
+    f_gt = theano.function([inputs, theta], mean_gt, mode=mode_with_gpu)
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
+                for node in f_gt.maker.fgraph.apply_nodes])
+
+    input_dims = (5, 3, 16, 16)
+    inputs_val = np.random.random(size=input_dims).astype(theano.config.floatX)
+
+    # Tensor with transformations
+    theta_val = np.random.random((input_dims[0], 2, 3)).astype(theano.config.floatX)
+    # Using smaller values for theta, increases the precision of gradients
+    # when using lower precision. Tests might fail for lower precision data
+    # types if the values of theta or the inputs are very high.
+    theta /= 100
+
+    # Check that the gradients are computed
+    f_gi(inputs_val, theta_val)
+    f_gt(inputs_val, theta_val)
+
+    def grad_functor(inputs, theta):
+        out = dnn.dnn_spatialtf(inputs, theta)
+        return out
+
+    atol, rtol = None, None
+    if theano.config.floatX == 'float32':
+        rtol = 5e-2
+    elif theano.config.floatX == 'float16':
+        rtol = 1e-0
+
+    utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
+                    abs_tol=atol, rel_tol=rtol)
+
+
+class TestDnnConv2DRuntimeAlgorithms(object):
+    ndim = 2
+    cpu_conv_class = theano.tensor.nnet.corr.CorrMM
+    runtime_shapes = [
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50), (5, 2, 25, 31)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),  # cache should be used
+        (1, [(1, 2, 3, 4), (6, 2, 2, 1)])
+    ]
+
+    def __init__(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        utt.seed_rng()
+        self.runtime_algorithms = ('time_once', 'guess_once', 'time_on_shape_change', 'guess_on_shape_change')
+
+    def test_fwd_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_fwd_runtime_algorithm(algo):
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            # Scale down the input values to prevent very large absolute errors
+            # due to float rounding
+            lower_inputs = inputs / 10
+            lower_filters = filters / 10
+            conv = dnn.dnn_conv(img=lower_inputs, kerns=lower_filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            f = theano.function([inputs, filters], conv, mode=mode_with_gpu)
+            if self.ndim == 3:
+                flipped_filters = lower_filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = lower_filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(lower_inputs), flipped_filters)
+            f_ref = theano.function([inputs, filters], conv_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    # rtol is needed for the test to be more robust to
+                    # different seed.
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res),
+                                        rtol=2e-5)
+
+        for algo in self.runtime_algorithms:
+            yield (run_fwd_runtime_algorithm, algo)
+
+    def test_gradinput_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradinput_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_data = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            grad_i, = theano.tensor.grad(conv.sum(), [inputs])
+            f = theano.function([inputs, filters], grad_i, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradI)])
+            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, dnn.GpuDnnConvGradW) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_i_ref, = theano.tensor.grad(conv_ref.sum(), [inputs])
+            f_ref = theano.function([inputs, filters], grad_i_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+
+        for algo in self.runtime_algorithms:
+            yield (run_gradinput_runtime_algorithm, algo)
+
+    def test_gradweight_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradweight_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_filter = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            grad_w, = theano.tensor.grad(conv.sum(), [filters])
+            f = theano.function([inputs, filters], grad_w, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradW)])
+            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, dnn.GpuDnnConvGradI) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_w_ref, = theano.tensor.grad(conv_ref.sum(), [filters])
+            f_ref = theano.function([inputs, filters], grad_w_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+
+        for algo in self.runtime_algorithms:
+            yield (run_gradweight_runtime_algorithm, algo)
+
+
+class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
+    ndim = 3
+    cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
+    runtime_shapes = [
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50, 5), (5, 2, 25, 31, 4)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),  # cache should be used
+        (1, [(1, 2, 3, 4, 5), (6, 2, 3, 2, 1)])
+    ]
+
+
+def test_conv_guess_once_with_dtypes():
+    # This test checks that runtime conv algorithm selection does not raise any exception
+    # when consecutive functions with different dtypes and precisions are executed.
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+    inputs_shape = (2, 3, 5, 5)
+    filters_shape = (2, 3, 40, 4)
+    border_mode = 'full'
+
+    def get_function(dtype, precision):
+        inputs_val = np.random.random(inputs_shape).astype(dtype)
+        filters_val = np.random.random(filters_shape).astype(dtype)
+        inputs_val /= 10
+        filters_val /= 10
+        inputs = theano.shared(inputs_val)
+        filters = theano.shared(filters_val)
+        conv = dnn.dnn_conv(img=inputs, kerns=filters, border_mode=border_mode, precision=precision,
+                            algo='guess_once', direction_hint='forward!')
+        return theano.function([], conv, mode=mode_with_gpu)
+
+    f_true_half_config = get_function('float16', 'float16')
+    f_pseudo_half_config = get_function('float16', 'float32')
+    f_float_config = get_function('float32', 'float32')
+    f_double_config = get_function('float64', 'float64')
+    # Let's just see if everything runs without raising any exception.
+    try:
+        f_true_half_config()
+    except RuntimeError as e:
+        # float16 precision is not supported on all GPU cards.
+        assert 'CUDNN_STATUS_ARCH_MISMATCH' in str(e)
+    f_pseudo_half_config()
+    f_float_config()
+    f_double_config()

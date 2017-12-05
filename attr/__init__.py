@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+from functools import partial
+
 from ._funcs import (
     asdict,
     assoc,
@@ -11,8 +13,8 @@ from ._make import (
     Attribute,
     Factory,
     NOTHING,
-    attr,
-    attributes,
+    attrib,
+    attrs,
     fields,
     make_class,
     validate,
@@ -27,7 +29,7 @@ from . import converters
 from . import validators
 
 
-__version__ = "17.2.0"
+__version__ = "17.3.0"
 
 __title__ = "attrs"
 __description__ = "Classes Without Boilerplate"
@@ -41,8 +43,9 @@ __license__ = "MIT"
 __copyright__ = "Copyright (c) 2015 Hynek Schlawack"
 
 
-s = attrs = attributes
-ib = attrib = attr
+s = attributes = attrs
+ib = attr = attrib
+dataclass = partial(attrs, auto_attribs=True)  # happy Easter ;)
 
 __all__ = [
     "Attribute",

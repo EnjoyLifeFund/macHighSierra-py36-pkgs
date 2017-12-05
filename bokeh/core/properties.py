@@ -312,6 +312,19 @@ class String(PrimitiveProperty):
     '''
     _underlying_type = string_types
 
+class FontSize(String):
+
+    _font_size_re = re.compile(r"^[0-9]+(.[0-9]+)?(%|em|ex|ch|ic|rem|vw|vh|vi|vb|vmin|vmax|cm|mm|q|in|pc|pt|px)$", re.I)
+
+    def validate(self, value):
+        super(FontSize, self).validate(value)
+
+        if isinstance(value, string_types):
+            if len(value) == 0:
+                raise ValueError("empty string is not a valid font size value")
+            elif self._font_size_re.match(value) is None:
+                raise ValueError("%r is not a valid font size value" % value)
+
 class Regex(String):
     ''' Accept strings that match a given regular expression.
 
@@ -764,7 +777,7 @@ class Auto(Enum):
         return self._sphinx_prop_link()
 
 class RGB(Property):
-    ''' Accept Date (but not DateTime) values.
+    ''' Accept colors.RGB values.
 
     '''
 
@@ -1630,26 +1643,16 @@ class FontSizeSpec(DataSpec):
     https://drafts.csswg.org/css-values/#lengths
 
     '''
-    _font_size_re = re.compile(r"^[0-9]+(.[0-9]+)?(%|em|ex|ch|ic|rem|vw|vh|vi|vb|vmin|vmax|cm|mm|q|in|pc|pt|px)$", re.I)
 
     def __init__(self, default, help=None, key_type=_ExprFieldValueTransform):
-        super(FontSizeSpec, self).__init__(key_type, List(String), default=default, help=help)
-
-    def prepare_value(self, cls, name, value):
-        if isinstance(value, string_types) and self._font_size_re.match(value) is not None:
-            value = dict(value=value)
-        return super(FontSizeSpec, self).prepare_value(cls, name, value)
+        super(FontSizeSpec, self).__init__(key_type, FontSize, default=default, help=help)
 
     def validate(self, value):
+        # We want to preserve existing semantics and be a little more restrictive. This
+        # validations makes m.font_size = "" or m.font_size = "6" an error
         super(FontSizeSpec, self).validate(value)
-
-        if isinstance(value, dict) and 'value' in value:
-            value = value['value']
-
         if isinstance(value, string_types):
-            if len(value) == 0:
-                raise ValueError("empty string is not a valid font size value")
-            elif value[0].isdigit() and self._font_size_re.match(value) is None:
+            if len(value) == 0 or value[0].isdigit() and FontSize._font_size_re.match(value) is None:
                 raise ValueError("%r is not a valid font size value" % value)
 
 _ExprFieldValueTransformUnits = Enum("expr", "field", "value", "transform", "units")
@@ -1731,7 +1734,7 @@ class DistanceSpec(UnitsSpec):
             pass
         return super(DistanceSpec, self).prepare_value(cls, name, value)
 
-class ScreenDistanceSpec(NumberSpec):
+class ScreenDistanceSpec(UnitsSpec):
     ''' A |DataSpec| property that accepts numeric fixed values for screen
     distances, and also provides an associated units property that reports
     ``"screen"`` as the units.
@@ -1740,6 +1743,10 @@ class ScreenDistanceSpec(NumberSpec):
         Units are always ``"screen"``.
 
     '''
+
+    def __init__(self, default=None, help=None):
+        super(ScreenDistanceSpec, self).__init__(default=default, units_type=Enum(enums.enumeration("screen")), units_default="screen", help=help)
+
     def prepare_value(self, cls, name, value):
         try:
             if value is not None and value < 0:
@@ -1748,12 +1755,38 @@ class ScreenDistanceSpec(NumberSpec):
             pass
         return super(ScreenDistanceSpec, self).prepare_value(cls, name, value)
 
+    def make_descriptors(self, base_name):
+        ''' Return a list of ``PropertyDescriptor`` instances to install on a
+        class, in order to delegate attribute access to this property.
+
+        Unlike simpler property types, ``UnitsSpec`` returns multiple
+        descriptors to install. In particular, descriptors for the base
+        property as well as the associated units property are returned.
+
+        Args:
+            name (str) : the name of the property these descriptors are for
+
+        Returns:
+            list[PropertyDescriptor]
+
+        The descriptors returned are collected by the ``MetaHasProps``
+        metaclass and added to ``HasProps`` subclasses during class creation.
+        '''
+        units_props = self._units_type.make_descriptors("unused")
+        return [ UnitsSpecPropertyDescriptor(base_name, self, units_props[0]) ]
+
     def to_serializable(self, obj, name, val):
-        d = super(ScreenDistanceSpec, self).to_serializable(obj, name, val)
-        d["units"] = "screen"
+        d = super(UnitsSpec, self).to_serializable(obj, name, val)
+        if d is not None and 'units' not in d:
+            # d is a PropertyValueDict at this point, we need to convert it to
+            # a plain dict if we are going to modify its value, otherwise a
+            # notify_change that should not happen will be triggered
+            d = dict(d)
+            d["units"] = "screen"
         return d
 
-class DataDistanceSpec(NumberSpec):
+
+class DataDistanceSpec(UnitsSpec):
     ''' A |DataSpec| property that accepts numeric fixed values for data-space
     distances, and also provides an associated units property that reports
     ``"data"`` as the units.
@@ -1762,6 +1795,9 @@ class DataDistanceSpec(NumberSpec):
         Units are always ``"data"``.
 
     '''
+    def __init__(self, default=None, help=None):
+        super(DataDistanceSpec, self).__init__(default=default, units_type=Enum(enums.enumeration("data")), units_default="data", help=help)
+
     def prepare_value(self, cls, name, value):
         try:
             if value is not None and value < 0:
@@ -1770,9 +1806,34 @@ class DataDistanceSpec(NumberSpec):
             pass
         return super(DataDistanceSpec, self).prepare_value(cls, name, value)
 
+    def make_descriptors(self, base_name):
+        ''' Return a list of ``PropertyDescriptor`` instances to install on a
+        class, in order to delegate attribute access to this property.
+
+        Unlike simpler property types, ``UnitsSpec`` returns multiple
+        descriptors to install. In particular, descriptors for the base
+        property as well as the associated units property are returned.
+
+        Args:
+            name (str) : the name of the property these descriptors are for
+
+        Returns:
+            list[PropertyDescriptor]
+
+        The descriptors returned are collected by the ``MetaHasProps``
+        metaclass and added to ``HasProps`` subclasses during class creation.
+        '''
+        units_props = self._units_type.make_descriptors("unused")
+        return [ UnitsSpecPropertyDescriptor(base_name, self, units_props[0]) ]
+
     def to_serializable(self, obj, name, val):
-        d = super(DataDistanceSpec, self).to_serializable(obj, name, val)
-        d["units"] = "data"
+        d = super(UnitsSpec, self).to_serializable(obj, name, val)
+        if d is not None and 'units' not in d:
+            # d is a PropertyValueDict at this point, we need to convert it to
+            # a plain dict if we are going to modify its value, otherwise a
+            # notify_change that should not happen will be triggered
+            d = dict(d)
+            d["units"] = "data"
         return d
 
 class ColorSpec(DataSpec):

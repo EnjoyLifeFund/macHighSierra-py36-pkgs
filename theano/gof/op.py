@@ -152,7 +152,7 @@ class CLinkerObject(object):
 
     def c_support_code(self):
         """
-        Optional: Return utility code for use by a `Variable` or `Op` to be
+        Optional: Return utility code (a string, or a list of strings) for use by a `Variable` or `Op` to be
         included at global scope prior to the rest of the code for this class.
 
         QUESTION: How many times will this support code be emitted for a graph
@@ -442,7 +442,7 @@ class CLinkerOp(CLinkerObject):
             The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("c_init_code_apply", type(self),
+        raise utils.MethodNotDefined("c_init_code_struct", type(self),
                                      self.__class__.__name__)
 
     def c_support_code_struct(self, node, name):
@@ -795,6 +795,20 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
+
+    # We add a default get_params() implementation which will try to detect params from the op
+    # if params_type is set to a ParamsType. If not, we raise a MethodNotDefined exception.
+    def get_params(self, node):
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.ParamsType):
+            wrapper = self.params_type
+            if not all(hasattr(self, field) for field in wrapper.fields):
+                # Let's print missing attributes for debugging.
+                not_found = tuple(field for field in wrapper.fields if not hasattr(self, field))
+                raise AttributeError('%s: missing attributes %s for ParamsType.' % (type(self).__name__, not_found))
+            # ParamsType.get_params() will apply filtering to attributes.
+            return self.params_type.get_params(self)
+        raise theano.gof.utils.MethodNotDefined('get_params')
+
     def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing
@@ -816,6 +830,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
+        e = FunctionGraph(node.inputs, node.outputs)
+        e_no_recycling = [new_o
+                          for (new_o, old_o) in zip(e.outputs, node.outputs)
+                          if old_o in no_recycling]
+        cl = theano.gof.cc.CLinker().accept(e,
+                                            no_recycling=e_no_recycling)
         # float16 gets special treatment since running
         # unprepared C code will get bad results.
         if not getattr(self, '_f16_ok', False):
@@ -824,27 +844,27 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
             if (any(is_f16(i.type) for i in node.inputs) or
                     any(is_f16(o.type) for o in node.outputs)):
+                # get_dynamic_module is a subset of make_thunk that is reused.
+                # This just try to build the c code
+                # It will raise an error for ops
+                # that don't implement c code. In those cases, we
+                # don't want to print a warning.
+                cl.get_dynamic_module()
                 print("Disabling C code for %s due to unsupported "
                       "float16" % (self,))
                 raise NotImplementedError("float16")
-        e = FunctionGraph(node.inputs, node.outputs)
-        e_no_recycling = [new_o
-                          for (new_o, old_o) in zip(e.outputs, node.outputs)
-                          if old_o in no_recycling]
-        cl = theano.gof.cc.CLinker().accept(e,
-                                            no_recycling=e_no_recycling)
-
         _logger.debug('Trying CLinker.make_thunk')
         outputs = cl.make_thunk(input_storage=node_input_storage,
                                 output_storage=node_output_storage)
-        fill_storage, node_input_filters, node_output_filters = outputs
+        thunk, node_input_filters, node_output_filters = outputs
 
         def rval():
-            fill_storage()
+            thunk()
             for o in node.outputs:
                 compute_map[o][0] = True
 
-        rval.cthunk = fill_storage.cthunk
+        rval.thunk = thunk
+        rval.cthunk = thunk.cthunk
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
         rval.lazy = False
@@ -1368,20 +1388,44 @@ class COp(Op):
                 raise ValueError("No valid section marker was found in file "
                                  "%s" % func_files[i])
 
-    def get_op_params(self):
+    def __get_op_params(self):
         """
         Returns a list of (name, value) pairs that will be turned into
-        macros for use within the op code. This is intended to allow
-        an op's properties to influence the generated C code.
+        macros for use within the op code.
 
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
 
+        If op uses a :class:`theano.gof.params_type.ParamsType` as ``params_type``,
+        it returns:
+         - a default macro ``PARAMS_TYPE`` which defines the class name of the
+           corresponding C struct.
+         - a macro ``DTYPE_PARAM_key`` for every ``key`` in the ParamsType for which associated
+           type implements the method :func:`theano.gof.type.CLinkerType.c_element_type`.
+           ``DTYPE_PARAM_key`` defines the primitive C type name of an item in a variable
+           associated to ``key``.
+
         """
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.ParamsType):
+            wrapper = self.params_type
+            params = [('PARAMS_TYPE', wrapper.name)]
+            for i in range(wrapper.length):
+                try:
+                    # NB (reminder): These macros are currently used only in ParamsType example test
+                    # (`theano/gof/tests/test_quadratic_function.c`), to demonstrate how we can
+                    # access params dtypes when dtypes may change (e.g. if based on theano.config.floatX).
+                    # But in practice, params types generally have fixed types per op.
+                    params.append(('DTYPE_PARAM_' + wrapper.fields[i], wrapper.types[i].c_element_type()))
+                except utils.MethodNotDefined:
+                    pass
+            return params
         return []
 
     def c_code_cache_version(self):
-        return hash(tuple(self.func_codes))
+        version = (hash(tuple(self.func_codes)), )
+        if hasattr(self, 'params_type'):
+            version += (self.params_type.c_code_cache_version(), )
+        return version
 
     def c_init_code(self):
         """
@@ -1465,7 +1509,7 @@ class COp(Op):
                                                 "str##_%s" % name))
         undef_macros.append(undef_template % "APPLY_SPECIFIC")
 
-        for n, v in self.get_op_params():
+        for n, v in self.__get_op_params():
             define_macros.append(define_template % (n, v))
             undef_macros.append(undef_template % (n,))
 

@@ -1,1 +1,1 @@
-../../../Cellar/sip/4.19.4/lib/python3.6/site-packages/sip.pyi
+../../../Cellar/sip/4.19.6/lib/python3.6/site-packages/sip.pyi

@@ -804,7 +804,7 @@ class Machine(object):
                 transition. This will be attached to the currently specified
                 model (e.g., passing trigger='advance' will create a new
                 advance() method in the model that triggers the transition.)
-            source(string): The name of the source state--i.e., the state we
+            source(string or list): The name of the source state--i.e., the state we
                 are transitioning away from. This can be a single state, a
                 list of states or an asterisk for all states.
             dest (string): The name of the destination State--i.e., the state
@@ -900,18 +900,12 @@ class Machine(object):
         before = _prep_ordered_arg(len_transitions, before)
         after = _prep_ordered_arg(len_transitions, after)
         prepare = _prep_ordered_arg(len_transitions, prepare)
+        # reorder list so that the initial state is actually the first one
+        idx = states.index(self._initial)
+        states = states[idx:] + states[:idx]
 
-        states.remove(self._initial)
-        self.add_transition(trigger, self._initial, states[0],
-                            conditions=conditions[0],
-                            unless=unless[0],
-                            before=before[0],
-                            after=after[0],
-                            prepare=prepare[0],
-                            **kwargs)
-
-        for i in range(1, len(states)):
-            self.add_transition(trigger, states[i - 1], states[i],
+        for i in range(0, len(states) - 1):
+            self.add_transition(trigger, states[i], states[i + 1],
                                 conditions=conditions[i],
                                 unless=unless[i],
                                 before=before[i],
@@ -920,7 +914,8 @@ class Machine(object):
                                 **kwargs)
         if loop:
             self.add_transition(trigger, states[-1],
-                                self._initial if loop_includes_initial else states[0],
+                                # omit initial if not loop_includes_initial
+                                states[0 if loop_includes_initial else 1],
                                 conditions=conditions[-1],
                                 unless=unless[-1],
                                 before=before[-1],
@@ -928,10 +923,31 @@ class Machine(object):
                                 prepare=prepare[-1],
                                 **kwargs)
 
+    def get_transitions(self, trigger="", source="*", dest="*"):
+        """ Return the transitions from the Machine.
+        Args:
+            trigger (string): Trigger name of the transition.
+            source (string): Limits removal to transitions from a certain state.
+            dest (string): Limits removal to transitions to a certain state.
+        """
+        if trigger:
+            events = (self.events[trigger], )
+        else:
+            events = self.events.values()
+        transitions = []
+        for event in events:
+            transitions.extend(
+                itertools.chain.from_iterable(event.transitions.values()))
+        return [transition
+                for transition in transitions
+                if (transition.source, transition.dest) == (
+                    source if source != "*" else transition.source,
+                    dest if dest != "*" else transition.dest)]
+
     def remove_transition(self, trigger, source="*", dest="*"):
         """ Removes a transition from the Machine and all models.
         Args:
-            trigger (string): Trigger name of the transition
+            trigger (string): Trigger name of the transition.
             source (string): Limits removal to transitions from a certain state.
             dest (string): Limits removal to transitions to a certain state.
         """

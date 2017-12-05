@@ -27,7 +27,7 @@ from theano.compat import PY3, decode, decode_iter
 from six import b, BytesIO, StringIO, string_types, iteritems
 from six.moves import xrange
 from theano.gof.utils import flatten
-from theano.configparser import config
+from theano import config
 from theano.gof.utils import hash_from_code
 from theano.misc.windows import (subprocess_Popen,
                                  output_subprocess_Popen)
@@ -377,7 +377,7 @@ def is_same_entry(entry_1, entry_2):
 
 def get_module_hash(src_code, key):
     """
-    Return an MD5 hash that uniquely identifies a module.
+    Return a SHA256 hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The C source code of the module (`src_code`).
@@ -415,9 +415,12 @@ def get_module_hash(src_code, key):
             # libraries to link against.
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
-            if key_element.startswith('md5:'):
-                # This is the md5 hash of the config options. We can stop
-                # here.
+            if (key_element.startswith('md5:') or
+                    key_element.startswith('hash:')):
+                # This is actually a sha256 hash of the config options.
+                # Currently, we still keep md5 to don't break old Theano.
+                # We add 'hash:' so that when we change it in
+                # the futur, it won't break this version of Theano.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
                   key_element.startswith('c_compiler_str=')):
@@ -435,25 +438,36 @@ def get_safe_part(key):
 
     This tuple should only contain objects whose __eq__ and __hash__ methods
     can be trusted (currently: the version part of the key, as well as the
-    md5 hash of the config options).
+    SHA256 hash of the config options).
     It is used to reduce the amount of key comparisons one has to go through
     in order to find broken keys (i.e. keys with bad implementations of __eq__
     or __hash__).
+
 
     """
     version = key[0]
     # This function should only be called on versioned keys.
     assert version
 
-    # Find the md5 hash part.
+    # Find the hash part. This is actually a sha256 hash of the config
+    # options.  Currently, we still keep md5 to don't break old
+    # Theano.  We add 'hash:' so that when we change it
+    # in the futur, it won't break this version of Theano.
     c_link_key = key[1]
+    # In case in the future, we don't have an md5 part and we have
+    # such stuff in the cache.  In that case, we can set None, and the
+    # rest of the cache mechanism will just skip that key.
+    hash = None
     for key_element in c_link_key[1:]:
-        if (isinstance(key_element, string_types) and
-                key_element.startswith('md5:')):
-            md5 = key_element[4:]
-            break
+        if isinstance(key_element, string_types):
+            if key_element.startswith('md5:'):
+                hash = key_element[4:]
+                break
+            elif key_element.startswith('hash:'):
+                hash = key_element[5:]
+                break
 
-    return key[0] + (md5, )
+    return key[0] + (hash, )
 
 
 class KeyData(object):
@@ -743,13 +757,20 @@ class ModuleCache(object):
         time_now = time.time()
         # Go through directories in alphabetical order to ensure consistent
         # behavior.
-        subdirs = sorted(os.listdir(self.dirname))
+        try:
+            subdirs = sorted(os.listdir(self.dirname))
+        except OSError:
+            # This can happen if the dir don't exist.
+            subdirs = []
         files, root = None, None  # To make sure the "del" below works
         for subdirs_elem in subdirs:
             # Never clean/remove lock_dir
             if subdirs_elem == 'lock_dir':
                 continue
             root = os.path.join(self.dirname, subdirs_elem)
+            # Don't delete the gpuarray kernel cache
+            if root == config.gpuarray.cache_path:
+                continue
             key_pkl = os.path.join(root, 'key.pkl')
             if key_pkl in self.loaded_key_pkl:
                 continue
@@ -796,12 +817,6 @@ class ModuleCache(object):
                                msg='broken cache directory [EOF]',
                                level=logging.WARNING)
                         continue
-                    except ValueError:
-                        # This can happen when we have bad config value
-                        # in the cuda.nvcc_compiler.py file.
-                        # We should not hide it here, as this will cause
-                        # an unrelated error to appear.
-                        raise
                     except Exception:
                         unpickle_failure()
                         if delete_if_problem:
@@ -1046,7 +1061,7 @@ class ModuleCache(object):
             assert key in all_keys
         for k in all_keys:
             if k in self.entry_from_key:
-                assert self.entry_from_key[k] == name
+                assert self.entry_from_key[k] == name, (self.entry_from_key[k], name)
             else:
                 self.entry_from_key[k] = name
                 if key[0]:
@@ -1233,7 +1248,7 @@ class ModuleCache(object):
                 "Ops. The file is: %s. The key is: %s" % (msg, key_pkl, key))
         # Also verify that there exists no other loaded key that would be equal
         # to this key. In order to speed things up, we only compare to keys
-        # with the same version part and config md5, since we can assume this
+        # with the same version part and config hash, since we can assume this
         # part of the key is not broken.
         for other in self.similar_keys.get(get_safe_part(key), []):
             if other is not key and other == key and hash(other) != hash(key):
@@ -1323,7 +1338,7 @@ class ModuleCache(object):
             to -1 in order to delete all unversioned cached modules regardless
             of their age.
         clear_base_files : bool
-            If True, then delete base directories 'cuda_ndarray', 'cutils_ext',
+            If True, then delete base directories 'cutils_ext',
             'lazylinker_ext' and 'scan_perform' if they are present.
             If False, those directories are left intact.
         delete_if_problem
@@ -1340,8 +1355,8 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Remove base directories 'cuda_ndarray', 'cutils_ext', 'lazylinker_ext'
-        and 'scan_perform' if present.
+        Remove base directories 'cutils_ext', 'lazylinker_ext' and
+        'scan_perform' if present.
 
         Note that we do not delete them outright because it may not work on
         some systems due to these modules being currently in use. Instead we
@@ -1350,8 +1365,7 @@ class ModuleCache(object):
 
         """
         with compilelock.lock_ctx():
-            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
-                             'scan_perform'):
+            for base_dir in ('cutils_ext', 'lazylinker_ext', 'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
@@ -1595,7 +1609,7 @@ def std_include_dirs():
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
-    gof_inc_dir = os.path.abspath(os.path.dirname(__file__))
+    gof_inc_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'c_code')
     return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
 
 
@@ -1799,7 +1813,7 @@ class Compiler(object):
             if err is None:
                 err = str(e)
             else:
-                err += "\n" + str(e)
+                err = str(err) + "\n" + str(e)
             compilation_ok = False
 
         if not try_run and not output:
@@ -1883,7 +1897,10 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_args(march_flags=True):
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
-
+        if "-fopenmp" in cxxflags:
+            raise ValueError(
+                "Do not use -fopenmp in Theano flag gcc.cxxflags."
+                " To enable OpenMP, use the Theano flag openmp=True")
         # Add the equivalent of -march=native flag.  We can't use
         # -march=native as when the compiledir is shared by multiple
         # computers (for example, if the home directory is on NFS), this
@@ -2278,8 +2295,8 @@ class GCC_compiler(Compiler):
             # improved loading times on most platforms (win32 is
             # different, as usual).
             cmd.append('-fvisibility=hidden')
-        cmd.extend(['-o', lib_filename])
-        cmd.append(cppfilename)
+        cmd.extend(['-o', '%s%s%s' % (path_wrapper, lib_filename, path_wrapper)])
+        cmd.append('%s%s%s' % (path_wrapper, cppfilename, path_wrapper))
         cmd.extend(['-l%s' % l for l in libs])
         # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))
@@ -2301,14 +2318,37 @@ class GCC_compiler(Compiler):
         status = p_out[2]
 
         if status:
-            print('===============================')
+            tf = tempfile.NamedTemporaryFile(
+                mode='w',
+                prefix='theano_compilation_error_',
+                delete=False
+            )
+            # gcc put its messages to stderr, so we add ours now
+            tf.write('===============================\n')
             for i, l in enumerate(src_code.split('\n')):
-                # gcc put its messages to stderr, so we add ours now
-                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
-            print('===============================')
-            print_command_line_error()
+                tf.write('%05i\t%s\n' % (i + 1, l))
+            tf.write('===============================\n')
+            tf.write("Problem occurred during compilation with the "
+                     "command line below:\n")
+            tf.write(' '.join(cmd))
             # Print errors just below the command line.
-            print(compile_stderr)
+            tf.write(compile_stderr)
+            tf.close()
+            print('\nYou can find the C code in this temporary file: ' + tf.name)
+            not_found_libraries = re.findall('-l["."-_a-zA-Z0-9]*', compile_stderr)
+            for nf_lib in not_found_libraries:
+                print('library ' + nf_lib[2:] + ' is not found.')
+                if re.search('-lPYTHON["."0-9]*', nf_lib, re.IGNORECASE):
+                    py_string = re.search('-lpython["."0-9]*', nf_lib, re.IGNORECASE).group()[8:]
+                    if py_string != '':
+                        print(
+                            'Check if package python-dev ' + py_string + ' or python-devel ' + py_string + ' is installed.'
+                        )
+                    else:
+                        print(
+                            'Check if package python-dev or python-devel is installed.'
+                        )
+
             # We replace '\n' by '. ' in the error message because when Python
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.

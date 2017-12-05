@@ -31,8 +31,8 @@ import numpy as np
 
 from . import chunk
 from .slicing import slice_array, replace_ellipsis
-from ..base import Base, tokenize, normalize_token
-from ..context import _globals
+from ..base import Base, tokenize, dont_optimize, compute_as_if_collection
+from ..context import _globals, globalmethod
 from ..utils import (homogeneous_deepmap, ndeepmap, ignoring, concrete,
                      is_integer, IndexCallable, funcname, derived_from,
                      SerializableLock, ensure_dict, Dispatch)
@@ -897,7 +897,7 @@ def store(sources, targets, lock=True, regions=None, compute=True, **kwargs):
     name = 'store-' + tokenize(*keys)
     dsk = sharedict.merge((name, updates), *[src.dask for src in sources])
     if compute:
-        Array._get(dsk, keys, **kwargs)
+        compute_as_if_collection(Array, dsk, keys, **kwargs)
     else:
         from ..delayed import Delayed
         dsk.update({name: keys})
@@ -977,10 +977,6 @@ class Array(Base):
     """
     __slots__ = 'dask', '_name', '_cached_keys', '_chunks', 'dtype'
 
-    _optimize = staticmethod(optimize)
-    _default_get = staticmethod(threaded.get)
-    _finalize = staticmethod(finalize)
-
     def __new__(cls, dask, name, chunks, dtype, shape=None):
         self = super(Array, cls).__new__(cls)
         assert isinstance(dask, Mapping)
@@ -1006,6 +1002,41 @@ class Array(Base):
 
     def __reduce__(self):
         return (Array, (self.dask, self.name, self.chunks, self.dtype))
+
+    def __dask_graph__(self):
+        return self.dask
+
+    def __dask_keys__(self):
+        if self._cached_keys is not None:
+            return self._cached_keys
+
+        name, chunks, numblocks = self.name, self.chunks, self.numblocks
+
+        def keys(*args):
+            if not chunks:
+                return [(name,)]
+            ind = len(args)
+            if ind + 1 == len(numblocks):
+                result = [(name,) + args + (i,) for i in range(numblocks[ind])]
+            else:
+                result = [keys(*(args + (i,))) for i in range(numblocks[ind])]
+            return result
+
+        self._cached_keys = result = keys()
+        return result
+
+    def __dask_tokenize__(self):
+        return self.name
+
+    __dask_optimize__ = globalmethod(optimize, key='array_optimize',
+                                     falsey=dont_optimize)
+    __dask_scheduler__ = staticmethod(threaded.get)
+
+    def __dask_postcompute__(self):
+        return finalize, ()
+
+    def __dask_postpersist__(self):
+        return Array, (self.name, self.chunks, self.dtype)
 
     @property
     def numblocks(self):
@@ -1100,24 +1131,6 @@ class Array(Base):
         self._name = val
         # Clear the key cache when the name is reset
         self._cached_keys = None
-
-    def _keys(self, *args):
-        if not args:
-            if self._cached_keys is not None:
-                return self._cached_keys
-
-        if not self.chunks:
-            return [(self.name,)]
-        ind = len(args)
-        if ind + 1 == self.ndim:
-            result = [(self.name,) + args + (i,)
-                      for i in range(self.numblocks[ind])]
-        else:
-            result = [self._keys(*(args + (i,)))
-                      for i in range(self.numblocks[ind])]
-        if not args:
-            self._cached_keys = result
-        return result
 
     __array_priority__ = 11  # higher than numpy.ndarray and numpy.matrix
 
@@ -1737,20 +1750,16 @@ class Array(Base):
         mult = self.dtype.itemsize / dtype.itemsize
 
         if order == 'C':
-            ascontiguousarray = np.ascontiguousarray
             chunks = self.chunks[:-1] + (tuple(ensure_int(c * mult)
                                          for c in self.chunks[-1]),)
         elif order == 'F':
-            ascontiguousarray = np.asfortranarray
             chunks = ((tuple(ensure_int(c * mult) for c in self.chunks[0]), ) +
                       self.chunks[1:])
         else:
             raise ValueError("Order must be one of 'C' or 'F'")
 
-        out = elemwise(ascontiguousarray, self, dtype=self.dtype)
-        out = elemwise(np.ndarray.view, out, dtype, dtype=dtype)
-        out._chunks = chunks
-        return out
+        return self.map_blocks(chunk.view, dtype, order=order,
+                               dtype=dtype, chunks=chunks)
 
     @derived_from(np.ndarray)
     def swapaxes(self, axis1, axis2):
@@ -1783,8 +1792,9 @@ class Array(Base):
         dask.array.from_delayed
         """
         from ..delayed import Delayed
-        dsk = self._optimize(self.dask, self._keys())
-        L = ndeepmap(self.ndim, lambda k: Delayed(k, dsk), self._keys())
+        keys = self.__dask_keys__()
+        dsk = self.__dask_optimize__(self.__dask_graph__(), keys)
+        L = ndeepmap(self.ndim, lambda k: Delayed(k, dsk), keys)
         return np.array(L, dtype=object)
 
     @derived_from(np.ndarray)
@@ -1803,9 +1813,6 @@ def ensure_int(f):
     if i != f:
         raise ValueError("Could not coerce %f to integer" % f)
     return i
-
-
-normalize_token.register(Array, lambda a: a.name)
 
 
 def normalize_chunks(chunks, shape=None):
@@ -2397,44 +2404,80 @@ def insert_to_ooc(out, arr, lock=True, region=None):
     slices = slices_from_chunks(arr.chunks)
 
     name = 'store-%s' % arr.name
-    dsk = dict(((name,) + t[1:], (store, out, t, slc, lock, region))
-               for t, slc in zip(core.flatten(arr._keys()), slices))
+    dsk = {(name,) + t[1:]: (store, out, t, slc, lock, region)
+           for t, slc in zip(core.flatten(arr.__dask_keys__()), slices)}
 
     return dsk
 
 
-def asarray(array):
-    """Coerce argument into a dask array
+def asarray(a):
+    """Convert the input to a dask array.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data, in any form that can be converted to a dask array.
+
+    Returns
+    -------
+    out : dask array
+        Dask array interpretation of a.
 
     Examples
     --------
+    >>> import dask.array as da
+    >>> import numpy as np
     >>> x = np.arange(3)
-    >>> asarray(x)
+    >>> da.asarray(x)
     dask.array<array, shape=(3,), dtype=int64, chunksize=(3,)>
+
+    >>> y = [[1, 2, 3], [4, 5, 6]]
+    >>> da.asarray(y)
+    dask.array<array, shape=(2, 3), dtype=int64, chunksize=(2, 3)>
     """
-    if isinstance(array, Array):
-        return array
-    if not isinstance(getattr(array, 'shape', None), Iterable):
-        array = np.asarray(array)
-    return from_array(array, chunks=array.shape, getitem=getter_inline)
+    if isinstance(a, Array):
+        return a
+    if isinstance(a, (list, tuple)) and any(isinstance(i, Array) for i in a):
+        a = stack(a)
+    elif not isinstance(getattr(a, 'shape', None), Iterable):
+        a = np.asarray(a)
+    return from_array(a, chunks=a.shape, getitem=getter_inline)
 
 
-def asanyarray(array):
-    """Coerce argument into a dask array.
+def asanyarray(a):
+    """Convert the input to a dask array.
 
-    Subclasses of `np.ndarray` will be passed through as chunks unchanged.
+    Subclasses of ``np.ndarray`` will be passed through as chunks unchanged.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data, in any form that can be converted to a dask array.
+
+    Returns
+    -------
+    out : dask array
+        Dask array interpretation of a.
 
     Examples
     --------
+    >>> import dask.array as da
+    >>> import numpy as np
     >>> x = np.arange(3)
-    >>> asanyarray(x)
+    >>> da.asanyarray(x)
     dask.array<array, shape=(3,), dtype=int64, chunksize=(3,)>
+
+    >>> y = [[1, 2, 3], [4, 5, 6]]
+    >>> da.asanyarray(y)
+    dask.array<array, shape=(2, 3), dtype=int64, chunksize=(2, 3)>
     """
-    if isinstance(array, Array):
-        return array
-    if not isinstance(getattr(array, 'shape', None), Iterable):
-        array = np.asanyarray(array)
-    return from_array(array, chunks=array.shape, getitem=getter_inline,
+    if isinstance(a, Array):
+        return a
+    if isinstance(a, (list, tuple)) and any(isinstance(i, Array) for i in a):
+        a = stack(a)
+    elif not isinstance(getattr(a, 'shape', None), Iterable):
+        a = np.asanyarray(a)
+    return from_array(a, chunks=a.shape, getitem=getter_inline,
                       asarray=False)
 
 
@@ -2486,8 +2529,8 @@ def broadcast_shapes(*shapes):
         return shapes[0]
     out = []
     for sizes in zip_longest(*map(reversed, shapes), fillvalue=-1):
-        dim = max(sizes)
-        if any(i != -1 and i != 1 and i != dim and not np.isnan(i) for i in sizes):
+        dim = 0 if 0 in sizes else max(sizes)
+        if any(i not in [-1, 0, 1, dim] and not np.isnan(i) for i in sizes):
             raise ValueError("operands could not be broadcast together with "
                              "shapes {0}".format(' '.join(map(str, shapes))))
         out.append(dim)
@@ -2644,10 +2687,10 @@ def broadcast_to(x, shape):
     chunks = (tuple((s,) for s in shape[:ndim_new]) +
               tuple(bd if old > 1 else (new,)
               for bd, old, new in zip(x.chunks, x.shape, shape[ndim_new:])))
-    dsk = dict(((name,) + (0,) * ndim_new + key[1:],
-                (chunk.broadcast_to, key, shape[:ndim_new] +
-                 tuple(bd[i] for i, bd in zip(key[1:], chunks[ndim_new:]))))
-               for key in core.flatten(x._keys()))
+    dsk = {(name,) + (0,) * ndim_new + key[1:]:
+           (chunk.broadcast_to, key, shape[:ndim_new] +
+            tuple(bd[i] for i, bd in zip(key[1:], chunks[ndim_new:])))
+           for key in core.flatten(x.__dask_keys__())}
     return Array(sharedict.merge((name, dsk), x.dask), name, chunks, dtype=x.dtype)
 
 
@@ -3191,10 +3234,10 @@ def to_npy_stack(dirname, x, axis=0):
         pickle.dump(meta, f)
 
     name = 'to-npy-stack-' + str(uuid.uuid1())
-    dsk = dict(((name, i), (np.save, os.path.join(dirname, '%d.npy' % i), key))
-               for i, key in enumerate(core.flatten(xx._keys())))
+    dsk = {(name, i): (np.save, os.path.join(dirname, '%d.npy' % i), key)
+           for i, key in enumerate(core.flatten(xx.__dask_keys__()))}
 
-    Array._get(sharedict.merge(dsk, xx.dask), list(dsk))
+    compute_as_if_collection(Array, sharedict.merge(dsk, xx.dask), list(dsk))
 
 
 def from_npy_stack(dirname, mmap_mode='r'):

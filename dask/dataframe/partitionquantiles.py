@@ -307,10 +307,18 @@ def process_val_weights(vals_and_weights, npartitions, dtype_info):
     aren't enough unique values in the column.  Increasing ``upsample``
     keyword argument in ``df.set_index`` may help.
     """
+    dtype, info = dtype_info
+
+    if not vals_and_weights:
+        try:
+            return np.array(None, dtype=dtype)
+        except Exception:
+            # dtype does not support None value so allow it to change
+            return np.array(None, dtype=np.float_)
+
     vals, weights = vals_and_weights
     vals = np.array(vals)
     weights = np.array(weights)
-    dtype, info = dtype_info
 
     # We want to create exactly `npartition` number of groups of `vals` that
     # are approximately the same weight and non-empty if possible.  We use a
@@ -431,7 +439,7 @@ def partition_quantiles(df, npartitions, upsample=1.0, random_state=None):
         random_state = hash(token) % np.iinfo(np.int32).max
     state_data = random_state_data(df.npartitions, random_state)
 
-    df_keys = df._keys()
+    df_keys = df.__dask_keys__()
 
     name0 = 're-quantiles-0-' + token
     dtype_dsk = {(name0, 0): (dtype_info, df_keys[0])}

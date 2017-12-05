@@ -1,9 +1,12 @@
 import logging
 
+import sys
+import os
+
 from ..util import properties
 from ..backend import KeyringBackend
 from ..errors import (InitError, PasswordDeleteError,
-    ExceptionRaisedContext)
+                      ExceptionRaisedContext)
 
 try:
     import secretstorage
@@ -13,9 +16,10 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+
 class Keyring(KeyringBackend):
     """Secret Service Keyring"""
-    appid = "python-keyring"
+    appid = os.path.basename(sys.argv[0]) or 'Python keyring library'
 
     @properties.ClassProperty
     @classmethod
@@ -41,14 +45,15 @@ class Keyring(KeyringBackend):
         bus = secretstorage.dbus_init()
         try:
             if hasattr(self, 'preferred_collection'):
-                collection = secretstorage.Collection(bus, self.preferred_collection)
+                collection = secretstorage.Collection(
+                    bus, self.preferred_collection)
             else:
                 collection = secretstorage.get_default_collection(bus)
         except exceptions.SecretStorageException as e:
             raise InitError("Failed to create the collection: %s." % e)
         if collection.is_locked():
             collection.unlock()
-            if collection.is_locked(): # User dismissed the prompt
+            if collection.is_locked():  # User dismissed the prompt
                 raise InitError("Failed to unlock the collection!")
         return collection
 
@@ -72,7 +77,7 @@ class Keyring(KeyringBackend):
             "application": self.appid,
             "service": service,
             "username": username
-            }
+        }
         label = "Password for '%s' on '%s'" % (username, service)
         collection.create_item(label, attributes, password, replace=True)
 

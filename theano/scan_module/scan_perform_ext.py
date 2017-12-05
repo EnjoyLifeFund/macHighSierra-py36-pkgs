@@ -12,7 +12,7 @@ import os
 import sys
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -66,7 +66,7 @@ except ImportError:
                 raise ImportError("no c compiler, can't compile cython code")
             _logger.info("Compiling C code for scan")
             dirname = 'scan_perform'
-            cfile = os.path.join(theano.__path__[0], 'scan_module',
+            cfile = os.path.join(theano.__path__[0], 'scan_module', 'c_code',
                                  'scan_perform.c')
             if not os.path.exists(cfile):
                 # This can happen in not normal case. We just
@@ -103,7 +103,7 @@ except ImportError:
                 # During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
                 preargs.remove('-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
             else:
-                numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+                numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
                 # Add add some macro to lower the number of edit
                 # needed to the c file.
                 if bool(numpy_ver >= [1, 7]):

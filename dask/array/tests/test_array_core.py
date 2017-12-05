@@ -18,7 +18,7 @@ from toolz.curried import identity
 
 import dask
 import dask.array as da
-from dask.base import tokenize
+from dask.base import tokenize, compute_as_if_collection
 from dask.delayed import delayed
 from dask.local import get_sync
 from dask.utils import ignoring, tmpfile, tmpdir
@@ -170,8 +170,8 @@ def test_Array():
 
     assert a.numblocks == (10, 10)
 
-    assert a._keys() == [[('x', i, j) for j in range(10)]
-                         for i in range(10)]
+    assert a.__dask_keys__() == [[('x', i, j) for j in range(10)]
+                                 for i in range(10)]
 
     assert a.chunks == ((100,) * 10, (100,) * 10)
 
@@ -192,23 +192,23 @@ def test_numblocks_suppoorts_singleton_block_dims():
     dsk = merge({name: 'some-array'}, getem(name, shape=shape, chunks=chunks))
     a = Array(dsk, name, chunks, shape=shape, dtype='f8')
 
-    assert set(concat(a._keys())) == set([('x', i, 0) for i in range(100 // 10)])
+    assert set(concat(a.__dask_keys__())) == {('x', i, 0) for i in range(10)}
 
 
 def test_keys():
     dsk = dict((('x', i, j), ()) for i in range(5) for j in range(6))
     dx = Array(dsk, 'x', chunks=(10, 10), shape=(50, 60), dtype='f8')
-    assert dx._keys() == [[(dx.name, i, j) for j in range(6)]
-                          for i in range(5)]
+    assert dx.__dask_keys__() == [[(dx.name, i, j) for j in range(6)]
+                                  for i in range(5)]
     # Cache works
-    assert dx._keys() is dx._keys()
+    assert dx.__dask_keys__() is dx.__dask_keys__()
     # Test mutating names clears key cache
     dx.dask = {('y', i, j): () for i in range(5) for j in range(6)}
     dx.name = 'y'
-    assert dx._keys() == [[(dx.name, i, j) for j in range(6)]
-                          for i in range(5)]
+    assert dx.__dask_keys__() == [[(dx.name, i, j) for j in range(6)]
+                                  for i in range(5)]
     d = Array({}, 'x', (), shape=(), dtype='f8')
-    assert d._keys() == [('x',)]
+    assert d.__dask_keys__() == [('x',)]
 
 
 def test_Array_computation():
@@ -265,7 +265,8 @@ def test_short_stack():
     d = da.from_array(x, chunks=(1,))
     s = da.stack([d])
     assert s.shape == (1, 1)
-    assert Array._get(s.dask, s._keys())[0][0].shape == (1, 1)
+    chunks = compute_as_if_collection(Array, s.dask, s.__dask_keys__())
+    assert chunks[0][0].shape == (1, 1)
 
 
 def test_stack_scalars():
@@ -406,6 +407,7 @@ def test_binops():
 
 
 def test_broadcast_shapes():
+    assert (0, 5) == broadcast_shapes((0, 1), (1, 5))
     assert (3, 4, 5) == broadcast_shapes((3, 4, 5), (4, 1), ())
     assert (3, 4) == broadcast_shapes((3, 1), (1, 4), (4,))
     assert (5, 6, 7, 3, 4) == broadcast_shapes((3, 1), (), (5, 6, 7, 1, 4))
@@ -416,7 +418,7 @@ def test_broadcast_shapes():
 def test_elemwise_on_scalars():
     x = np.arange(10, dtype=np.int64)
     a = from_array(x, chunks=(5,))
-    assert len(a._keys()) == 2
+    assert len(a.__dask_keys__()) == 2
     assert_eq(a.sum()**2, x.sum()**2)
 
     y = np.arange(10, dtype=np.int32)
@@ -556,24 +558,26 @@ def test_norm():
     a = a + (a.max() - a) * 1j
     b = from_array(a, chunks=(5, 5))
 
-    assert_eq(b.vnorm(), np.linalg.norm(a))
-    assert_eq(b.vnorm(ord=1), np.linalg.norm(a.flatten(), ord=1))
-    assert_eq(b.vnorm(ord=4, axis=0), np.linalg.norm(a, ord=4, axis=0))
-    assert b.vnorm(ord=4, axis=0, keepdims=True).ndim == b.ndim
-    split_every = {0: 3, 1: 3}
-    assert_eq(b.vnorm(ord=1, axis=0, split_every=split_every),
-              np.linalg.norm(a, ord=1, axis=0))
-    assert_eq(b.vnorm(ord=np.inf, axis=0, split_every=split_every),
-              np.linalg.norm(a, ord=np.inf, axis=0))
-    assert_eq(b.vnorm(ord=np.inf, split_every=split_every),
-              np.linalg.norm(a.flatten(), ord=np.inf))
+    # TODO: Deprecated method, remove test when method removed
+    with pytest.warns(UserWarning):
+        assert_eq(b.vnorm(), np.linalg.norm(a))
+        assert_eq(b.vnorm(ord=1), np.linalg.norm(a.flatten(), ord=1))
+        assert_eq(b.vnorm(ord=4, axis=0), np.linalg.norm(a, ord=4, axis=0))
+        assert b.vnorm(ord=4, axis=0, keepdims=True).ndim == b.ndim
+        split_every = {0: 3, 1: 3}
+        assert_eq(b.vnorm(ord=1, axis=0, split_every=split_every),
+                  np.linalg.norm(a, ord=1, axis=0))
+        assert_eq(b.vnorm(ord=np.inf, axis=0, split_every=split_every),
+                  np.linalg.norm(a, ord=np.inf, axis=0))
+        assert_eq(b.vnorm(ord=np.inf, split_every=split_every),
+                  np.linalg.norm(a.flatten(), ord=np.inf))
 
 
 def test_broadcast_to():
     x = np.random.randint(10, size=(5, 1, 6))
     a = from_array(x, chunks=(3, 1, 3))
 
-    for shape in [a.shape, (5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
+    for shape in [a.shape, (5, 0, 6), (5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
         xb = chunk.broadcast_to(x, shape)
         ab = broadcast_to(a, shape)
 
@@ -589,7 +593,7 @@ def test_broadcast_to():
 def test_broadcast_to_array():
     x = np.random.randint(10, size=(5, 1, 6))
 
-    for shape in [(5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
+    for shape in [(5, 0, 6), (5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
         a = np.broadcast_to(x, shape)
         d = broadcast_to(x, shape)
 
@@ -599,11 +603,33 @@ def test_broadcast_to_array():
 def test_broadcast_to_scalar():
     x = 5
 
-    for shape in [tuple(), (2, 3), (5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
+    for shape in [tuple(), (0,), (2, 3), (5, 4, 6), (2, 5, 1, 6), (3, 4, 5, 4, 6)]:
         a = np.broadcast_to(x, shape)
         d = broadcast_to(x, shape)
 
         assert_eq(a, d)
+
+
+@pytest.mark.parametrize('u_shape, v_shape', [
+    [tuple(), (2, 3)],
+    [(1,), (2, 3)],
+    [(1, 1), (2, 3)],
+    [(0, 3), (1, 3)],
+    [(2, 0), (2, 1)],
+    [(1, 0), (2, 1)],
+    [(0, 1), (1, 3)],
+])
+def test_broadcast_operator(u_shape, v_shape):
+    u = np.random.random(u_shape)
+    v = np.random.random(v_shape)
+
+    d_u = from_array(u, chunks=1)
+    d_v = from_array(v, chunks=1)
+
+    w = u * v
+    d_w = d_u * d_v
+
+    assert_eq(w, d_w)
 
 
 @pytest.mark.parametrize('original_shape,new_shape,chunks', [
@@ -1303,9 +1329,9 @@ def test_optimize():
     x = np.arange(5).astype('f4')
     a = da.from_array(x, chunks=(2,))
     expr = a[1:4] + 1
-    result = optimize(expr.dask, expr._keys())
+    result = optimize(expr.dask, expr.__dask_keys__())
     assert isinstance(result, dict)
-    assert all(key in result for key in expr._keys())
+    assert all(key in result for key in expr.__dask_keys__())
 
 
 def test_slicing_with_non_ndarrays():
@@ -1383,10 +1409,34 @@ def test_from_array_with_lock():
     assert_eq(e + f, x + x)
 
 
+class MyArray(object):
+    def __init__(self, x):
+        self.x = x
+        self.dtype = x.dtype
+        self.shape = x.shape
+
+    def __getitem__(self, i):
+        return self.x[i]
+
+
+def test_from_array_tasks_always_call_getter():
+    x1 = np.arange(25).reshape((5, 5))
+    x2 = np.array([[1]])
+    x3 = np.array(1)[()]
+
+    dx1a = da.from_array(MyArray(x1), chunks=(5, 5), asarray=False)
+    dx1b = da.from_array(MyArray(x1), chunks=x1.shape, asarray=False)
+    dx2 = da.from_array(MyArray(x2), chunks=1, asarray=False)
+    dx3 = da.from_array(MyArray(x3), chunks=1, asarray=False)
+
+    for res, sol in [(dx1a, x1), (dx1b, x1), (dx2, x2), (dx3, x3)]:
+        assert_eq(res, sol)
+
+
 def test_from_array_no_asarray():
 
     def assert_chunks_are_of_type(x, cls):
-        chunks = x._get(x.dask, x._keys())
+        chunks = compute_as_if_collection(Array, x.dask, x.__dask_keys__())
         for c in concat(chunks):
             assert type(c) is cls
 
@@ -1443,7 +1493,8 @@ def test_asanyarray():
     x = np.matrix([1, 2, 3])
     dx = da.asanyarray(x)
     assert dx.numblocks == (1, 1)
-    assert isinstance(dx._get(dx.dask, dx._keys())[0][0], np.matrix)
+    chunks = compute_as_if_collection(Array, dx.dask, dx.__dask_keys__())
+    assert isinstance(chunks[0][0], np.matrix)
     assert da.asanyarray(dx) is dx
 
 
@@ -1763,9 +1814,8 @@ def test_view():
 def test_view_fortran():
     x = np.asfortranarray(np.arange(64).reshape((8, 8)))
     d = da.from_array(x, chunks=(2, 3))
-    # TODO: DeprecationWarning: Changing the shape of non-C contiguous array by
-    assert_eq(x.view('i4'), d.view('i4', order='F'))
-    assert_eq(x.view('i2'), d.view('i2', order='F'))
+    assert_eq(x.T.view('i4').T, d.view('i4', order='F'))
+    assert_eq(x.T.view('i2').T, d.view('i2', order='F'))
 
 
 def test_h5py_tokenize():
@@ -2247,11 +2297,12 @@ def test_optimize_fuse_keys():
     y = x + 1
     z = y + 1
 
-    dsk = z._optimize(z.dask, z._keys())
+    dsk = z.__dask_optimize__(z.dask, z.__dask_keys__())
     assert not set(y.dask) & set(dsk)
 
-    dsk = z._optimize(z.dask, z._keys(), fuse_keys=y._keys())
-    assert all(k in dsk for k in y._keys())
+    dsk = z.__dask_optimize__(z.dask, z.__dask_keys__(),
+                              fuse_keys=y.__dask_keys__())
+    assert all(k in dsk for k in y.__dask_keys__())
 
 
 def test_concatenate_stack_dont_warn():
@@ -2477,23 +2528,21 @@ def test_broadcast_against_zero_shape():
               np.ones((5, 5))[:, :0] + 0.1)
 
 
-def test_fast_from_array():
-    x = np.zeros(10000000)
-    start = time.time()
-    da.from_array(x, chunks=x.shape[0] / 10, name='x')
-    end = time.time()
-    assert end - start < 0.100
-
-
-def test_random_from_array():
-    x = np.zeros(500000000)
-    start = time.time()
-    y = da.from_array(x, chunks=x.shape[0] / 10, name=False)
-    end = time.time()
-    assert end - start < 0.400
-
-    y2 = da.from_array(x, chunks=x.shape[0] / 10, name=False)
-    assert y.name != y2.name
+def test_from_array_name():
+    x = np.array([1, 2, 3, 4, 5])
+    chunks = x.shape
+    # Default is tokenize the array
+    dx = da.from_array(x, chunks=chunks)
+    hashed_name = dx.name
+    assert da.from_array(x, chunks=chunks).name == hashed_name
+    # Specify name directly
+    assert da.from_array(x, chunks=chunks, name='x').name == 'x'
+    # False gives a random name
+    dx2 = da.from_array(x, chunks=chunks, name=False)
+    dx3 = da.from_array(x, chunks=chunks, name=False)
+    assert dx2.name != hashed_name
+    assert dx3.name != hashed_name
+    assert dx2.name != dx3.name
 
 
 def test_concatenate_errs():

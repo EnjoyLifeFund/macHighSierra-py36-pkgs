@@ -4,7 +4,7 @@ import copy
 import traceback as tb
 import warnings
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 
@@ -15,7 +15,7 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-from theano.configparser import config
+from theano import config
 
 
 def equal_slices(s1, s2):
@@ -460,23 +460,16 @@ class _tensor_py_operators(object):
     # SLICING/INDEXING
     def __getitem__(self, args):
 
-        def check_bool(args_el):
-            try:
-                if (isinstance(args_el, (numpy.bool_, bool)) or
-                        args_el.dtype == 'bool'):
-                    raise TypeError('TensorType does not support boolean '
-                                    'mask for indexing such as tensor[x==0]. '
-                                    'Instead you can use non_zeros() such as '
-                                    'tensor[(x == 0).nonzeros()]. ')
-            except AttributeError:
-                pass
-
+        def includes_bool(args_el):
+            if (isinstance(args_el, (np.bool_, bool)) or
+                    (hasattr(args_el, 'dtype') and args_el.dtype == 'bool')):
+                return True
             if (not isinstance(args_el, theano.tensor.Variable) and
                     isinstance(args_el, collections.Iterable)):
                 for el in args_el:
-                    check_bool(el)
-
-        check_bool(args)
+                    if includes_bool(el):
+                        return True
+            return False
 
         if (isinstance(args, list) and
                 any([isinstance(a, slice) for a in args])):
@@ -484,38 +477,70 @@ class _tensor_py_operators(object):
         elif not isinstance(args, tuple):
             args = args,
 
+        # Count the dimensions, check for bools and find ellipses.
+        ellipses = []
+        index_dim_count = 0
+        for i, arg in enumerate(args):
+            if arg is np.newaxis:
+                # no increase in index_dim_count
+                pass
+            elif arg is Ellipsis:
+                # no increase in index_dim_count
+                ellipses.append(i)
+            elif (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
+                    hasattr(arg, 'dtype') and arg.dtype == 'bool'):
+                index_dim_count += arg.ndim
+            else:
+                # Python arrays can contain a mixture of bools and integers,
+                # which requires complex rules to handle all special cases.
+                # These rules differ slightly between NumPy versions.
+                # Since earlier versions of Theano did not support any boolean
+                # indexing, it is safe to throw an error if we encounter
+                # any of these difficult cases.
+                if includes_bool(arg):
+                    raise TypeError('TensorType does not support Python bools '
+                                    'for indexing, such as tensor[[True, False]]. '
+                                    'To use a boolean mask, convert the mask to '
+                                    'a NumPy array first, e.g., '
+                                    'tensor[numpy.array([True, False])].')
+                index_dim_count += 1
+
+        # Check if the number of dimensions isn't too large.
+        if self.ndim < index_dim_count:
+            raise IndexError('too many indices for array')
+
         # Convert an Ellipsis if provided into an appropriate number of
         # slice(None).
-        ellipses = [i
-                    for i, index in enumerate(args)
-                    if index is Ellipsis]
         if len(ellipses) > 1:
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
         elif len(ellipses) == 1:
-            new_axes = sum(1
-                           for index in args
-                           if index is numpy.newaxis)  # numpy.newaxis is None
             ellipsis_at = ellipses[0]
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
-                [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
+                [slice(None)] * (self.ndim - index_dim_count))
+
+        def is_empty_array(val):
+            return ((isinstance(val, (tuple, list)) and len(val) == 0) or
+                    (isinstance(val, np.ndarray) and val.size == 0))
 
         # Force input to be int64 datatype if input is an empty list or tuple
         # Else leave it as is if it is a real number
-        args = tuple([numpy.array(inp, dtype=numpy.int64)
-                      if(inp == [] or inp == ()) else inp for inp in args])
+        args = tuple([np.array(inp, dtype=np.int64)
+                      if(is_empty_array(inp)) else inp for inp in args])
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
-        # AdvancedIndexingError, advanced indexing
+        # AdvancedIndexingError, advanced indexing, or
+        # AdvancedBooleanIndexingError, advanced indexing with boolean masks
         advanced = False
+        advanced_boolean = False
         axis = None
         for i, arg in enumerate(args):
             try:
-                if arg is not numpy.newaxis:
+                if arg is not np.newaxis:
                     theano.tensor.subtensor.Subtensor.convert(arg)
             except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:
@@ -524,22 +549,29 @@ class _tensor_py_operators(object):
                 else:
                     advanced = True
                     axis = i
+            except theano.tensor.subtensor.AdvancedBooleanIndexingError:
+                advanced = False
+                advanced_boolean = True
+                break
 
-        if advanced:
+        if advanced_boolean:
+            return theano.tensor.subtensor.advanced_boolean_subtensor(self, *args)
+        elif advanced:
             if (axis is not None and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[:axis]) and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[axis + 1:]) and
+                (not hasattr(args[axis], 'dtype') or args[axis].dtype != 'bool') and
                 isinstance(args[axis],
-                           (numpy.ndarray, list,
+                           (np.ndarray, list,
                             TensorVariable, TensorConstant,
                             theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(args[axis], axis)
             else:
                 return theano.tensor.subtensor.advanced_subtensor(self, *args)
         else:
-            if numpy.newaxis in args:
+            if np.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
                 # broadcastable dimension, which theano traditionally did with
                 # the dimshuffle op.  The following code converts numpy-style
@@ -550,7 +582,7 @@ class _tensor_py_operators(object):
                 pattern = []
                 new_args = []
                 for arg in args:
-                    if arg == numpy.newaxis:
+                    if arg == np.newaxis:
                         pattern.append('x')
                         new_args.append(slice(None, None, None))
                     else:
@@ -642,7 +674,7 @@ class _tensor_py_operators(object):
     def norm(self, L, axis=None, keepdims=False):
         if L == 0:
             raise NotImplementedError()
-        if numpy.isinf(L):
+        if np.isinf(L):
             raise NotImplementedError()
         # optimizations will/should catch cases like L=1, L=2
         y = theano.tensor.basic.pow(
@@ -762,14 +794,13 @@ class _tensor_py_operators(object):
         """Fill inputted tensor with the assigned value."""
         return theano.tensor.basic.fill(self, value)
 
-    def choose(self, a, choices, out=None, mode='raise'):
+    def choose(self, choices, out=None, mode='raise'):
         """
         Construct an array from an index array and a set of arrays to choose
         from.
 
         """
-        return theano.tensor.basic.choose(self, a, choices, out=None,
-                                          mode='raise')
+        return theano.tensor.basic.choose(self, choices, out=None, mode='raise')
 
     def squeeze(self):
         """
@@ -862,7 +893,10 @@ class TensorConstantSignature(tuple):
             # (note that if there are NaN values in d1, this will return
             # False, which is why we do not bother with testing `other.has_nan`
             # here).
-            return (self.sum == other.sum) and numpy.all(d0 == d1)
+            return (self.sum == other.sum) and np.all(d0 == d1)
+
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         t, d = self
@@ -880,25 +914,25 @@ class TensorConstantSignature(tuple):
             self._sum = self.no_nan.sum()
             # The following 2 lines are needede as in Python 3.3 with NumPy
             # 1.7.1, numpy.ndarray and numpy.memmap aren't hashable.
-            if type(self._sum) is numpy.memmap:
-                self._sum = numpy.asarray(self._sum).item()
+            if type(self._sum) is np.memmap:
+                self._sum = np.asarray(self._sum).item()
             if self.has_nan and self.no_nan.mask.all():
                 # In this case the sum is not properly computed by numpy.
                 self._sum = 0
-            if numpy.isinf(self._sum) or numpy.isnan(self._sum):
+            if np.isinf(self._sum) or np.isnan(self._sum):
                 # NaN may happen when there are both -inf and +inf values.
                 if self.has_nan:
                     # Filter both NaN and Inf values.
-                    mask = self.no_nan.mask + numpy.isinf(self[1])
+                    mask = self.no_nan.mask + np.isinf(self[1])
                 else:
                     # Filter only Inf values.
-                    mask = numpy.isinf(self[1])
+                    mask = np.isinf(self[1])
                 if mask.all():
                     self._sum = 0
                 else:
-                    self._sum = numpy.ma.masked_array(self[1], mask).sum()
+                    self._sum = np.ma.masked_array(self[1], mask).sum()
                 # At this point there should be no more NaN.
-                assert not numpy.isnan(self._sum)
+                assert not np.isnan(self._sum)
         return self._sum
     sum = property(_get_sum)
 
@@ -906,9 +940,9 @@ class TensorConstantSignature(tuple):
         try:
             return self._no_nan
         except AttributeError:
-            nan_mask = numpy.isnan(self[1])
+            nan_mask = np.isnan(self[1])
             if nan_mask.any():
-                self._no_nan = numpy.ma.masked_array(self[1], nan_mask)
+                self._no_nan = np.ma.masked_array(self[1], nan_mask)
                 self.has_nan = True
             else:
                 self._no_nan = self[1]
@@ -926,7 +960,7 @@ class TensorConstant(_tensor_py_operators, Constant):
     def __init__(self, type, data, name=None):
         Constant.__init__(self, type, data, name)
         self.tag.unique_value = None
-        if isinstance(data, numpy.ndarray) and data.ndim > 0:
+        if isinstance(data, np.ndarray) and data.ndim > 0:
             flat_data = data.ravel()
             if flat_data.shape[0]:
                 if (flat_data == flat_data[0]).all():
@@ -949,7 +983,7 @@ class TensorConstant(_tensor_py_operators, Constant):
     def equals(self, other):
         # Override Contant.equals to allow to compare with
         # numpy.ndarray, and python type.
-        if isinstance(other, (numpy.ndarray, int, float)):
+        if isinstance(other, (np.ndarray, int, float)):
             # Make a TensorConstant to be able to compare
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and

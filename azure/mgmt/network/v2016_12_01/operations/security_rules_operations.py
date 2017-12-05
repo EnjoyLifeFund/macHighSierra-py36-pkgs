@@ -27,6 +27,8 @@ class SecurityRulesOperations(object):
     :ivar api_version: Client API version. Constant value: "2016-12-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -50,14 +52,10 @@ class SecurityRulesOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -100,7 +98,7 @@ class SecurityRulesOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [204, 202, 200]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -136,13 +134,9 @@ class SecurityRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`SecurityRule
-         <azure.mgmt.network.v2016_12_01.models.SecurityRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`SecurityRule
-         <azure.mgmt.network.v2016_12_01.models.SecurityRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: SecurityRule or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2016_12_01.models.SecurityRule or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -203,20 +197,16 @@ class SecurityRulesOperations(object):
         :type security_rule_name: str
         :param security_rule_parameters: Parameters supplied to the create or
          update network security rule operation.
-        :type security_rule_parameters: :class:`SecurityRule
-         <azure.mgmt.network.v2016_12_01.models.SecurityRule>`
+        :type security_rule_parameters:
+         ~azure.mgmt.network.v2016_12_01.models.SecurityRule
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`SecurityRule
-         <azure.mgmt.network.v2016_12_01.models.SecurityRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns SecurityRule
+         or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2016_12_01.models.SecurityRule]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -306,10 +296,9 @@ class SecurityRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`SecurityRule
-         <azure.mgmt.network.v2016_12_01.models.SecurityRule>`
-        :rtype: :class:`SecurityRulePaged
-         <azure.mgmt.network.v2016_12_01.models.SecurityRulePaged>`
+        :return: An iterator like instance of SecurityRule
+        :rtype:
+         ~azure.mgmt.network.v2016_12_01.models.SecurityRulePaged[~azure.mgmt.network.v2016_12_01.models.SecurityRule]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

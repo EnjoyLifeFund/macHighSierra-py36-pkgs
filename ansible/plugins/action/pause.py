@@ -124,21 +124,35 @@ class ActionModule(ActionBase):
 
             # save the attributes on the existing (duped) stdin so
             # that we can restore them later after we set raw mode
-            if PY3:
-                stdin = self._connection._new_stdin.buffer
-            else:
-                stdin = self._connection._new_stdin
             fd = None
             try:
+                if PY3:
+                    stdin = self._connection._new_stdin.buffer
+                else:
+                    stdin = self._connection._new_stdin
                 fd = stdin.fileno()
             except (ValueError, AttributeError):
                 # ValueError: someone is using a closed file descriptor as stdin
                 # AttributeError: someone is using a null file descriptor as stdin on windoez
-                pass
+                stdin = None
             if fd is not None:
                 if isatty(fd):
                     old_settings = termios.tcgetattr(fd)
                     tty.setraw(fd)
+
+                    # Enable a few things turned off by tty.setraw()
+                    # ICANON -> Allows characters to be deleted and hides things like ^M.
+                    # ICRNL -> Makes the return key work when ICANON is enabled, otherwise
+                    #          you get stuck at the prompt with no way to get out of it.
+                    # ECHO -> Echos input back to stdout
+                    #
+                    # See man termios for details on these flags
+                    if not seconds:
+                        new_settings = termios.tcgetattr(fd)
+                        new_settings[0] = new_settings[0] | termios.ICRNL
+                        new_settings[3] = new_settings[3] | (termios.ICANON | termios.ECHO)
+                        termios.tcsetattr(fd, termios.TCSANOW, new_settings)
+                        termios.tcsetattr(fd, termios.TCSANOW, new_settings)
 
                     # flush the buffer to make sure no previous key presses
                     # are read in below

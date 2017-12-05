@@ -72,15 +72,19 @@ def preprocess_vars(a):
     return data
 
 
-def strip_internal_keys(dirty):
+def strip_internal_keys(dirty, exceptions=None):
     '''
     All keys stating with _ansible_ are internal, so create a copy of the 'dirty' dict
     and remove them from the clean one before returning it
     '''
+
+    if exceptions is None:
+        exceptions = ()
     clean = dirty.copy()
     for k in dirty.keys():
         if isinstance(k, string_types) and k.startswith('_ansible_'):
-            del clean[k]
+            if k not in exceptions:
+                del clean[k]
         elif isinstance(dirty[k], dict):
             clean[k] = strip_internal_keys(dirty[k])
     return clean
@@ -228,22 +232,23 @@ class VariableManager:
             include_delegate_to=include_delegate_to,
         )
 
+        # default for all cases
+        basedirs = [self._loader.get_basedir()]
+
         if play:
             # first we compile any vars specified in defaults/main.yml
             # for all roles within the specified play
             for role in play.get_roles():
                 all_vars = combine_vars(all_vars, role.get_default_vars())
 
-        basedirs = []
         if task:
             # set basedirs
             if C.PLAYBOOK_VARS_ROOT == 'all':  # should be default
                 basedirs = task.get_search_path()
-            elif C.PLAYBOOK_VARS_ROOT == 'top':  # only option pre 2.3
-                basedirs = [self._loader.get_basedir()]
             elif C.PLAYBOOK_VARS_ROOT in ('bottom', 'playbook_dir'):  # only option in 2.4.0
                 basedirs = [task.get_search_path()[0]]
-            else:
+            elif C.PLAYBOOK_VARS_ROOT != 'top':
+                # preserves default basedirs, only option pre 2.3
                 raise AnsibleError('Unkown playbook vars logic: %s' % C.PLAYBOOK_VARS_ROOT)
 
             # if we have a task in this context, and that task has a role, make
@@ -529,10 +534,11 @@ class VariableManager:
             items = [None]
 
         delegated_host_vars = dict()
+        item_var = getattr(task.loop_control, 'loop_var', 'item')
         for item in items:
             # update the variables with the item value for templating, in case we need it
             if item is not None:
-                vars_copy['item'] = item
+                vars_copy[item_var] = item
 
             templar.set_available_variables(vars_copy)
             delegated_host_name = templar.template(task.delegate_to, fail_on_undefined=False)

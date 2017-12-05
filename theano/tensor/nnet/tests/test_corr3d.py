@@ -3,13 +3,16 @@ from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_equals
-import numpy
+from parameterized import parameterized
+
+import numpy as np
 from six import integer_types
 
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr3d, conv
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv3d_noOptim
 
 
 class TestCorr3D(utt.InferShapeTester):
@@ -67,17 +70,17 @@ class TestCorr3D(utt.InferShapeTester):
         theano_corr = theano.function([input, filters], output, mode=self.mode)
 
         # initialize input and compute result
-        image_data = numpy.random.random(N_image_shape).astype(self.dtype)
-        filter_data = numpy.random.random(N_filter_shape).astype(self.dtype)
+        image_data = np.random.random(N_image_shape).astype(self.dtype)
+        filter_data = np.random.random(N_filter_shape).astype(self.dtype)
         image_data /= 10
         filter_data /= 10
         if non_contiguous:
-            image_data = numpy.transpose(image_data, axes=(0, 1, 4, 3, 2))
+            image_data = np.transpose(image_data, axes=(0, 1, 4, 3, 2))
             image_data = image_data.copy()
-            image_data = numpy.transpose(image_data, axes=(0, 1, 4, 3, 2))
-            filter_data = numpy.transpose(filter_data, axes=(0, 1, 4, 3, 2))
+            image_data = np.transpose(image_data, axes=(0, 1, 4, 3, 2))
+            filter_data = np.transpose(filter_data, axes=(0, 1, 4, 3, 2))
             filter_data = filter_data.copy()
-            filter_data = numpy.transpose(filter_data, axes=(0, 1, 4, 3, 2))
+            filter_data = np.transpose(filter_data, axes=(0, 1, 4, 3, 2))
             assert not image_data.flags['CONTIGUOUS']
             assert not filter_data.flags['CONTIGUOUS']
 
@@ -85,39 +88,39 @@ class TestCorr3D(utt.InferShapeTester):
 
         # REFERENCE IMPLEMENTATION
         # Testing correlation, not convolution. Reverse filters.
-        filter_data_corr = numpy.array(filter_data[:, :, ::-1, ::-1, ::-1],
-                                       copy=True,
-                                       order='C')
+        filter_data_corr = np.array(filter_data[:, :, ::-1, ::-1, ::-1],
+                                    copy=True,
+                                    order='C')
         orig_image_data = image_data
-        img_shape3d = numpy.array(N_image_shape[-3:])
-        fil_shape3d = numpy.array(N_filter_shape[-3:])
-        dil_shape3d = numpy.array(filter_dilation)
+        img_shape3d = np.array(N_image_shape[-3:])
+        fil_shape3d = np.array(N_filter_shape[-3:])
+        dil_shape3d = np.array(filter_dilation)
         dil_fil_shape3d = (fil_shape3d - 1) * dil_shape3d + 1
-        subsample3d = numpy.array(subsample)
+        subsample3d = np.array(subsample)
         if border_mode == 'full':
             padHWD = (dil_fil_shape3d - 1)
         elif border_mode == 'valid':
-            padHWD = numpy.array([0, 0, 0])
+            padHWD = np.array([0, 0, 0])
         elif border_mode == 'half':
-            padHWD = numpy.floor(dil_fil_shape3d / 2).astype('int32')
+            padHWD = np.floor(dil_fil_shape3d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
-            padHWD = numpy.array(border_mode)
+            padHWD = np.array(border_mode)
         elif isinstance(border_mode, integer_types):
-            padHWD = numpy.array([border_mode, border_mode, border_mode])
+            padHWD = np.array([border_mode, border_mode, border_mode])
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
-        out_shape3d = numpy.floor((img_shape3d + 2 * (padHWD) - dil_fil_shape3d) / subsample3d) + 1
+        out_shape3d = np.floor((img_shape3d + 2 * (padHWD) - dil_fil_shape3d) / subsample3d) + 1
         # avoid numpy deprecation
         out_shape3d = out_shape3d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape3d)
-        ref_output = numpy.zeros(out_shape)
+        ref_output = np.zeros(out_shape)
 
         # loop over output feature maps
         ref_output.fill(0)
-        image_data2 = numpy.zeros((N_image_shape[0], N_image_shape[1],
-                                   N_image_shape[2] + 2 * padHWD[0],
-                                   N_image_shape[3] + 2 * padHWD[1],
-                                   N_image_shape[4] + 2 * padHWD[2]))
+        image_data2 = np.zeros((N_image_shape[0], N_image_shape[1],
+                                N_image_shape[2] + 2 * padHWD[0],
+                                N_image_shape[3] + 2 * padHWD[1],
+                                N_image_shape[4] + 2 * padHWD[2]))
         image_data2[:, :,
                     padHWD[0]:padHWD[0] + N_image_shape[2],
                     padHWD[1]:padHWD[1] + N_image_shape[3],
@@ -151,11 +154,9 @@ class TestCorr3D(utt.InferShapeTester):
 
     @attr('slow')
     def test_basic(self):
-        """
-        Tests that basic correlations work for odd and even
-        dimensions of image and filter shapes, as well as rectangular
-        images and filters.
-        """
+        # Tests that basic correlations work for odd and even
+        # dimensions of image and filter shapes, as well as rectangular
+        # images and filters.
         border_modes = ['valid', 'full', 'half', (1, 1, 1),
                         (2, 1, 1), (1, 2, 1), (1, 1, 2),
                         (3, 3, 3), 1]
@@ -180,9 +181,7 @@ class TestCorr3D(utt.InferShapeTester):
 
     @attr('slow')
     def test_subsample(self):
-        """
-        Tests correlation where subsampling != (1,1,1)
-        """
+        # Tests correlation where subsampling != (1,1,1)
         self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', subsample=(2, 2, 2))
         self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', subsample=(2, 1, 1))
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 'valid', subsample=(3, 3, 3))
@@ -201,61 +200,53 @@ class TestCorr3D(utt.InferShapeTester):
 
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3))
 
-    def test_filter_dilation(self):
-        """
-        Tests correlation where filter dilation != (1,1,1)
-        """
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', filter_dilation=(2, 2, 2))
-        self.validate((3, 2, 14, 10, 10), (2, 2, 2, 3, 3), 'valid', filter_dilation=(3, 1, 1))
-        self.validate((1, 1, 14, 14, 14), (1, 1, 3, 3, 3), 'valid', filter_dilation=(2, 3, 3))
+    # Tests correlation where filter dilation != (1,1,1)
+    @parameterized.expand([
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', (2, 2, 2)),
+        ((3, 2, 14, 10, 10), (2, 2, 2, 3, 3), 'valid', (3, 1, 1)),
+        ((1, 1, 14, 14, 14), (1, 1, 3, 3, 3), 'valid', (2, 3, 3)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'full', (2, 2, 2)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'full', (3, 1, 1)),
+        ((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 'full', (2, 3, 3)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'half', (2, 2, 2)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'half', (3, 1, 1)),
+        ((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 'half', (2, 3, 3)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), (1, 1, 1), (2, 2, 2)),
+        ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), (2, 1, 1), (2, 1, 1)),
+        ((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), (1, 2, 1), (1, 2, 1)),
+        ((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), (1, 1, 2), (1, 1, 2))])
+    def test_filter_dilation(self, image_shape, filter_shape, border_mode, filter_dilation):
+        self.validate(image_shape, filter_shape, border_mode, filter_dilation=filter_dilation)
 
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'full', filter_dilation=(2, 2, 2))
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'full', filter_dilation=(3, 1, 1))
-        self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 'full', filter_dilation=(2, 3, 3))
-
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'half', filter_dilation=(2, 2, 2))
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'half', filter_dilation=(3, 1, 1))
-        self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 'half', filter_dilation=(2, 3, 3))
-
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), (1, 1, 1), filter_dilation=(2, 2, 2))
-        self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), (2, 1, 1), filter_dilation=(2, 1, 1))
-        self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), (1, 2, 1), filter_dilation=(1, 2, 1))
-        self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), (1, 1, 2), filter_dilation=(1, 1, 2))
-
+    def test_filter_dilation_subsample(self):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3), filter_dilation=(2, 2, 2))
 
-    @attr('slow')
-    def test_shape_Constant_tensor(self):
-        """
-        Tests correlation where the {image,filter}_shape is a Constant tensor.
-        """
+    @parameterized.expand([('valid',), ('full',), ('half',), ((1, 1, 1),),
+                           ((2, 1, 1),), ((1, 2, 1),), ((1, 1, 2),),
+                           ((3, 3, 3),), (1,)])
+#    @attr('slow')
+    def test_shape_Constant_tensor(self, border_mode):
+        # Tests correlation where the {image,filter}_shape is a Constant tensor
         as_t = T.as_tensor_variable
-        border_modes = ['valid', 'full', 'half', (1, 1, 1), (2, 1, 1),
-                        (1, 2, 1), (1, 1, 2), (3, 3, 3), 1]
-
-        for border_mode in border_modes:
-            self.validate((as_t(3), as_t(2), as_t(7), as_t(5), as_t(5)),
-                          (5, 2, 2, 3, 3), border_mode)
-            self.validate(as_t([3, 2, 7, 5, 5]), (5, 2, 2, 3, 3), border_mode)
-            self.validate(as_t((3, 2, 7, 5, 5)), (5, 2, 2, 3, 3), border_mode)
-            self.validate((3, 2, 7, 5, 5), (as_t(5), as_t(2), as_t(2),
-                          as_t(3), as_t(3)), 'valid')
-            self.validate((3, 2, 7, 5, 5), as_t([5, 2, 2, 3, 3]), border_mode)
-            self.validate(as_t([3, 2, 7, 5, 5]), as_t([5, 2, 2, 3, 3]), border_mode)
+        self.validate((as_t(3), as_t(2), as_t(7), as_t(5), as_t(5)),
+                      (5, 2, 2, 3, 3), border_mode)
+        self.validate(as_t([3, 2, 7, 5, 5]), (5, 2, 2, 3, 3), border_mode)
+        self.validate(as_t((3, 2, 7, 5, 5)), (5, 2, 2, 3, 3), border_mode)
+        self.validate((3, 2, 7, 5, 5), (as_t(5), as_t(2), as_t(2),
+                                        as_t(3), as_t(3)), 'valid')
+        self.validate((3, 2, 7, 5, 5), as_t([5, 2, 2, 3, 3]), border_mode)
+        self.validate(as_t([3, 2, 7, 5, 5]), as_t([5, 2, 2, 3, 3]),
+                      border_mode)
 
     def test_invalid_filter_shape(self):
-        """
-        Tests scenario where filter_shape[1] != input_shape[1]
-        """
+        # Tests scenario where filter_shape[1] != input_shape[1]
         self.assertRaises(ValueError, self.validate,
                           (3, 2, 8, 8, 8), (4, 3, 5, 5, 8),
                           'valid')
 
     def test_full_mode(self):
-        """
-        Tests basic correlation in full mode and case where filter
-        is larger than the input image.
-        """
+        # Tests basic correlation in full mode and case where filter
+        # is larger than the input image.
         self.validate((3, 1, 4, 4, 4), (2, 1, 5, 5, 5), 'full')
 
         def f():
@@ -263,9 +254,7 @@ class TestCorr3D(utt.InferShapeTester):
         self.assertRaises(Exception, f)
 
     def test_wrong_input(self):
-        """
-        Make sure errors are raised when image and kernel are not 5D tensors
-        """
+        # Make sure errors are raised when image and kernel are not 5D tensors
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
                           'valid', input=T.dmatrix())
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
@@ -276,14 +265,12 @@ class TestCorr3D(utt.InferShapeTester):
                           'valid', input=T.dtensor4())
 
     def test_dtype_upcast(self):
-        """
-        Checks dtype upcast for Corr3dMM methods.
-        """
+        # Checks dtype upcast for Corr3dMM methods.
         if not theano.config.cxx:
             raise SkipTest("Need cxx for this test")
 
         def rand(shape, dtype='float64'):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype=dtype)
+            r = np.asarray(np.random.rand(*shape), dtype=dtype)
             return r * 2 - 1
 
         ops = [corr3d.Corr3dMM, corr3d.Corr3dMM_gradWeights, corr3d.Corr3dMM_gradInputs]
@@ -312,7 +299,7 @@ class TestCorr3D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corr3dMM = corr3d.Corr3dMM
 
@@ -345,7 +332,7 @@ class TestCorr3D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corr3dMM = corr3d.Corr3dMM
         gradW = corr3d.Corr3dMM_gradWeights
@@ -386,7 +373,7 @@ class TestCorr3D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corr3dMM = corr3d.Corr3dMM
         gradI = corr3d.Corr3dMM_gradInputs
@@ -430,6 +417,15 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 1, 2), non_contiguous=True)
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 2, 1), non_contiguous=True)
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (2, 1, 1), non_contiguous=True)
+
+
+class TestGroupCorr3d(Grouped_conv3d_noOptim):
+    mode = theano.compile.get_mode("FAST_RUN")
+    conv_op = corr3d.Corr3dMM
+    conv_gradw_op = corr3d.Corr3dMM_gradWeights
+    conv_gradi_op = corr3d.Corr3dMM_gradInputs
+    flip_filter = True
+    is_dnn = False
 
 
 if __name__ == '__main__':

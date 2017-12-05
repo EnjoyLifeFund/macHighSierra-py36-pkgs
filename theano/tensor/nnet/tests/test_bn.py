@@ -2,7 +2,8 @@ from __future__ import absolute_import, print_function, division
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-import numpy
+import numpy as np
+from collections import OrderedDict
 
 from theano.tensor.nnet import bn
 
@@ -17,12 +18,12 @@ def test_BNComposite():
             n = (x - M) / V
             return n * G + B
 
-        numpy.random.seed(1234)
-        X = 1 + numpy.random.random([10, 20]).astype('float32')
-        B = 1 + numpy.random.random([20]).astype('float32')
-        G = 1 + numpy.random.random([20]).astype('float32')
-        M = 1 + numpy.random.random([20]).astype('float32')
-        V = 1 + numpy.random.random([20]).astype('float32')
+        np.random.seed(1234)
+        X = 1 + np.random.random([10, 20]).astype('float32')
+        B = 1 + np.random.random([20]).astype('float32')
+        G = 1 + np.random.random([20]).astype('float32')
+        M = 1 + np.random.random([20]).astype('float32')
+        V = 1 + np.random.random([20]).astype('float32')
 
         x = theano.tensor.matrix('x')
         b = theano.tensor.vector('b')
@@ -30,11 +31,11 @@ def test_BNComposite():
         m = theano.tensor.vector('m')
         v = theano.tensor.vector('v')
 
-        x.tag.test_value = numpy.random.rand(2, 2).astype(theano.config.floatX)
-        b.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        g.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        m.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        v.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        x.tag.test_value = np.random.rand(2, 2).astype(theano.config.floatX)
+        b.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        g.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        m.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        v.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
 
         bn_ref_op = bn_ref(x, g, b, m, v)
         f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
@@ -54,12 +55,12 @@ def test_batch_normalization():
         n = (x - M) / V
         return n * G + B
 
-    numpy.random.seed(1234)
-    X = 1 + numpy.random.random([10, 20]).astype('float32')
-    B = 1 + numpy.random.random([20]).astype('float32')
-    G = 1 + numpy.random.random([20]).astype('float32')
-    M = 1 + numpy.random.random([20]).astype('float32')
-    V = 1 + numpy.random.random([20]).astype('float32')
+    np.random.seed(1234)
+    X = 1 + np.random.random([10, 20]).astype('float32')
+    B = 1 + np.random.random([20]).astype('float32')
+    G = 1 + np.random.random([20]).astype('float32')
+    M = 1 + np.random.random([20]).astype('float32')
+    V = 1 + np.random.random([20]).astype('float32')
 
     x = theano.tensor.matrix('x')
     b = theano.tensor.vector('b')
@@ -92,7 +93,7 @@ def test_batch_normalization():
         def bn_f(inputs, gamma, beta, mean, std):
             return bn.batch_normalization(inputs, gamma, beta, mean, std, mode=mode)
         utt.verify_grad(bn_f, [X, G, B,
-                               X.mean(axis=0)[numpy.newaxis], X.std(axis=0)[numpy.newaxis]])
+                               X.mean(axis=0)[np.newaxis], X.std(axis=0)[np.newaxis]])
 
 
 def test_bn_feature_maps():
@@ -101,12 +102,12 @@ def test_bn_feature_maps():
         n = (x - M) / V
         return n * G + B
 
-    numpy.random.seed(1234)
-    X = 1 + numpy.random.random([2, 3, 4, 4]).astype('float32')
-    B = 1 + numpy.random.random([3]).astype('float32')
-    G = 1 + numpy.random.random([3]).astype('float32')
-    M = 1 + numpy.random.random([3]).astype('float32')
-    V = 1 + numpy.random.random([3]).astype('float32')
+    np.random.seed(1234)
+    X = 1 + np.random.random([2, 3, 4, 4]).astype('float32')
+    B = 1 + np.random.random([3]).astype('float32')
+    G = 1 + np.random.random([3]).astype('float32')
+    M = 1 + np.random.random([3]).astype('float32')
+    V = 1 + np.random.random([3]).astype('float32')
 
     x = theano.tensor.tensor4('x')
     b = theano.tensor.vector('b')
@@ -147,7 +148,7 @@ def test_batch_normalization_train():
     utt.seed_rng()
 
     for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor5, T.tensor3, T.vector):
             x, scale, bias, running_mean, running_var = (vartype(n)
                                                          for n in ('x', 'scale', 'bias',
                                                                    'running_mean',
@@ -190,11 +191,24 @@ def test_batch_normalization_train():
             grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
             # reference backward pass
             grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
+            # second-order backward pass
+            dx = vartype('dinputs')
+            dscale = vartype('dscale')
+            dbias = vartype('dbias')
+            grad_grads = T.grad(None, wrt=[x, dy, scale], known_grads=OrderedDict(
+                {grads[0]: dx, grads[1]: dscale, grads[2]: dbias}),
+                consider_constant=[x, dy, scale, bias, x_mean, x_invstd, running_mean, running_var],
+                return_disconnected='zero')
+            # reference second-order backward pass
+            grad_grads2 = T.grad(None, wrt=[x, dy, scale], known_grads=OrderedDict(
+                {grads2[0]: dx, grads2[1]: dscale, grads2[2]: dbias}),
+                consider_constant=[x, dy, scale, bias, x_mean2, x_var2, running_mean, running_var],
+                return_disconnected='zero')
             # compile
-            f = theano.function([x, scale, bias, running_mean, running_var, dy],
+            f = theano.function([x, scale, bias, running_mean, running_var, dy, dx, dscale, dbias],
                                 [out, x_mean, x_invstd, out_running_mean, out_running_var,
                                  out2, x_mean2, x_invstd2, out_running_mean2, out_running_var2] +
-                                grads + grads2)
+                                grads + grads2 + grad_grads + grad_grads2)
             # check if the abstract Ops have been replaced
             assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
                                               bn.AbstractBatchNormInference,
@@ -205,24 +219,83 @@ def test_batch_normalization_train():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes2 else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_var = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Running_mean, Running_var, Dy)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_var = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Dx = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dscale = -1 + 2 * np.random.randn(*param_shape).astype(theano.config.floatX)
+                Dbias = np.random.randn(*param_shape).astype(theano.config.floatX)
+
+                outputs = f(X, Scale, Bias, Running_mean, Running_var, Dy, Dx, Dscale, Dbias)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[0 + 5])  # out
                 utt.assert_allclose(outputs[1], outputs[1 + 5])  # mean
                 utt.assert_allclose(outputs[2], outputs[2 + 5])  # invstd
                 utt.assert_allclose(outputs[3], outputs[3 + 5])  # running_mean
-                utt.assert_allclose(numpy.nan_to_num(outputs[4]),
-                                    numpy.nan_to_num(outputs[4 + 5]))  # running_var
+                utt.assert_allclose(np.nan_to_num(outputs[4]),
+                                    np.nan_to_num(outputs[4 + 5]))  # running_var
                 # compare gradients
                 utt.assert_allclose(outputs[10], outputs[10 + 3], atol=1e-4)  # dx
                 utt.assert_allclose(outputs[11], outputs[11 + 3], rtol=2e-4, atol=1e-4)  # dscale
                 utt.assert_allclose(outputs[12], outputs[12 + 3])  # dbias
+                # compare second-order gradients
+                utt.assert_allclose(outputs[16], outputs[16 + 3], atol=1e-4)  # ddx
+                utt.assert_allclose(outputs[17], outputs[17 + 3])  # ddy
+                utt.assert_allclose(outputs[18], outputs[18 + 3], rtol=3e-4, atol=1e-4)  # ddscale
+
+
+def test_batch_normalization_train_grad_grad():
+    utt.seed_rng()
+
+    for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
+        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+            # run these experiments with float64 for sufficient numerical stability
+            x, dy, scale, x_mean, x_invstd = (vartype(n, dtype='float64')
+                                              for n in ('x', 'dy', 'scale',
+                                                        'x_mean', 'x_invstd'))
+            ndim = x.ndim
+
+            # reference forward pass
+            if axes == 'per-activation':
+                axes = (0,)
+            elif axes == 'spatial':
+                axes = (0,) + tuple(range(2, ndim))
+            else:
+                # remove non-existing axes
+                axes = tuple(i for i in axes if i < ndim)
+            if len(axes) == 0:
+                continue
+
+            def bn_grad_wrt_inputs_f(x, dy, scale, x_mean, x_invstd):
+                g_inputs, g_scale, g_bias = bn.AbstractBatchNormTrainGrad(axes)(x, dy, scale, x_mean, x_invstd)
+                return g_inputs
+
+            def bn_grad_wrt_scale_f(x, dy, scale, x_mean, x_invstd):
+                g_inputs, g_scale, g_bias = bn.AbstractBatchNormTrainGrad(axes)(x, dy, scale, x_mean, x_invstd)
+                return g_scale
+
+            def bn_grad_wrt_bias_f(x, dy, scale, x_mean, x_invstd):
+                g_inputs, g_scale, g_bias = bn.AbstractBatchNormTrainGrad(axes)(x, dy, scale, x_mean, x_invstd)
+                return g_bias
+
+            # run
+            for data_shape in ((4, 3, 3, 3, 3), (4, 3, 1, 1, 1), (2, 3, 5, 3, 2)):
+                data_shape = data_shape[:ndim]
+                param_shape = tuple(1 if d in axes else s
+                                    for d, s in enumerate(data_shape))
+                # force float64 for sufficient numerical stability
+                x_val = 4 + 3 * np.random.randn(*data_shape).astype('float64')
+                dy_val = -1 + 2 * np.random.randn(*data_shape).astype('float64')
+                scale_val = np.random.randn(*param_shape).astype('float64')
+                x_mean_val = np.random.randn(*param_shape).astype('float64')
+                x_invstd_val = np.random.randn(*param_shape).astype('float64')
+
+                utt.verify_grad(bn_grad_wrt_inputs_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val], abs_tol=5e-4, rel_tol=5e-4)
+                utt.verify_grad(bn_grad_wrt_scale_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val])
+                utt.verify_grad(bn_grad_wrt_bias_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val])
 
 
 def test_batch_normalization_train_without_running_averages():
@@ -245,10 +318,10 @@ def test_batch_normalization_train_without_running_averages():
                                       bn.AbstractBatchNormTrainGrad))
                     for n in f.maker.fgraph.toposort()])
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
     f(X, Scale, Bias, Dy)
 
 
@@ -330,7 +403,7 @@ def test_batch_normalization_train_broadcast():
             if theano.config.mode != "FAST_COMPILE":
                 assert len(nodes) == 1
                 assert isinstance(nodes[0].op, theano.compile.DeepCopyOp)
-            inputs = [numpy.asarray(numpy.random.rand(*((4,) * n)), x.dtype)
+            inputs = [np.asarray(np.random.rand(*((4,) * n)), x.dtype)
                       for n in [x.ndim, scale.ndim, bias.ndim,
                                 running_mean.ndim, running_var.ndim]]
             assert 0.0 == f(*inputs)
@@ -338,7 +411,7 @@ def test_batch_normalization_train_broadcast():
 
 def test_batch_normalization_test():
     for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor5, T.tensor3, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
@@ -381,12 +454,12 @@ def test_batch_normalization_test():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes2 else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Var = np.random.rand(*param_shape).astype(theano.config.floatX)
                 outputs = f(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[1])  # out

@@ -7,7 +7,6 @@ types that it can raise.
 from __future__ import absolute_import, print_function, division
 from collections import OrderedDict
 import time
-import traceback
 
 import theano
 from theano.gof import graph
@@ -52,13 +51,9 @@ class MissingInputError(Exception):
         if kwargs:
             # The call to list is needed for Python 3
             assert list(kwargs.keys()) == ["variable"]
-            tr = getattr(list(kwargs.values())[0].tag, 'trace', [])
-            if isinstance(tr, list) and len(tr) > 0:
-                sio = StringIO()
-                print("\nBacktrace when the variable is created:", file=sio)
-                for subtr in list(kwargs.values())[0].tag.trace:
-                    traceback.print_list(subtr, sio)
-                args = args + (str(sio.getvalue()),)
+            error_msg = get_variable_trace_string(kwargs["variable"])
+            if error_msg:
+                args = args + (error_msg,)
         s = '\n'.join(args)  # Needed to have the new line print correctly
         Exception.__init__(self, s)
 
@@ -393,7 +388,6 @@ class FunctionGraph(utils.object2):
                                      "Theano flag exception_verbosity='high', "
                                      "for more information on this error."
                                      % (node.inputs.index(r), str(node)))
-                        error_msg += get_variable_trace_string(r)
                         raise MissingInputError(error_msg, variable=r)
 
         for node in new_nodes:
@@ -475,10 +469,21 @@ class FunctionGraph(utils.object2):
             new_r2 = r.type.convert_variable(new_r)
             # We still make sure that the type converts correctly
             if new_r2 is None or new_r2.type != r.type:
-                raise TypeError("The type of the replacement must be "
-                                "compatible with the type of the original "
-                                "Variable.", r, new_r, r.type, new_r.type,
-                                str(reason))
+                done = dict()
+                used_ids = dict()
+                old = theano.compile.debugmode.debugprint(
+                    r, prefix='  ', depth=6,
+                    file=StringIO(), done=done,
+                    print_type=True,
+                    used_ids=used_ids).getvalue()
+                new = theano.compile.debugmode.debugprint(
+                    new_r, prefix='  ', depth=6,
+                    file=StringIO(), done=done,
+                    print_type=True,
+                    used_ids=used_ids).getvalue()
+                raise toolbox.BadOptimization(
+                    r, new_r, None, None, str(reason) +
+                    ". The type of the replacement must be the same.", old, new)
             new_r = new_r2
         if r not in self.variables:
             # this variable isn't in the graph... don't raise an
@@ -649,8 +654,9 @@ class FunctionGraph(utils.object2):
         take care of computing dependencies by itself.
 
         """
-        ords = OrderedDict()
         assert isinstance(self._features, list)
+        all_orderings = []
+
         for feature in self._features:
             if hasattr(feature, 'orderings'):
                 orderings = feature.orderings(self)
@@ -659,17 +665,24 @@ class FunctionGraph(utils.object2):
                                     str(feature.orderings) +
                                     ". Nondeterministic object is " +
                                     str(orderings))
+                if len(orderings) > 0:
+                    all_orderings.append(orderings)
+                    for node, prereqs in iteritems(orderings):
+                        if not isinstance(prereqs, (list, OrderedSet)):
+                            raise TypeError(
+                                "prereqs must be a type with a "
+                                "deterministic iteration order, or toposort "
+                                " will be non-deterministic.")
+        if len(all_orderings) == 1:
+            # If there is only 1 ordering, we reuse it directly.
+            return all_orderings[0].copy()
+        else:
+            # If there is more than 1 ordering, combine them.
+            ords = OrderedDict()
+            for orderings in all_orderings:
                 for node, prereqs in iteritems(orderings):
-                    if not isinstance(prereqs, (list, OrderedSet)):
-                        raise TypeError(
-                            "prereqs must be a type with a "
-                            "deterministic iteration order, or toposort "
-                            " will be non-deterministic.")
                     ords.setdefault(node, []).extend(prereqs)
-        # eliminate duplicate prereqs
-        for (node, prereqs) in iteritems(ords):
-            ords[node] = list(OrderedSet(prereqs))
-        return ords
+            return ords
 
     def check_integrity(self):
         """

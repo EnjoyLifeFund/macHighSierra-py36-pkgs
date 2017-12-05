@@ -112,6 +112,7 @@ class CLI(with_metaclass(ABCMeta, object)):
     # -F (quit-if-one-screen) -R (allow raw ansi control chars)
     # -S (chop long lines) -X (disable termcap init and de-init)
     LESS_OPTS = 'FRSX'
+    SKIP_INVENTORY_DEFAULTS = False
 
     def __init__(self, args, callback=None):
         """
@@ -212,7 +213,9 @@ class CLI(with_metaclass(ABCMeta, object)):
 
         # if an action needs an encrypt password (create_new_password=True) and we dont
         # have other secrets setup, then automatically add a password prompt as well.
-        if ask_vault_pass or (auto_prompt and not vault_ids):
+        # prompts cant/shouldnt work without a tty, so dont add prompt secrets
+        if ask_vault_pass or (not vault_ids and auto_prompt):
+
             id_slug = u'%s@%s' % (C.DEFAULT_VAULT_IDENTITY, u'prompt_ask_vault_pass')
             vault_ids.append(id_slug)
 
@@ -258,10 +261,6 @@ class CLI(with_metaclass(ABCMeta, object)):
         for vault_id_slug in vault_ids:
             vault_id_name, vault_id_value = CLI.split_vault_id(vault_id_slug)
             if vault_id_value in ['prompt', 'prompt_ask_vault_pass']:
-
-                # prompts cant/shouldnt work without a tty, so dont add prompt secrets
-                if not sys.stdin.isatty():
-                    continue
 
                 # --vault-id some_name@prompt_ask_vault_pass --vault-id other_name@prompt_ask_vault_pass will be a little
                 # confusing since it will use the old format without the vault id in the prompt
@@ -424,8 +423,7 @@ class CLI(with_metaclass(ABCMeta, object)):
 
         if inventory_opts:
             parser.add_option('-i', '--inventory', '--inventory-file', dest='inventory', action="append",
-                              help="specify inventory host path (default=[%s]) or comma separated host list. "
-                                   "--inventory-file is deprecated" % C.DEFAULT_HOST_LIST)
+                              help="specify inventory host path or comma separated host list. --inventory-file is deprecated")
             parser.add_option('--list-hosts', dest='listhosts', action='store_true',
                               help='outputs a list of matching hosts; does not execute anything else')
             parser.add_option('-l', '--limit', default=C.DEFAULT_SUBSET, dest='subset',
@@ -605,8 +603,8 @@ class CLI(with_metaclass(ABCMeta, object)):
                     skip_tags.add(tag.strip())
             self.options.skip_tags = list(skip_tags)
 
-        # process inventory options
-        if hasattr(self.options, 'inventory'):
+        # process inventory options except for CLIs that require their own processing
+        if hasattr(self.options, 'inventory') and not self.SKIP_INVENTORY_DEFAULTS:
 
             if self.options.inventory:
 
@@ -616,7 +614,6 @@ class CLI(with_metaclass(ABCMeta, object)):
 
                 # Ensure full paths when needed
                 self.options.inventory = [unfrackpath(opt, follow=False) if ',' not in opt else opt for opt in self.options.inventory]
-
             else:
                 self.options.inventory = C.DEFAULT_HOST_LIST
 

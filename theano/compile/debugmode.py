@@ -10,7 +10,6 @@ import copy
 import sys
 import gc
 import logging
-import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
@@ -25,9 +24,11 @@ from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicOutput, Supervisor, std_fgraph)
+    std_fgraph)
 from theano.compile.mode import Mode, register_mode
-from theano.compile.ops import OutputGuard
+from theano.compile.ops import OutputGuard, _output_guard
+from theano import change_flags
+
 
 __docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.compile.debugmode")
@@ -153,165 +154,8 @@ class BadThunkOutput(DebugModeError):
         return ret
 
 
-class BadOptimization(DebugModeError):
-    """
-    Exception: some variable and its substitute take different runtime values.
-
-    """
-
-    new_r = None
-    """
-    A `Variable` instance that took a different value from `old_r`,
-    but which replaced `old_r`.
-
-    """
-
-    old_r = None
-    """
-    A `Variable` instance that was replaced by `new_r`.
-
-    """
-
-    old_r_val = None
-    """
-    The value computed for `old_r`.
-
-    """
-
-    new_r_val = None
-    """
-    The value computed for `new_r`.
-
-    """
-
-    reason = None
-    """
-    An object that indicates why old_r was turned into new_r.
-
-    Convention is that this is the name of the optimization that
-    requested the replacement.
-
-    """
-
-    old_graph = ""
-    """
-    A multiline string representation of the graph leading to
-    old_r, at the time of the replacement.
-
-    """
-
-    new_graph = ""
-    """
-    A multiline string representation of the graph leading to
-    new_r, at the time of the replacement.
-
-    """
-
-    def __init__(self, old_r, new_r, old_r_val, new_r_val, reason,
-                 old_graph, new_graph):
-        super(BadOptimization, self).__init__()
-        self.old_r = old_r
-        self.new_r = new_r
-        self.old_r_val = old_r_val
-        self.new_r_val = new_r_val
-        self.reason = reason
-        self.old_graph = old_graph
-        self.new_graph = new_graph
-
-    def __str__(self):
-        return self.str_diagnostic()
-
-    def str_diagnostic(self):
-        """
-        Return a pretty multiline string representating the cause
-        of the exception.
-
-        """
-        sio = StringIO()
-        val_str_len_limit = 800
-        print("BadOptimization Error", super(BadOptimization,
-                                             self).__str__(), file=sio)
-        print("  Variable: id", id(self.new_r), self.new_r, file=sio)
-        print("  Op", self.new_r.owner, file=sio)
-        print("  Value Type:", type(self.new_r_val), file=sio)
-        try:
-            ssio = StringIO()
-            print("  Old Value shape, dtype, strides:", end=' ', file=ssio)
-            print(self.old_r_val.shape, end=' ', file=ssio)
-            print(self.old_r_val.dtype, end=' ', file=ssio)
-            print(self.old_r_val.strides, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-
-        str_old_r_val = str(self.old_r_val)
-        if len(str_old_r_val) > val_str_len_limit:
-            print("  Old Value: ", str(self.old_r_val)[
-                :val_str_len_limit], '...', file=sio)
-        else:
-            print("  Old Value: ", str(self.old_r_val), file=sio)
-
-        try:
-            ssio = StringIO()
-            print("  New Value shape, dtype, strides:", end=' ', file=ssio)
-            print(self.new_r_val.shape, end=' ', file=ssio)
-            print(self.new_r_val.dtype, end=' ', file=ssio)
-            print(self.new_r_val.strides, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-        str_new_r_val = str(self.new_r_val)
-        if len(str_new_r_val) > val_str_len_limit:
-            print("  New Value: ", str(self.new_r_val)[
-                :val_str_len_limit], '...', file=sio)
-        else:
-            print("  New Value: ", str(self.new_r_val), file=sio)
-
-        try:
-            ov = np.asarray(self.old_r_val)
-            nv = np.asarray(self.new_r_val)
-            ssio = StringIO()
-            abs_diff = np.absolute(nv - ov)
-            print("  Max Abs Diff: ", np.max(abs_diff), file=ssio)
-            print("  Mean Abs Diff: ", np.mean(abs_diff), file=ssio)
-            print("  Median Abs Diff: ", np.median(abs_diff), file=ssio)
-            print("  Std Abs Diff: ", np.std(abs_diff), file=ssio)
-            arg_max_val = np.argmax(abs_diff)
-            values_at_max = (nv.flatten()[arg_max_val],
-                             ov.flatten()[arg_max_val])
-            print("  Value at Max Diff: ", values_at_max, file=ssio)
-
-            # N.B. the maximum(..., 1e-8) protects against div by 0 when
-            #      nv == ov == 0
-            reldiff = (abs_diff /
-                       np.maximum(np.absolute(nv) + np.absolute(ov),
-                                  1e-8))
-            print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
-            print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
-            print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
-            print("  Std Rel Diff: ", np.std(reldiff), file=ssio)
-            arg_max_val = np.argmax(reldiff)
-            values_at_max = (nv.flatten()[arg_max_val],
-                             ov.flatten()[arg_max_val])
-            print("  Value at Max Diff: ", values_at_max, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-
-        print("  Reason: ", str(self.reason), file=sio)
-        print("  Old Graph:", file=sio)
-        print(self.old_graph, file=sio)
-        print("  New Graph:", file=sio)
-        print(self.new_graph, file=sio)
-        print("", file=sio)
-        print("Hint: relax the tolerance by setting tensor.cmp_sloppy=1",
-              file=sio)
-        print("  or even tensor.cmp_sloppy=2 for less-strict comparison",
-              file=sio)
-        return sio.getvalue()
+class BadOptimization(DebugModeError, theano.gof.toolbox.BadOptimization):
+    pass
 
 
 class BadDestroyMap(DebugModeError):
@@ -427,9 +271,12 @@ class InvalidValueError(DebugModeError):
     Exception: some Op an output value that is inconsistent with
     the Type of that output.
 
+    Note: If there is only one parameter and it is a string, then we
+    will use it as the error message. This is needed when we catch,
+    extend, and reraise an error.
     """
 
-    def __init__(self, r, v, client_node=None, hint='none',
+    def __init__(self, r, v=None, client_node=None, hint='none',
                  specific_hint='none'):
         super(InvalidValueError, self).__init__()
         self.r = r
@@ -438,7 +285,20 @@ class InvalidValueError(DebugModeError):
         self.hint = hint
         self.specific_hint = specific_hint
 
+        # To allow extending th error message of an existing error.
+        self.full_err = None
+        if isinstance(r, str):
+            assert (v is None and
+                    client_node is None and
+                    hint == 'none' and
+                    specific_hint == 'none')
+            self.full_err = r
+
     def __str__(self):
+        # We have a pre-made message
+        if getattr(self, 'full_err', None) is not None:
+            return self.full_err
+
         r, v = self.r, self.v
         type_r = r.type
         type_v = type(v)
@@ -754,45 +614,10 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
         instances already installed.
 
     """
-    orig_inputs = [spec.variable for spec in input_specs]
-    updates = [spec.update for spec in input_specs if spec.update]
-    orig_outputs = [spec.variable for spec in output_specs] + updates
-
     equivalence_tracker = _VariableEquivalenceTracker()
-    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
-                                  features=[equivalence_tracker])
-    # DestroyHandler may not be needed yet, as there is usually no
-    # inplace operation in the graph at this stage. DestroyHandler
-    # will be installed by an optimization after canonicalization,
-    # before the inplace operations are applied. This results in a big
-    # speed gain.
-    #
-    # If inplace operations are accepted and present, however,
-    # DestroyHandler will be inserted in the loop below.
-
-    if not accept_inplace:
-        for node in fgraph.apply_nodes:
-            if getattr(node.op, 'destroy_map', None):
-                raise TypeError("Graph must not contain inplace operations",
-                                node)
-    else:
-        # However, if some inplace ops are already in the graph,
-        # DestroyHandler is needed for the Supervisor below to work correctly.
-        for node in fgraph.apply_nodes:
-            if getattr(node.op, 'destroy_map', None):
-                fgraph.attach_feature(gof.DestroyHandler())
-                break
-
-    # We need to protect all immutable inputs from inplace operations.
-    fgraph.attach_feature(Supervisor(
-        input for spec, input in zip(input_specs, fgraph.inputs)
-        if not (spec.mutable or (hasattr(fgraph, 'destroyers') and
-                                 fgraph.destroyers(input)))))
-
-    for feature in std_fgraph.features:
-        fgraph.attach_feature(feature())
-
-    return fgraph, list(map(SymbolicOutput, updates)), equivalence_tracker
+    fgraph, updates = std_fgraph(input_specs, output_specs, accept_inplace)
+    fgraph.attach_feature(equivalence_tracker)
+    return fgraph, updates, equivalence_tracker
 
 
 class DataDestroyed():
@@ -1198,10 +1023,11 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     # To avoid circular imports
     from theano.tensor import TensorType
-    from theano.sandbox.cuda import cuda_available, CudaNdarrayType
-    if cuda_available:
-        from theano.sandbox.cuda import CudaNdarray
-        from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
+    from theano.gpuarray import GpuArrayType
+    try:
+        import pygpu
+    except ImportError:
+        pass
 
     # TODO: Sparse? Scalar does not really make sense.
 
@@ -1240,7 +1066,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         for r in considered_outputs:
             # There is no risk to overwrite inputs, since r does not work
             # inplace.
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 reuse_outputs[r][...] = np.asarray(
                     def_val).astype(r.type.dtype)
 
@@ -1250,15 +1076,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         del reuse_outputs
 
     # c_cont_output: use a c-continuous array
-    # (for TensorType and CudaNdarray, else None)
+    # (for TensorType, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
-                # CudaNdarray don't have flags field
-                # assert new_buf.flags["C_CONTIGUOUS"]
+                assert new_buf.flags["C_CONTIGUOUS"]
                 new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
@@ -1272,18 +1097,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 new_buf = np.zeros(
                     shape=r_vals[r].shape,
                     dtype=r_vals[r].dtype,
                     order='F')
                 new_buf[...] = def_val
-                if isinstance(r.type, CudaNdarrayType):
-                    # When the CudaNdarray is built, the underlying memory
-                    # is c-contiguous, so we transpose it before and after.
-                    new_buf = CudaNdarray(new_buf.T)
-                    new_buf = cuda_dimshuffle(
-                        new_buf, reversed(list(range(new_buf.ndim))))
+                if isinstance(r.type, GpuArrayType):
+                    new_buf = pygpu.array(new_buf)
 
                 f_cont_outputs[r] = new_buf
 
@@ -1305,7 +1126,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         max_ndim = 0
         rev_out_broadcastable = []
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 if max_ndim < r.ndim:
                     rev_out_broadcastable += [True] * (r.ndim - max_ndim)
                     max_ndim = r.ndim
@@ -1320,7 +1141,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # Initial allocation
         init_strided = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Create a buffer twice as large in every dimension,
                 # except if broadcastable, or for dimensions above
                 # config.DebugMode.check_preallocated_output_ndim
@@ -1399,7 +1220,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
                 for r in considered_outputs:
-                    if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                    if isinstance(r.type, (TensorType, GpuArrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
                                      for s, sd in zip(r_vals[r].shape,
@@ -1567,7 +1388,7 @@ class _FunctionGraphEvent(object):
             self.node = node
             self.op = node.op
         self.idx = idx
-        self.reason = reason
+        self.reason = str(reason)
 
     def __str__(self):
         if self.kind == 'change':
@@ -1651,7 +1472,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_prune(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('prune', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
@@ -1659,7 +1480,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_import(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('import', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
 
         assert node not in self.active_nodes
         self.active_nodes.add(node)
@@ -1680,8 +1501,9 @@ class _VariableEquivalenceTracker(object):
                 self.replaced_by.setdefault(r, [])
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        reason = str(reason)
         self.event_list.append(_FunctionGraphEvent('change', node,
-                                                   reason=str(reason), idx=i))
+                                                   reason=reason, idx=i))
 
         self.reasons.setdefault(new_r, [])
         self.replaced_by.setdefault(new_r, [])
@@ -1701,9 +1523,11 @@ class _VariableEquivalenceTracker(object):
                  r,
                  debugprint(r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
@@ -1741,7 +1565,6 @@ class _VariableEquivalenceTracker(object):
 
 # List of default version of make thunk.
 # This is needed to know if the user overrided it.
-# The GpuOp will be added here when theano.sandbox.cuda is imported.
 default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk)]
 
 
@@ -2366,8 +2189,12 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  profile=None,
                  on_unused_input=None,
                  fgraph=None,  # If present the optimized graph. we ignore it.
-                 output_keys=None):
+                 output_keys=None,
+                 name=None):
+        self.mode = mode
         self.profile = profile
+        if profile:
+            raise Exception("DebugMode do not support profiling.")
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
         # Variable (not in a list)
@@ -2405,17 +2232,11 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                 inputs, outputs, accept_inplace)
             fgraph.equivalence_tracker = equivalence_tracker
 
-            # optimize the fgraph
-            compute_test_value_orig = theano.config.compute_test_value
-            try:
-                theano.config.compute_test_value = \
-                    theano.config.compute_test_value_opt
+            with change_flags(compute_test_value=config.compute_test_value_opt):
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(
                     fgraph, inputs, list(chain(outputs, additional_outputs)))
-            finally:
-                theano.config.compute_test_value = compute_test_value_orig
 
             if i == 0:
                 fgraph0 = fgraph
@@ -2455,24 +2276,41 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
+        if theano.config.cycle_detection == 'regular':
+            destroy_handler_added = False
+            for feature in fgraph._features:
+                if isinstance(feature, gof.DestroyHandler):
+                    destroy_handler_added = True
+                    break
+            if not destroy_handler_added:
+                fgraph.attach_feature(gof.DestroyHandler())
+            for o in fgraph.outputs:
+                try:
+                    with change_flags(compute_test_value=config.compute_test_value_opt):
+                        fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
+                    raise Exception("Output variable %s required output_guard, "
+                                    "how was this output left unprotected against "
+                                    "destructive operations?" % o)
+
+                except gof.InconsistencyError:
+                    # This output is already impossible to destroy.
+                    # No guard necessary
+                    pass
 
         linker = _Linker(self)
 
         # the 'no_borrow' outputs are the ones for which that we can't return
         # the internal storage pointer.
 
-        no_borrow = [
-            output
-            for output, spec in izip(fgraph.outputs,
-                                     outputs + additional_outputs)
-            if not spec.borrow]
+        no_borrow = [output for output, spec in
+                     izip(fgraph.outputs, outputs + additional_outputs)
+                     if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(
-                fgraph,
-                no_recycling=infer_reuse_pattern(fgraph, no_borrow))
+                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
-
+        fgraph.name = name
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = inputs
@@ -2481,102 +2319,17 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.return_none = return_none
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
-        self.mode = mode
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
+        self.name = name
 
-    def create(self, defaults=None, trustme=False, storage_map=None):
-        """
-        Create a function.
+        self.required = [(i.value is None) for i in self.inputs]
+        self.refeed = [
+            (i.value is not None and
+             not isinstance(i.value, gof.Container) and
+             i.update is None)
+            for i in self.inputs]
 
-        Parameters
-        ----------
-        defaults
-            A list matching the inputs list and providing default values if the
-            default for an input is None, then that input is a required input.
-            For an input with an update, the default acts as initialization.
-        trustme
-            Disables some exceptions, used internally.
-
-        """
-        if defaults is None:
-            defaults = [None] * len(self.inputs)
-        # List of independent one-element lists, will be passed to the linker.
-        input_storage = []
-        _defaults = []
-
-        # The following loop is to fill in the input_storage and _defaults
-        # lists.
-        for (input, indices, subinputs), default in izip(self.indices,
-                                                         defaults):
-            __default = default
-
-            if isinstance(default, gof.Container):
-                # If the default is a gof.Container, this means we want to
-                # share the same storage. This is done by appending
-                # default.storage to input_storage.
-                if indices is not None:
-                    raise TypeError("Cannot take a Container instance as "
-                                    "default for a SymbolicInput.")
-                input_storage.append(default.storage)
-                default = None
-            else:
-                # Normal case: one new, independent storage unit
-                input_storage.append([None])
-
-            # Filling _defaults. Each entry is a tuple of three elements:
-            # (required, refeed, value)
-            # - required means that the user must provide a value when calling
-            #   the function
-            # - refeed means that we want to put the default back in the
-            #   storage after each function call
-            # - value is the value that will be put in the storage initially
-
-            if input.update is not None:
-                # If the input has an update, then (logically) it is
-                # not required since it is just a parameter and of
-                # course we don't want to refeed the default back into
-                # the storage as it would defeat the point of updating
-                # it. We always do this policy.
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # This might catch some bugs early
-                        raise ValueError(
-                            "A default (initial) value is required for an "
-                            "input which can update itself.", input)
-                else:
-                    _defaults.append((False, False, default))
-            else:
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # No default, so this is a required
-                        # input. Nothing to feed back, initial value
-                        # is None.
-                        _defaults.append((True, False, None))
-                else:
-                    # Default value. It is not required, but we want
-                    # to put it back into the storage everytime so it
-                    # behaves like most programming languages' default
-                    # values
-                    _defaults.append((False, True, default))
-        defaults = _defaults
-
-        # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage,
-                                             storage_map=storage_map)
-        fn = self.function_builder(_fn, _i, _o, self.indices,
-                                   self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self.output_keys, self)
-        return fn
-
-
-def _pickle_DebugMode_Maker(maker):
-    raise NotImplementedError('DebugMode is not picklable (yet)')
-copyreg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

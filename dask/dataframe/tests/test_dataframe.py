@@ -8,8 +8,9 @@ import numpy as np
 import pytest
 
 import dask
-from dask.utils import ignoring, put_lines
 import dask.dataframe as dd
+from dask.base import compute_as_if_collection
+from dask.utils import ignoring, put_lines
 
 from dask.dataframe.core import repartition_divisions, aca, _concat, Scalar
 from dask.dataframe import methods
@@ -689,16 +690,26 @@ def test_quantile():
     assert 4 < result < 6
 
 
+def test_quantile_missing():
+    df = pd.DataFrame({"A": [0, np.nan, 2]})
+    ddf = dd.from_pandas(df, 2)
+    expected = df.quantile()
+    result = ddf.quantile()
+    assert_eq(result, expected)
+
+    expected = df.A.quantile()
+    result = ddf.A.quantile()
+    assert_eq(result, expected)
+
+
 def test_empty_quantile():
     result = d.b.quantile([])
     exp = full.b.quantile([])
     assert result.divisions == (None, None)
 
-    # because of a pandas bug, name is not preserved
-    # https://github.com/pydata/pandas/pull/10881
     assert result.name == 'b'
     assert result.compute().name == 'b'
-    assert_eq(result, exp, check_names=False)
+    assert_eq(result, exp)
 
 
 def test_dataframe_quantile():
@@ -716,6 +727,7 @@ def test_dataframe_quantile():
 
     result = result.compute()
     assert isinstance(result, pd.Series)
+    assert result.name == 0.5
     tm.assert_index_equal(result.index, pd.Index(['A', 'X', 'B']))
     assert (result > pd.Series([16, 36, 26], index=['A', 'X', 'B'])).all()
     assert (result < pd.Series([17, 37, 27], index=['A', 'X', 'B'])).all()
@@ -1020,7 +1032,8 @@ def test_repartition():
         """Check data is split properly"""
         keys = [k for k in d.dask if k[0].startswith('repartition-split')]
         keys = sorted(keys)
-        sp = pd.concat([d._get(d.dask, k) for k in keys])
+        sp = pd.concat([compute_as_if_collection(dd.DataFrame, d.dask, k)
+                        for k in keys])
         assert_eq(orig, sp)
         assert_eq(orig, d)
 
@@ -1031,7 +1044,8 @@ def test_repartition():
     b = a.repartition(divisions=[10, 20, 50, 60])
     assert b.divisions == (10, 20, 50, 60)
     assert_eq(a, b)
-    assert_eq(a._get(b.dask, (b._name, 0)), df.iloc[:1])
+    assert_eq(compute_as_if_collection(dd.DataFrame, b.dask, (b._name, 0)),
+              df.iloc[:1])
 
     for div in [[20, 60], [10, 50], [1],   # first / last element mismatch
                 [0, 60], [10, 70],   # do not allow to expand divisions by default
@@ -1146,7 +1160,7 @@ def test_repartition_npartitions(use_index, n, k, dtype, transform):
     b = a.repartition(npartitions=k)
     assert_eq(a, b)
     assert b.npartitions == k
-    parts = dask.get(b.dask, b._keys())
+    parts = dask.get(b.dask, b.__dask_keys__())
     assert all(map(len, parts))
 
 
@@ -1177,9 +1191,9 @@ def test_repartition_object_index():
 
 @pytest.mark.slow
 @pytest.mark.parametrize('npartitions', [1, 20, 243])
-@pytest.mark.parametrize('freq', ['1D', '7D', '28h'])
-@pytest.mark.parametrize('end', ['2000-04-15', '2000-04-15 12:37:01'])
-@pytest.mark.parametrize('start', ['2000-01-01', '2000-01-01 12:30:00'])
+@pytest.mark.parametrize('freq', ['1D', '7D', '28h', '1h'])
+@pytest.mark.parametrize('end', ['2000-04-15', '2000-04-15 12:37:01', '2000-01-01 12:37:00'])
+@pytest.mark.parametrize('start', ['2000-01-01', '2000-01-01 12:30:00', '2000-01-01 12:30:00'])
 def test_repartition_freq(npartitions, freq, start, end):
     start = pd.Timestamp(start)
     end = pd.Timestamp(end)
@@ -1291,6 +1305,14 @@ def test_ffill_bfill():
     assert_eq(ddf.bfill(), df.bfill())
     assert_eq(ddf.ffill(axis=1), df.ffill(axis=1))
     assert_eq(ddf.bfill(axis=1), df.bfill(axis=1))
+
+
+def test_fillna_series_types():
+    # https://github.com/dask/dask/issues/2809
+    df = pd.DataFrame({"A": [1, np.nan, 3], "B": [1, np.nan, 3]})
+    ddf = dd.from_pandas(df, npartitions=2)
+    fill_value = pd.Series([1, 10], index=['A', 'C'])
+    assert_eq(ddf.fillna(fill_value), df.fillna(fill_value))
 
 
 def test_sample():
@@ -1910,7 +1932,7 @@ def test_cov_corr_meta():
 
 @pytest.mark.slow
 def test_cov_corr_stable():
-    df = pd.DataFrame(np.random.random((20000000, 2)) * 2 - 1, columns=['a', 'b'])
+    df = pd.DataFrame(np.random.uniform(-1, 1, (20000000, 2)), columns=['a', 'b'])
     ddf = dd.from_pandas(df, npartitions=50)
     assert_eq(ddf.cov(split_every=8), df.cov())
     assert_eq(ddf.corr(split_every=8), df.corr())
@@ -2072,11 +2094,15 @@ def test_astype():
 
 def test_astype_categoricals():
     df = pd.DataFrame({'x': ['a', 'b', 'c', 'b', 'c'],
-                       'y': [1, 2, 3, 4, 5]})
+                       'y': ['x', 'y', 'z', 'x', 'y'],
+                       'z': [1, 2, 3, 4, 5]})
+    df = df.astype({'y': 'category'})
     ddf = dd.from_pandas(df, 2)
+    assert ddf.y.cat.known
 
     ddf2 = ddf.astype({'x': 'category'})
     assert not ddf2.x.cat.known
+    assert ddf2.y.cat.known
     assert ddf2.x.dtype == 'category'
     assert ddf2.compute().x.dtype == 'category'
 
@@ -2084,6 +2110,36 @@ def test_astype_categoricals():
     assert not dx.cat.known
     assert dx.dtype == 'category'
     assert dx.compute().dtype == 'category'
+
+
+@pytest.mark.skipif(PANDAS_VERSION < '0.21.0',
+                    reason="No CategoricalDtype with categories")
+def test_astype_categoricals_known():
+    df = pd.DataFrame({'x': ['a', 'b', 'c', 'b', 'c'],
+                       'y': ['x', 'y', 'z', 'y', 'z'],
+                       'z': ['b', 'b', 'b', 'c', 'b'],
+                       'other': [1, 2, 3, 4, 5]})
+    ddf = dd.from_pandas(df, 2)
+
+    abc = pd.api.types.CategoricalDtype(['a', 'b', 'c'])
+    category = pd.api.types.CategoricalDtype()
+
+    # DataFrame
+    ddf2 = ddf.astype({'x': abc,
+                       'y': category,
+                       'z': 'category',
+                       'other': 'f8'})
+
+    for col, known in [('x', True), ('y', False), ('z', False)]:
+        x = getattr(ddf2, col)
+        assert pd.api.types.is_categorical_dtype(x.dtype)
+        assert x.cat.known == known
+
+    # Series
+    for dtype, known in [('category', False), (category, False), (abc, True)]:
+        dx2 = ddf.x.astype(dtype)
+        assert pd.api.types.is_categorical_dtype(dx2.dtype)
+        assert dx2.cat.known == known
 
 
 def test_groupby_callable():
@@ -2199,22 +2255,13 @@ def test_categorize_info():
     # Verbose=False
     buf = StringIO()
     ddf.info(buf=buf, verbose=True)
-    if PANDAS_VERSION > '0.21.0':
-        expected = unicode("<class 'dask.dataframe.core.DataFrame'>\n"
-                           "Int64Index: 4 entries, 0 to 3\n"
-                           "Data columns (total 3 columns):\n"
-                           "x    4 non-null int64\n"
-                           "y    4 non-null CategoricalDtype(categories=['a', 'b', 'c'], ordered=False)\n"  # noqa
-                           "z    4 non-null object\n"
-                           "dtypes: CategoricalDtype(categories=['a', 'b', 'c'], ordered=False)(1), object(1), int64(1)")  # noqa
-    else:
-        expected = unicode("<class 'dask.dataframe.core.DataFrame'>\n"
-                           "Int64Index: 4 entries, 0 to 3\n"
-                           "Data columns (total 3 columns):\n"
-                           "x    4 non-null int64\n"
-                           "y    4 non-null category\n"
-                           "z    4 non-null object\n"
-                           "dtypes: category(1), object(1), int64(1)")
+    expected = unicode("<class 'dask.dataframe.core.DataFrame'>\n"
+                       "Int64Index: 4 entries, 0 to 3\n"
+                       "Data columns (total 3 columns):\n"
+                       "x    4 non-null int64\n"
+                       "y    4 non-null category\n"
+                       "z    4 non-null object\n"
+                       "dtypes: category(1), object(1), int64(1)")
     assert buf.getvalue() == expected
 
 
@@ -2496,7 +2543,7 @@ def test_hash_split_unique(npartitions, split_every, split_out):
 
     dropped = ds.unique(split_every=split_every, split_out=split_out)
 
-    dsk = dropped._optimize(dropped.dask, dropped._keys())
+    dsk = dropped.__dask_optimize__(dropped.dask, dropped.__dask_keys__())
     from dask.core import get_deps
     dependencies, dependents = get_deps(dsk)
 
@@ -2724,3 +2771,14 @@ def test_better_errors_object_reductions():
     with pytest.raises(ValueError) as err:
         ds.mean()
     assert str(err.value) == "`mean` not supported with object series"
+
+
+def test_sample_empty_partitions():
+    @dask.delayed
+    def make_df(n):
+        return pd.DataFrame(np.zeros((n, 4)), columns=list('abcd'))
+    ddf = dd.from_delayed([make_df(0), make_df(100), make_df(0)])
+    ddf2 = ddf.sample(frac=0.2)
+    # smoke test sample on empty partitions
+    res = ddf2.compute()
+    assert res.dtypes.equals(ddf2.dtypes)

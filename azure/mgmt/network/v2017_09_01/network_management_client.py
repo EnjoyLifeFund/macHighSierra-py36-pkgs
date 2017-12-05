@@ -39,6 +39,7 @@ from .operations.security_rules_operations import SecurityRulesOperations
 from .operations.default_security_rules_operations import DefaultSecurityRulesOperations
 from .operations.network_watchers_operations import NetworkWatchersOperations
 from .operations.packet_captures_operations import PacketCapturesOperations
+from .operations.operations import Operations
 from .operations.public_ip_addresses_operations import PublicIPAddressesOperations
 from .operations.route_filters_operations import RouteFiltersOperations
 from .operations.route_filter_rules_operations import RouteFilterRulesOperations
@@ -77,8 +78,6 @@ class NetworkManagementClientConfiguration(AzureConfiguration):
             raise ValueError("Parameter 'credentials' must not be None.")
         if subscription_id is None:
             raise ValueError("Parameter 'subscription_id' must not be None.")
-        if not isinstance(subscription_id, str):
-            raise TypeError("Parameter 'subscription_id' must be str.")
         if not base_url:
             base_url = 'https://management.azure.com'
 
@@ -141,6 +140,8 @@ class NetworkManagementClient(object):
     :vartype network_watchers: azure.mgmt.network.v2017_09_01.operations.NetworkWatchersOperations
     :ivar packet_captures: PacketCaptures operations
     :vartype packet_captures: azure.mgmt.network.v2017_09_01.operations.PacketCapturesOperations
+    :ivar operations: Operations operations
+    :vartype operations: azure.mgmt.network.v2017_09_01.operations.Operations
     :ivar public_ip_addresses: PublicIPAddresses operations
     :vartype public_ip_addresses: azure.mgmt.network.v2017_09_01.operations.PublicIPAddressesOperations
     :ivar route_filters: RouteFilters operations
@@ -232,6 +233,8 @@ class NetworkManagementClient(object):
             self._client, self.config, self._serialize, self._deserialize)
         self.packet_captures = PacketCapturesOperations(
             self._client, self.config, self._serialize, self._deserialize)
+        self.operations = Operations(
+            self._client, self.config, self._serialize, self._deserialize)
         self.public_ip_addresses = PublicIPAddressesOperations(
             self._client, self.config, self._serialize, self._deserialize)
         self.route_filters = RouteFiltersOperations(
@@ -275,13 +278,10 @@ class NetworkManagementClient(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`DnsNameAvailabilityResult
-         <azure.mgmt.network.v2017_09_01.models.DnsNameAvailabilityResult>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`DnsNameAvailabilityResult
-         <azure.mgmt.network.v2017_09_01.models.DnsNameAvailabilityResult>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: DnsNameAvailabilityResult or ClientRawResponse if raw=true
+        :rtype:
+         ~azure.mgmt.network.v2017_09_01.models.DnsNameAvailabilityResult or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         api_version = "2017-09-01"

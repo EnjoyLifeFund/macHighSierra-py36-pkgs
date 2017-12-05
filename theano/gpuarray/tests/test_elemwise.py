@@ -1,10 +1,12 @@
 from __future__ import absolute_import, print_function, division
+from copy import copy
+from unittest import TestCase
+
 import numpy as np
-import scipy.special
 
 import theano
 from theano import scalar, gof, tensor
-from unittest import TestCase
+from theano.compile import DebugMode, Mode
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -13,9 +15,18 @@ from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from .test_basic_ops import rand_gpuarray
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY, GpuErfinv, GpuErfcinv)
-from ..type import GpuArrayType, get_context
+from ..dnn import GpuDnnReduction
+from ..type import GpuArrayType, get_context, gpuarray_shared_constructor
+
 
 from pygpu import ndgpuarray as gpuarray
+
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+except ImportError:
+    pass
 
 
 # This is actually a test for GpuElemwise
@@ -40,16 +51,22 @@ def test_elemwise_pow():
         for dtype_exp in dtypes:
 
             # Compile a gpu function with the specified dtypes
-            base = theano.tensor.vector(dtype=dtype_base)
-            exp = theano.tensor.vector(dtype=dtype_exp)
-            output = base ** exp
-            f = theano.function([base, exp], output)
-
             base_val = np.random.randint(0, 5, size=10).astype(dtype_base)
             exp_val = np.random.randint(0, 3, size=10).astype(dtype_exp)
 
+            base = theano.tensor.vector(dtype=dtype_base)
+            exp = gpuarray_shared_constructor(exp_val)
+            assert exp.dtype == dtype_exp
+            output = base ** exp
+            f = theano.function([base], output, mode=mode_with_gpu)
+            theano.printing.debugprint(f)
+            # We don't transfer to the GPU when the output dtype is int*
+            n = len([n for n in f.maker.fgraph.apply_nodes
+                     if isinstance(n.op, GpuElemwise)])
+            assert n == (output.dtype in tensor.float_dtypes)
+
             # Call the function to make sure the output is valid
-            out = f(base_val, exp_val)
+            out = f(base_val)
             expected_out = base_val ** exp_val
             assert_allclose(out, expected_out)
 
@@ -60,18 +77,34 @@ class TestMathErrorFunctions(TestCase):
     expected_erfinv_outputs = {}
     expected_erfcinv_outputs = {}
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        if not imported_scipy_special:
+            raise SkipTest("scipy.special needed")
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
         # We take [-5;5[ by default and we concatenate it 1000 times
         # to have the GPU ops run on large data.
         default_array = [x / 10.0 for x in range(-50, 50)] * 1000
-        for dtype in self.dtypes:
+        for dtype in cls.dtypes:
             numpy_array = np.asarray(default_array, dtype=dtype)
-            self.default_arrays[dtype] = numpy_array
-            self.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
-            self.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
+            cls.default_arrays[dtype] = numpy_array
+            cls.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
+            cls.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
+
+        # Since there are infinite values, we need to disable that check
+        # in DebugMode if needed
+        if isinstance(mode_with_gpu, DebugMode):
+            cls.mode_with_gpu = copy(mode_with_gpu)
+            cls.mode_with_gpu.check_isfinite = False
+        else:
+            cls.mode_with_gpu = mode_with_gpu
+        if isinstance(mode_without_gpu, DebugMode):
+            cls.mode_without_gpu = copy(mode_without_gpu)
+            cls.mode_without_gpu.check_isfinite = False
+        else:
+            cls.mode_without_gpu = mode_without_gpu
 
     def check_gpu_scalar_op(self, theano_function, scalar_optype):
         for node in theano_function.maker.fgraph.apply_nodes:
@@ -84,8 +117,8 @@ class TestMathErrorFunctions(TestCase):
         for dtype in self.dtypes:
             vector = theano.tensor.vector(dtype=dtype)
             output = theano.tensor.erfinv(vector)
-            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=mode_without_gpu)
-            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=mode_with_gpu)
+            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=self.mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=self.mode_with_gpu)
             assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
             if not theano.config.device.startswith('opencl'):
                 assert self.check_gpu_scalar_op(f_gpu, GpuErfinv), \
@@ -102,8 +135,8 @@ class TestMathErrorFunctions(TestCase):
         for dtype in self.dtypes:
             vector = theano.tensor.vector(dtype=dtype)
             output = theano.tensor.erfcinv(vector)
-            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=mode_without_gpu)
-            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=mode_with_gpu)
+            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=self.mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=self.mode_with_gpu)
             assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
             if not theano.config.device.startswith('opencl'):
                 assert self.check_gpu_scalar_op(f_gpu, GpuErfcinv), \
@@ -187,32 +220,40 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.PerformLinker(), op, dtype=dtype,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='py',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_perform_nan(self):
         for dtype in self.dtypes:
             if not dtype.startswith('float'):
                 continue
             for op in self.reds:
-                self.with_linker(gof.PerformLinker(), op, dtype=dtype,
-                                 test_nan=True,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='py',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               test_nan=True,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_c(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.CLinker(), op, dtype=dtype,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='c',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_c_nan(self):
         for dtype in self.dtypes:
             if not dtype.startswith('float'):
                 continue
             for op in self.reds:
-                self.with_linker(gof.CLinker(), op, dtype=dtype,
-                                 test_nan=True,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='c',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               test_nan=True,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_infer_shape(self):
         for dtype in self.dtypes:
@@ -309,6 +350,9 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
             scalar.maximum, scalar.minimum]
     pre_scalar_op = None
 
+    def test_perform_noopt(self):
+        return
+
     def test_perform(self):
         return
 
@@ -323,7 +367,9 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 
 class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
-    op = GpuCAReduceCuda
+
+    # GpuDnnReduction doesn't cover all cases, but should cover some
+    op = (GpuCAReduceCuda, GpuDnnReduction)
     # Currently we don't support reduction on 0 axis
     axes = [None, 0, 1, 1, [0], [1], [0, 1]]
     # We don't support complex dtype

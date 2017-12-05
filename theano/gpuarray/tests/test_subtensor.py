@@ -5,7 +5,7 @@ import unittest
 import theano
 from theano import tensor
 from theano.compile import DeepCopyOp
-from theano.tensor.tests import test_subtensor
+from theano.tensor.tests import test_subtensor, test_basic
 from theano.tests import unittest_tools as utt
 
 from ..basic_ops import HostFromGpu, GpuFromHost, GpuContiguous
@@ -13,12 +13,15 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
+                         GpuAdvancedBooleanSubtensor,
+                         GpuAdvancedIncSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
-                         GpuDiagonal)
+                         GpuExtractDiag,
+                         GpuAllocDiag)
 from ..type import gpuarray_shared_constructor
 
-from .config import mode_with_gpu
+from .config import mode_with_gpu, test_ctx_name
 
 
 class G_subtensor(test_subtensor.T_subtensor):
@@ -26,17 +29,52 @@ class G_subtensor(test_subtensor.T_subtensor):
         return None
 
     def __init__(self, name):
+        def shared(x, **kwargs):
+            return gpuarray_shared_constructor(x, target=test_ctx_name,
+                                               **kwargs)
+
         test_subtensor.T_subtensor.__init__(
             self, name,
-            shared=gpuarray_shared_constructor,
+            shared=shared,
             sub=GpuSubtensor,
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
+            adv_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',
+            ignore_topo=(HostFromGpu, GpuFromHost,
+                         DeepCopyOp, GpuContiguous))
+        # GPU opt can't run in fast_compile only.
+        self.fast_compile = False
+        assert self.sub == GpuSubtensor
+
+
+class G_subtensorF16(test_subtensor.T_subtensor):
+    def shortDescription(self):
+        return None
+
+    def __init__(self, name):
+        def shared(x, **kwargs):
+            return gpuarray_shared_constructor(x, target=test_ctx_name,
+                                               **kwargs)
+
+        test_subtensor.T_subtensor.__init__(
+            self, name,
+            shared=shared,
+            sub=GpuSubtensor,
+            inc_sub=GpuIncSubtensor,
+            adv_sub1=GpuAdvancedSubtensor1,
+            adv_incsub1=GpuAdvancedIncSubtensor1,
+            adv_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
+            dimshuffle=GpuDimShuffle,
+            mode=mode_with_gpu,
+            # avoid errors with limited devices
+            dtype='float16',  # use floatX?
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp, GpuContiguous))
         # GPU opt can't run in fast_compile only.
@@ -61,14 +99,17 @@ def test_advinc_subtensor1():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [0, 2], yval)
         assert np.allclose(rval, rep)
 
 
 def test_advinc_subtensor1_dtype():
     # Test the mixed dtype case
     shp = (3, 4)
-    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64')]:
+    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64'),
+                           ('uint64', 'int8'), ('int64', 'uint8'),
+                           ('float16', 'int8'), ('float16', 'float64'),
+                           ('float16', 'float16')]:
         shared = gpuarray_shared_constructor
         xval = np.arange(np.prod(shp), dtype=dtype1).reshape(shp) + 1
         yval = np.empty((2,) + shp[1:], dtype=dtype2)
@@ -83,14 +124,38 @@ def test_advinc_subtensor1_dtype():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [[0, 2]], yval)
+        assert np.allclose(rval, rep)
+
+
+@theano.change_flags(deterministic='more')
+def test_deterministic_flag():
+    shp = (3, 4)
+    for dtype1, dtype2 in [('float32', 'int8')]:
+        shared = gpuarray_shared_constructor
+        xval = np.arange(np.prod(shp), dtype=dtype1).reshape(shp) + 1
+        yval = np.empty((2,) + shp[1:], dtype=dtype2)
+        yval[:] = 10
+        x = shared(xval, name='x')
+        y = tensor.tensor(dtype=yval.dtype,
+                          broadcastable=(False,) * len(yval.shape),
+                          name='y')
+        expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        rep = xval.copy()
+        np.add.at(rep, [[0, 2]], yval)
         assert np.allclose(rval, rep)
 
 
 def test_advinc_subtensor1_vector_scalar():
     # Test the case where x is a vector and y a scalar
     shp = (3,)
-    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64')]:
+    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64'),
+                           ('float16', 'int8'), ('float16', 'float64'),
+                           ('float16', 'float16')]:
         shared = gpuarray_shared_constructor
         xval = np.arange(np.prod(shp), dtype=dtype1).reshape(shp) + 1
         yval = np.asarray(10, dtype=dtype2)
@@ -100,7 +165,9 @@ def test_advinc_subtensor1_vector_scalar():
                           name='y')
         expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
         f = theano.function([y], expr, mode=mode_with_gpu)
-        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1_dev20)
+
+        assert sum([isinstance(node.op, (GpuAdvancedIncSubtensor1_dev20,
+                                         GpuAdvancedIncSubtensor1))
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
@@ -124,7 +191,7 @@ def test_incsub_f16():
                 for node in f.maker.fgraph.toposort()]) == 1
     rval = f(yval)
     rep = xval.copy()
-    rep[[0, 2]] += yval
+    np.add.at(rep, [[0, 2]], yval)
     assert np.allclose(rval, rep)
 
     expr = tensor.inc_subtensor(x[1:], y)
@@ -162,9 +229,29 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
+            inc_sub=GpuAdvancedIncSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
-            dtype='float32',
+            dtype='float32',  # floatX?
+            ignore_topo=(HostFromGpu, GpuFromHost,
+                         DeepCopyOp))
+        # GPU opt can't run in fast_compile only.
+        self.fast_compile = False
+        assert self.sub == GpuAdvancedSubtensor
+
+
+class G_advancedsubtensorF16(test_subtensor.TestAdvancedSubtensor):
+    def shortDescription(self):
+        return None
+
+    def __init__(self, name):
+        test_subtensor.TestAdvancedSubtensor.__init__(
+            self, name,
+            shared=gpuarray_shared_constructor,
+            sub=GpuAdvancedSubtensor,
+            mode=mode_with_gpu,
+            # avoid errors with limited devices
+            dtype='float16',  # floatX?
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp))
         # GPU opt can't run in fast_compile only.
@@ -191,15 +278,21 @@ def test_adv_subtensor():
     assert np.allclose(rval, rep)
 
 
-class test_gpudiagonal(unittest.TestCase):
+class test_gpuextractdiag(unittest.TestCase):
+    def test_extractdiag_opt(self):
+        x = tensor.matrix()
+        fn = theano.function([x], tensor.ExtractDiag()(x), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuExtractDiag)
+                    for node in fn.maker.fgraph.toposort()])
+
     def test_matrix(self):
         x = tensor.matrix()
         np_x = np.arange(77).reshape(7, 11).astype(theano.config.floatX)
-        fn = theano.function([x], GpuDiagonal()(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag()(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal())
-        fn = theano.function([x], GpuDiagonal(2)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag(2)(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal(2))
-        fn = theano.function([x], GpuDiagonal(-3)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag(-3)(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal(-3))
 
     def test_tensor(self):
@@ -210,5 +303,91 @@ class test_gpudiagonal(unittest.TestCase):
                 (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
                 (2, 2, 3), (-1, 2, 1), (1, 3, 1), (-1, 1, 3)]:
             assert np.allclose(
-                GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
+                GpuExtractDiag(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
+
+    def test_tensor_float16(self):
+        x = tensor.tensor4()
+        np_x = np.arange(30107).reshape(7, 11, 17, 23).astype('float16')
+        for offset, axis1, axis2 in [
+                (1, 0, 1), (-1, 0, 1), (0, 1, 0), (-2, 1, 0),
+                (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
+                (2, 2, 3), (-1, 2, 1), (1, 3, 1), (-1, 1, 3)]:
+            assert np.allclose(
+                GpuExtractDiag(offset, axis1, axis2)(x).eval({x: np_x}),
+                np_x.diagonal(offset, axis1, axis2))
+
+
+class TestGpuAllocDiag(test_basic.TestAllocDiag):
+    def __init__(self, name):
+        return test_basic.TestAllocDiag.__init__(
+            self, name,
+            alloc_diag=GpuAllocDiag,
+            mode=mode_with_gpu
+        )
+
+
+class test_gpuallocdiag(unittest.TestCase):
+    def test_allocdiag_opt(self):
+        x = tensor.vector()
+        fn = theano.function([x], tensor.AllocDiag()(x), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuAllocDiag)
+                    for node in fn.maker.fgraph.toposort()])
+
+    def test_matrix(self):
+        x = tensor.vector()
+        np_x = np.arange(7).astype(theano.config.floatX)
+        fn = theano.function([x], GpuAllocDiag()(x), mode=mode_with_gpu)
+        assert np.allclose(fn(np_x), np.diag(np_x))
+        fn = theano.function([x], GpuAllocDiag(2)(x), mode=mode_with_gpu)
+        assert np.allclose(fn(np_x), np.diag(np_x, 2))
+        fn = theano.function([x], GpuAllocDiag(-3)(x), mode=mode_with_gpu)
+        assert np.allclose(fn(np_x), np.diag(np_x, -3))
+
+    def test_grad(self):
+        x = tensor.vector()
+        np_x = np.random.randn(7).astype(theano.config.floatX)
+
+        # offset = 0 case:
+        mtx_x = GpuAllocDiag()(x)
+        sum_mtx_x = tensor.sum(mtx_x)
+        grad_x = tensor.grad(sum_mtx_x, x)
+        grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
+
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
+
+        computed_grad_x = fn_grad_x(np_x)
+        computed_grad_mtx_x = fn_grad_mtx_x(np_x)
+        true_grad_x = np.diagonal(computed_grad_mtx_x, 0)
+        assert np.allclose(computed_grad_x, true_grad_x)
+
+        # offset > 0 case:
+        mtx_x = GpuAllocDiag(2)(x)
+        sum_mtx_x = tensor.sum(mtx_x)
+        grad_x = tensor.grad(sum_mtx_x, x)
+        grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
+
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
+
+        computed_grad_x = fn_grad_x(np_x)
+        computed_grad_mtx_x = fn_grad_mtx_x(np_x)
+        true_grad_x = np.diagonal(computed_grad_mtx_x, 2)
+        assert np.allclose(computed_grad_x, true_grad_x)
+
+        # offset < 0 case:
+        mtx_x = GpuAllocDiag(-3)(x)
+        sum_mtx_x = tensor.sum(mtx_x)
+        grad_x = tensor.grad(sum_mtx_x, x)
+        grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
+
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
+
+        computed_grad_x = fn_grad_x(np_x)
+        computed_grad_mtx_x = fn_grad_mtx_x(np_x)
+        true_grad_x = np.diagonal(computed_grad_mtx_x, -3)
+        assert np.allclose(computed_grad_x, true_grad_x)
+
+        # assert

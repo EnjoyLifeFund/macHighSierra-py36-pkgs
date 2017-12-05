@@ -4,22 +4,97 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from datetime import datetime
 import zipfile
+
+from datetime import datetime
 
 import six
 
 from . import errors
 from .base import FS
 from .compress import write_zip
-from .enums import ResourceType
+from .enums import ResourceType, Seek
 from .info import Info
 from .iotools import RawWrapper
+from .permissions import Permissions
 from .memoryfs import MemoryFS
 from .opener import open_fs
 from .path import dirname, normpath, relpath
 from .time import datetime_to_epoch
 from .wrapfs import WrapFS
+
+
+class _ZipExtFile(RawWrapper):
+
+    def __init__(self, fs, name):
+        self._zip = _zip = fs._zip
+        self._end = _zip.getinfo(name).file_size
+        self._pos = 0
+        super(_ZipExtFile, self).__init__(_zip.open(name), 'r', name)
+
+    def read(self, size=-1):
+        buf = self._f.read(-1 if size is None else size)
+        self._pos += len(buf)
+        return buf
+
+    def read1(self, size=-1):
+        buf = self._f.read1(-1 if size is None else size)
+        self._pos += len(buf)
+        return buf
+
+    def seek(self, offset, whence=Seek.set):
+        """Change stream position.
+
+        Change the stream position to the given byte offset. The
+        offset is interpreted relative to the position indicated by
+        ``whence``.
+
+        Arguments:
+            offset (int): the offset to the new position, in bytes.
+            whence (int): the position reference. Possible values are:
+                * `Seek.set`: start of stream (the default).
+                * `Seek.current`: current position; offset may be negative.
+                * `Seek.end`: end of stream; offset must be negative.
+
+        Returns:
+            int: the new absolute position.
+
+        Raises:
+            ValueError: when ``whence`` is not known, or ``offset``
+                is invalid.
+
+        Note:
+            Zip compression does not support seeking, so the seeking
+            is emulated. Seeking somewhere else than the current position
+            will need to either:
+                * reopen the file and restart decompression
+                * read and discard data to advance in the file
+
+        """
+        if whence == Seek.current:
+            offset += self._pos
+        if whence == Seek.current or whence == Seek.set:
+            if offset < 0:
+                 raise ValueError("Negative seek position {}".format(offset))
+        elif whence == Seek.end:
+            if offset > 0:
+                raise ValueError("Positive seek position {}".format(offset))
+            offset += self._end
+        else:
+            raise ValueError(
+                "Invalid whence ({}, should be {}, {} or {})".format(
+                    whence, Seek.set, Seek.current, Seek.end
+                )
+            )
+
+        if offset < self._pos:
+            self._f = self._zip.open(self.name)
+            self._pos = 0
+        self.read(offset - self._pos)
+        return self._pos
+
+    def tell(self):
+        return self._pos
 
 
 class ZipFS(WrapFS):
@@ -207,63 +282,62 @@ class ReadZipFS(FS):
             return self._directory_fs
 
     def getinfo(self, path, namespaces=None):
-        self.check()
+        _path = self.validatepath(path)
         namespaces = namespaces or ()
-        _path = normpath(path)
+        raw_info = {}
+
         if _path == '/':
-            raw_info = {
-                "basic":
-                {
-                    "name": "",
-                    "is_dir": True,
-                },
-                "details":
-                {
+            raw_info["basic"] = {
+                "name": "",
+                "is_dir": True,
+            }
+            if "details" in namespaces:
+                raw_info["details"] = {
                     "type": int(ResourceType.directory)
                 }
-            }
+
         else:
             basic_info = self._directory.getinfo(_path)
-            zip_name = self._path_to_zip_name(path)
-            try:
-                zip_info = self._zip.getinfo(zip_name)
-            except KeyError:
-                # Can occur if there is an implied directory in the zip
-                raw_info = {
-                    "basic":
-                    {
-                        "name": basic_info.name,
-                        "is_dir": basic_info.is_dir
-                    }
-                }
-            else:
-                modified_epoch = datetime_to_epoch(
-                    datetime(*zip_info.date_time)
-                )
-                raw_zip_info = {
-                    k: getattr(zip_info, k)
-                    for k in dir(zip_info)
-                    if (not k.startswith('_') and
-                        not callable(getattr(zip_info, k)))
-                }
-                raw_info = {
-                    "basic":
-                    {
-                        "name": basic_info.name,
-                        "is_dir": basic_info.is_dir,
-                    },
-                    "details":
-                    {
-                        "size": zip_info.file_size,
-                        "type": int(
-                            ResourceType.directory
-                            if basic_info.is_dir else
-                            ResourceType.file
-                        ),
-                        "modified": modified_epoch
-                    },
-                    "zip": raw_zip_info
-                }
+            raw_info["basic"] = {
+                "name": basic_info.name,
+                "is_dir": basic_info.is_dir,
+            }
+
+            if not {"details", "access", "zip"}.isdisjoint(namespaces):
+                zip_name = self._path_to_zip_name(path)
+                try:
+                    zip_info = self._zip.getinfo(zip_name)
+                except KeyError:
+                    # Can occur if there is an implied directory in the zip
+                    pass
+                else:
+                    if "details" in namespaces:
+                        raw_info["details"] = {
+                            "size": zip_info.file_size,
+                            "type": int(
+                                ResourceType.directory
+                                if basic_info.is_dir else
+                                ResourceType.file
+                            ),
+                            "modified": datetime_to_epoch(
+                                datetime(*zip_info.date_time)
+                            )
+                        }
+                    if "zip" in namespaces:
+                        raw_info["zip"] = {
+                            k: getattr(zip_info, k)
+                            for k in zip_info.__slots__
+                            if not k.startswith('_')
+                        }
+                    if "access" in namespaces:
+                        # check the zip was created on UNIX to get permissions
+                        if zip_info.external_attr \
+                                and zip_info.create_system == 3:
+                            raw_info["access"] = {
+                                "permissions": Permissions(
+                                    mode=zip_info.external_attr >> 16 & 0xFFF
+                                ).dump(),
+                            }
 
         return Info(raw_info)
 
@@ -290,8 +364,7 @@ class ReadZipFS(FS):
             raise errors.FileExpected(path)
 
         zip_name = self._path_to_zip_name(path)
-        bin_file = self._zip.open(zip_name, 'r')
-        return RawWrapper(bin_file)
+        return _ZipExtFile(self, zip_name)
 
     def remove(self, path):
         self.check()

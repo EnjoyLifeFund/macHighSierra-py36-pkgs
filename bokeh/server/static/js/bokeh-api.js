@@ -17,15 +17,15 @@
     }
   })
 ({
-362: /* api/charts */ function(require, module, exports) {
+365: /* api/charts */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 var hexcolor2rgb, is_dark, num2hexcolor;
-var sprintf_js_1 = require(359    /* sprintf-js */);
-var models = require(366    /* ./models */);
-var palettes = require(367    /* ./palettes */);
-var array_1 = require(21    /* ../core/util/array */);
-var types_1 = require(41    /* ../core/util/types */);
+var sprintf_js_1 = require(362    /* sprintf-js */);
+var models = require(369    /* ./models */);
+var palettes = require(370    /* ./palettes */);
+var array_1 = require(22    /* ../core/util/array */);
+var types_1 = require(42    /* ../core/util/types */);
 num2hexcolor = function (num) {
     return sprintf_js_1.sprintf('#%06x', num);
 };
@@ -40,17 +40,17 @@ hexcolor2rgb = function (color) {
         b
     ];
 };
-is_dark = function (arg) {
-    var b, g, l, r;
-    r = arg[0], g = arg[1], b = arg[2];
+is_dark = function (_a) {
+    var r = _a[0], g = _a[1], b = _a[2];
+    var l;
     l = 1 - (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return l >= 0.6;
 };
 exports.pie = function (data, opts) {
-    var angle_span, colors, cumulative_values, cx, cy, end_angle, end_angles, g1, g2, h1, half_angles, half_radius, hover, i, inner_radius, k, labels, normalized_values, outer_radius, palette, plot, r1, r2, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, source, start_angle, start_angles, text_angles, text_colors, text_cx, text_cy, to_cartesian, to_radians, tooltip, total_value, values, xdr, ydr;
-    if (opts == null) {
+    if (opts === void 0) {
         opts = {};
     }
+    var angle_span, colors, cumulative_values, cx, cy, end_angle, end_angles, g1, g2, h1, half_angles, half_radius, hover, i, inner_radius, k, labels, normalized_values, outer_radius, palette, plot, r1, r2, ref, ref1, ref2, ref3, ref4, ref5, ref6, source, start_angle, start_angles, text_angles, text_colors, text_cx, text_cy, to_cartesian, to_radians, tooltip, total_value, values, xdr, ydr;
     labels = [];
     values = [];
     for (i = k = 0, ref = Math.min(data.labels.length, data.values.length); 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
@@ -74,13 +74,10 @@ exports.pie = function (data, opts) {
         return start_angle + to_radians(v);
     });
     start_angles = [start_angle].concat(end_angles.slice(0, -1));
-    half_angles = array_1.zip(start_angles, end_angles).map(function (_this) {
-        return function (arg) {
-            var end, start;
-            start = arg[0], end = arg[1];
-            return (start + end) / 2;
-        };
-    }(this));
+    half_angles = array_1.zip(start_angles, end_angles).map(function (_a) {
+        var start = _a[0], end = _a[1];
+        return (start + end) / 2;
+    });
     if (opts.center == null) {
         cx = 0;
         cy = 0;
@@ -120,11 +117,9 @@ exports.pie = function (data, opts) {
         ];
     };
     half_radius = (inner_radius + outer_radius) / 2;
-    ref6 = array_1.unzip(half_angles.map(function (_this) {
-        return function (half_angle) {
-            return to_cartesian(half_radius, half_angle);
-        };
-    }(this))), text_cx = ref6[0], text_cy = ref6[1];
+    _a = array_1.unzip(half_angles.map(function (half_angle) {
+        return to_cartesian(half_radius, half_angle);
+    })), text_cx = _a[0], text_cy = _a[1];
     text_cx = text_cx.map(function (x) {
         return x + cx;
     });
@@ -142,11 +137,9 @@ exports.pie = function (data, opts) {
         data: {
             labels: labels,
             values: values,
-            percentages: normalized_values.map(function (_this) {
-                return function (v) {
-                    return sprintf_js_1.sprintf('%.2f%%', v * 100);
-                };
-            }(this)),
+            percentages: normalized_values.map(function (v) {
+                return sprintf_js_1.sprintf('%.2f%%', v * 100);
+            }),
             start_angles: start_angles,
             end_angles: end_angles,
             text_angles: text_angles,
@@ -187,7 +180,7 @@ exports.pie = function (data, opts) {
     g2 = new models.Text({
         x: { field: 'text_cx' },
         y: { field: 'text_cy' },
-        text: { field: (ref7 = opts.slice_labels) != null ? ref7 : 'labels' },
+        text: { field: (ref6 = opts.slice_labels) != null ? ref6 : 'labels' },
         angle: { field: 'text_angles' },
         text_align: 'center',
         text_baseline: 'middle',
@@ -224,12 +217,13 @@ exports.pie = function (data, opts) {
     });
     plot.add_tools(hover);
     return plot;
+    var _a;
 };
 exports.bar = function (data, opts) {
-    var anchor, attachment, bottom, column_names, columns, dy, g1, hover, i, j, k, label, labels, left, len, len1, len2, len3, len4, m, n, name, o, orientation, p, palette, plot, q, r, r1, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, renderers, right, row, rows, s, source, stacked, tooltip, top, v, xaxis, xdr, xformatter, xscale, yaxis, ydr, yscale;
-    if (opts == null) {
+    if (opts === void 0) {
         opts = {};
     }
+    var anchor, attachment, bottom, column_names, columns, dy, g1, hover, i, j, k, label, labels, left, len, len1, len2, len3, len4, m, n, name, o, orientation, p, palette, plot, q, r, r1, ref, ref1, ref2, ref3, ref4, renderers, right, row, rows, s, source, stacked, tooltip, top, v, xaxis, xdr, xformatter, xscale, yaxis, ydr, yscale;
     column_names = data[0];
     rows = data.slice(1);
     columns = function () {
@@ -385,29 +379,29 @@ exports.bar = function (data, opts) {
         }
     }
     if (orientation === 'vertical') {
-        ref5 = [
+        _a = [
             ydr,
             xdr
-        ], xdr = ref5[0], ydr = ref5[1];
-        ref6 = [
+        ], xdr = _a[0], ydr = _a[1];
+        _b = [
             yaxis,
             xaxis
-        ], xaxis = ref6[0], yaxis = ref6[1];
-        ref7 = [
+        ], xaxis = _b[0], yaxis = _b[1];
+        _c = [
             yscale,
             xscale
-        ], xscale = ref7[0], yscale = ref7[1];
+        ], xscale = _c[0], yscale = _c[1];
         for (s = 0, len4 = renderers.length; s < len4; s++) {
             r = renderers[s];
             data = r.data_source.data;
-            ref8 = [
+            _d = [
                 data.bottom,
                 data.left
-            ], data.left = ref8[0], data.bottom = ref8[1];
-            ref9 = [
+            ], data.left = _d[0], data.bottom = _d[1];
+            _e = [
                 data.top,
                 data.right
-            ], data.right = ref9[0], data.top = ref9[1];
+            ], data.right = _e[0], data.top = _e[1];
         }
     }
     plot = new models.Plot({
@@ -443,53 +437,54 @@ exports.bar = function (data, opts) {
     });
     plot.add_tools(hover);
     return plot;
+    var _a, _b, _c, _d, _e;
 };    
 },
-363: /* api/index */ function(require, module, exports) {
+366: /* api/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(361    /* tslib */);
+var tslib_1 = require(364    /* tslib */);
 // api/bokeh.d.ts
-var LinAlg = require(364    /* ./linalg */);
+var LinAlg = require(367    /* ./linalg */);
 exports.LinAlg = LinAlg;
 // api/charts.d.ts
-var Charts = require(362    /* ./charts */);
+var Charts = require(365    /* ./charts */);
 exports.Charts = Charts;
 // api/plotting.d.ts
-var Plotting = require(368    /* ./plotting */);
+var Plotting = require(371    /* ./plotting */);
 exports.Plotting = Plotting;
 // api/typings/models/document.d.ts
-var document_1 = require(46    /* ../document */);
+var document_1 = require(47    /* ../document */);
 exports.Document = document_1.Document;
 // api/typings/bokeh.d.ts
-var sprintf_js_1 = require(359    /* sprintf-js */);
+var sprintf_js_1 = require(362    /* sprintf-js */);
 exports.sprintf = sprintf_js_1.sprintf;
 // api/typings/models/*.d.ts
-tslib_1.__exportStar(require(366    /* ./models */), exports);    
+tslib_1.__exportStar(require(369    /* ./models */), exports);    
 },
-364: /* api/linalg */ function(require, module, exports) {
+367: /* api/linalg */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(361    /* tslib */);
-tslib_1.__exportStar(require(29    /* ../core/util/object */), exports);
-tslib_1.__exportStar(require(21    /* ../core/util/array */), exports);
-tslib_1.__exportStar(require(36    /* ../core/util/string */), exports);
-tslib_1.__exportStar(require(41    /* ../core/util/types */), exports);
-tslib_1.__exportStar(require(27    /* ../core/util/eq */), exports);    
+var tslib_1 = require(364    /* tslib */);
+tslib_1.__exportStar(require(30    /* ../core/util/object */), exports);
+tslib_1.__exportStar(require(22    /* ../core/util/array */), exports);
+tslib_1.__exportStar(require(37    /* ../core/util/string */), exports);
+tslib_1.__exportStar(require(42    /* ../core/util/types */), exports);
+tslib_1.__exportStar(require(28    /* ../core/util/eq */), exports);    
 },
-365: /* api/main */ function(require, module, exports) {
+368: /* api/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(361    /* tslib */);
-tslib_1.__exportStar(require(363    /* ./index */), exports);    
+var tslib_1 = require(364    /* tslib */);
+tslib_1.__exportStar(require(366    /* ./index */), exports);    
 },
-366: /* api/models */ function(require, module, exports) {
+369: /* api/models */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var tslib_1 = require(361    /* tslib */);
-tslib_1.__exportStar(require(132    /* ../models/index */), exports);    
+var tslib_1 = require(364    /* tslib */);
+tslib_1.__exportStar(require(135    /* ../models/index */), exports);    
 },
-367: /* api/palettes */ function(require, module, exports) {
+370: /* api/palettes */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.YlGn3 = [
@@ -5711,39 +5706,22 @@ exports.Colorblind = {
  */
       
 },
-368: /* api/plotting */ function(require, module, exports) {
+371: /* api/plotting */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var _default_tools, _default_tooltips, _known_tools, _with_default, extend1 = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty, slice = [].slice, indexOf = [].indexOf || function (item) {
-        for (var i = 0, l = this.length; i < l; i++) {
-            if (i in this && this[i] === item)
-                return i;
-        }
-        return -1;
-    };
-var sprintf_js_1 = require(359    /* sprintf-js */);
-var document_1 = require(46    /* ../document */);
-var embed = require(47    /* ../embed */);
-var embed_1 = require(47    /* ../embed */);
-var models = require(366    /* ./models */);
+var tslib_1 = require(364    /* tslib */);
+var _default_tools, _default_tooltips, _known_tools, _with_default, slice = [].slice, indexOf = [].indexOf;
+var sprintf_js_1 = require(362    /* sprintf-js */);
+var document_1 = require(47    /* ../document */);
+var embed = require(48    /* ../embed */);
+var embed_1 = require(48    /* ../embed */);
+var models = require(369    /* ./models */);
 var dom_1 = require(5    /* ../core/dom */);
-var string_1 = require(36    /* ../core/util/string */);
-var eq_1 = require(27    /* ../core/util/eq */);
-var array_1 = require(21    /* ../core/util/array */);
-var object_1 = require(29    /* ../core/util/object */);
-var types_1 = require(41    /* ../core/util/types */);
+var string_1 = require(37    /* ../core/util/string */);
+var eq_1 = require(28    /* ../core/util/eq */);
+var array_1 = require(22    /* ../core/util/array */);
+var object_1 = require(30    /* ../core/util/object */);
+var types_1 = require(42    /* ../core/util/types */);
 _default_tooltips = [
     [
         'index',
@@ -5754,7 +5732,7 @@ _default_tooltips = [
         '($x, $y)'
     ],
     [
-        'canvas (x, y)',
+        'screen (x, y)',
         '($sx, $sy)'
     ]
 ];
@@ -5768,6 +5746,12 @@ _known_tools = {
     },
     ypan: function () {
         return new models.PanTool({ dimensions: 'height' });
+    },
+    xwheel_pan: function () {
+        return new models.WheelPanTool({ dimension: 'width' });
+    },
+    ywheel_pan: function () {
+        return new models.WheelPanTool({ dimension: 'height' });
     },
     wheel_zoom: function () {
         return new models.WheelZoomTool({ dimensions: 'both' });
@@ -5858,27 +5842,28 @@ _with_default = function (value, default_value) {
         return value;
     }
 };
-exports.Figure = function (superClass) {
-    extend1(Figure, superClass);
+var Figure = function (_super) {
+    tslib_1.__extends(Figure, _super);
     function Figure(attributes, options) {
-        var attrs, ref, ref1, ref2, ref3, ref4, ref5, tools, x_axis_label, x_axis_location, x_axis_type, x_minor_ticks, y_axis_label, y_axis_location, y_axis_type, y_minor_ticks;
-        if (attributes == null) {
+        if (attributes === void 0) {
             attributes = {};
         }
-        if (options == null) {
+        if (options === void 0) {
             options = {};
         }
+        var _this = this;
+        var attrs, ref, ref1, ref2, ref3, ref4, ref5, tools, x_axis_label, x_axis_location, x_axis_type, x_minor_ticks, y_axis_label, y_axis_location, y_axis_type, y_minor_ticks;
         attrs = object_1.clone(attributes);
         tools = _with_default(attrs.tools, _default_tools);
         delete attrs.tools;
-        attrs.x_range = this._get_range(attrs.x_range);
-        attrs.y_range = this._get_range(attrs.y_range);
+        attrs.x_range = Figure._get_range(attrs.x_range);
+        attrs.y_range = Figure._get_range(attrs.y_range);
         x_axis_type = attrs.x_axis_type === void 0 ? 'auto' : attrs.x_axis_type;
         y_axis_type = attrs.y_axis_type === void 0 ? 'auto' : attrs.y_axis_type;
         delete attrs.x_axis_type;
         delete attrs.y_axis_type;
-        attrs.x_scale = this._get_scale(attrs.x_range, x_axis_type);
-        attrs.y_scale = this._get_scale(attrs.y_range, y_axis_type);
+        attrs.x_scale = Figure._get_scale(attrs.x_range, x_axis_type);
+        attrs.y_scale = Figure._get_scale(attrs.y_range, y_axis_type);
         x_minor_ticks = (ref = attrs.x_minor_ticks) != null ? ref : 'auto';
         y_minor_ticks = (ref1 = attrs.y_minor_ticks) != null ? ref1 : 'auto';
         delete attrs.x_minor_ticks;
@@ -5907,232 +5892,259 @@ exports.Figure = function (superClass) {
             }
             delete attrs.height;
         }
-        Figure.__super__.constructor.call(this, attrs, options);
-        this._process_axis_and_grid(x_axis_type, x_axis_location, x_minor_ticks, x_axis_label, attrs.x_range, 0);
-        this._process_axis_and_grid(y_axis_type, y_axis_location, y_minor_ticks, y_axis_label, attrs.y_range, 1);
-        this.add_tools.apply(this, this._process_tools(tools));
-        this._legend = new models.Legend({
-            plot: this,
+        _this = _super.call(this, attrs, options) || this;
+        _this._process_axis_and_grid(x_axis_type, x_axis_location, x_minor_ticks, x_axis_label, attrs.x_range, 0);
+        _this._process_axis_and_grid(y_axis_type, y_axis_location, y_minor_ticks, y_axis_label, attrs.y_range, 1);
+        _this.add_tools.apply(_this, _this._process_tools(tools));
+        _this._legend = new models.Legend({
+            plot: _this,
             items: []
         });
-        this.add_renderers(this._legend);
+        _this.add_renderers(_this._legend);
+        return _this;
     }
-    Object.defineProperty(Figure.prototype, 'xgrid', {
-        get: function () {
-            return this.renderers.filter(function (r) {
-                return r instanceof models.Grid && r.dimension === 0;
-            })[0];
-        }
-    });
-    Object.defineProperty(Figure.prototype, 'ygrid', {
-        get: function () {
-            return this.renderers.filter(function (r) {
-                return r instanceof models.Grid && r.dimension === 1;
-            })[0];
-        }
-    });
-    Object.defineProperty(Figure.prototype, 'xaxis', {
-        get: function () {
-            return this.below.concat(this.above).filter(function (r) {
-                return r instanceof models.Axis;
-            })[0];
-        }
-    });
-    Object.defineProperty(Figure.prototype, 'yaxis', {
-        get: function () {
-            return this.left.concat(this.right).filter(function (r) {
-                return r instanceof models.Axis;
-            })[0];
-        }
-    });
     Figure.prototype.annular_wedge = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.AnnularWedge, 'x,y,inner_radius,outer_radius,start_angle,end_angle', args);
     };
     Figure.prototype.annulus = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Annulus, 'x,y,inner_radius,outer_radius', args);
     };
     Figure.prototype.arc = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Arc, 'x,y,radius,start_angle,end_angle', args);
     };
     Figure.prototype.bezier = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Bezier, 'x0,y0,x1,y1,cx0,cy0,cx1,cy1', args);
     };
     Figure.prototype.circle = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Circle, 'x,y', args);
     };
     Figure.prototype.ellipse = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Ellipse, 'x,y,width,height', args);
     };
     Figure.prototype.image = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Image, 'color_mapper,image,rows,cols,x,y,dw,dh', args);
     };
     Figure.prototype.image_rgba = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.ImageRGBA, 'image,rows,cols,x,y,dw,dh', args);
     };
     Figure.prototype.image_url = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.ImageURL, 'url,x,y,w,h', args);
     };
     Figure.prototype.line = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Line, 'x,y', args);
     };
     Figure.prototype.multi_line = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.MultiLine, 'xs,ys', args);
     };
     Figure.prototype.oval = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Oval, 'x,y,width,height', args);
     };
     Figure.prototype.patch = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Patch, 'x,y', args);
     };
     Figure.prototype.patches = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Patches, 'xs,ys', args);
     };
     Figure.prototype.quad = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Quad, 'left,right,bottom,top', args);
     };
     Figure.prototype.quadratic = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Quadratic, 'x0,y0,x1,y1,cx,cy', args);
     };
     Figure.prototype.ray = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Ray, 'x,y,length', args);
     };
     Figure.prototype.rect = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Rect, 'x,y,width,height', args);
     };
     Figure.prototype.segment = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Segment, 'x0,y0,x1,y1', args);
     };
     Figure.prototype.text = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Text, 'x,y,text', args);
     };
     Figure.prototype.wedge = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._glyph(models.Wedge, 'x,y,radius,start_angle,end_angle', args);
     };
     Figure.prototype.asterisk = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.Asterisk, args);
     };
     Figure.prototype.circle_cross = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.CircleCross, args);
     };
     Figure.prototype.circle_x = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.CircleX, args);
     };
     Figure.prototype.cross = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.Cross, args);
     };
     Figure.prototype.diamond = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.Diamond, args);
     };
     Figure.prototype.diamond_cross = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.DiamondCross, args);
     };
     Figure.prototype.inverted_triangle = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.InvertedTriangle, args);
     };
     Figure.prototype.square = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.Square, args);
     };
     Figure.prototype.square_cross = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.SquareCross, args);
     };
     Figure.prototype.square_x = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.SquareX, args);
     };
     Figure.prototype.triangle = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.Triangle, args);
     };
     Figure.prototype.x = function () {
-        var args;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
         return this._marker(models.X, args);
     };
-    Figure.prototype._vectorable = [
-        'fill_color',
-        'fill_alpha',
-        'line_color',
-        'line_alpha',
-        'line_width',
-        'text_color',
-        'text_alpha',
-        'text_font_size'
-    ];
-    Figure.prototype._default_color = '#1f77b4';
-    Figure.prototype._default_alpha = 1;
     Figure.prototype._pop_colors_and_alpha = function (cls, attrs, prefix, default_color, default_alpha) {
-        var _update_with, alpha, color, result;
-        if (prefix == null) {
+        if (prefix === void 0) {
             prefix = '';
         }
-        if (default_color == null) {
+        if (default_color === void 0) {
             default_color = this._default_color;
         }
-        if (default_alpha == null) {
+        if (default_alpha === void 0) {
             default_alpha = this._default_alpha;
         }
+        var _update_with, alpha, color, result;
         result = {};
         color = _with_default(attrs[prefix + 'color'], default_color);
         alpha = _with_default(attrs[prefix + 'alpha'], default_alpha);
@@ -6165,38 +6177,37 @@ exports.Figure = function (superClass) {
         }
     };
     Figure.prototype._fixup_values = function (cls, data, attrs) {
+        var _this = this;
         var name, results, value;
         results = [];
         for (name in attrs) {
             value = attrs[name];
-            results.push(function (_this) {
-                return function (name, value) {
-                    var field, prop;
-                    prop = cls.prototype.props[name];
-                    if (prop != null) {
-                        if (prop.type.prototype.dataspec) {
-                            if (value != null) {
-                                if (types_1.isArray(value)) {
-                                    if (data[name] != null) {
-                                        if (data[name] !== value) {
-                                            field = _this._find_uniq_name(data, name);
-                                            data[field] = value;
-                                        } else {
-                                            field = name;
-                                        }
+            results.push(function (name, value) {
+                var field, prop;
+                prop = cls.prototype.props[name];
+                if (prop != null) {
+                    if (prop.type.prototype.dataspec) {
+                        if (value != null) {
+                            if (types_1.isArray(value)) {
+                                if (data[name] != null) {
+                                    if (data[name] !== value) {
+                                        field = _this._find_uniq_name(data, name);
+                                        data[field] = value;
                                     } else {
                                         field = name;
-                                        data[field] = value;
                                     }
-                                    return attrs[name] = { field: field };
-                                } else if (types_1.isNumber(value) || types_1.isString(value)) {
-                                    return attrs[name] = { value: value };
+                                } else {
+                                    field = name;
+                                    data[field] = value;
                                 }
+                                return attrs[name] = { field: field };
+                            } else if (types_1.isNumber(value) || types_1.isString(value)) {
+                                return attrs[name] = { value: value };
                             }
                         }
                     }
-                };
-            }(this)(name, value));
+                }
+            }(name, value));
         }
         return results;
     };
@@ -6238,11 +6249,9 @@ exports.Figure = function (superClass) {
         this._fixup_values(cls, data, hglyph_ca);
         this._fixup_values(cls, data, attrs);
         source.data = data;
-        _make_glyph = function (_this) {
-            return function (cls, attrs, extra_attrs) {
-                return new cls(object_1.extend({}, attrs, extra_attrs));
-            };
-        }(this);
+        _make_glyph = function (cls, attrs, extra_attrs) {
+            return new cls(object_1.extend({}, attrs, extra_attrs));
+        };
         glyph = _make_glyph(cls, attrs, glyph_ca);
         nsglyph = _make_glyph(cls, attrs, nsglyph_ca);
         sglyph = has_sglyph ? _make_glyph(cls, attrs, sglyph_ca) : null;
@@ -6263,7 +6272,7 @@ exports.Figure = function (superClass) {
     Figure.prototype._marker = function (cls, args) {
         return this._glyph(cls, 'x,y', args);
     };
-    Figure.prototype._get_range = function (range) {
+    Figure._get_range = function (range) {
         if (range == null) {
             return new models.DataRange1d();
         }
@@ -6282,7 +6291,7 @@ exports.Figure = function (superClass) {
             }
         }
     };
-    Figure.prototype._get_scale = function (range_input, axis_type) {
+    Figure._get_scale = function (range_input, axis_type) {
         if (range_input instanceof models.DataRange1d || range_input instanceof models.Range1d) {
             switch (axis_type) {
             case 'linear':
@@ -6344,6 +6353,7 @@ exports.Figure = function (superClass) {
             if (range instanceof models.FactorRange) {
                 return models.CategoricalAxis;
             } else {
+                // TODO: return models.DatetimeAxis (Date type)
                 return models.LinearAxis;
             }
         }
@@ -6437,14 +6447,56 @@ exports.Figure = function (superClass) {
     };
     return Figure;
 }(models.Plot);
+exports.Figure = Figure;
+;
+Object.defineProperty(Figure.prototype, 'xgrid', {
+    get: function () {
+        return this.renderers.filter(function (r) {
+            return r instanceof models.Grid && r.dimension === 0;
+        })[0];
+    }
+});
+Object.defineProperty(Figure.prototype, 'ygrid', {
+    get: function () {
+        return this.renderers.filter(function (r) {
+            return r instanceof models.Grid && r.dimension === 1;
+        })[0];
+    }
+});
+Object.defineProperty(Figure.prototype, 'xaxis', {
+    get: function () {
+        return this.below.concat(this.above).filter(function (r) {
+            return r instanceof models.Axis;
+        })[0];
+    }
+});
+Object.defineProperty(Figure.prototype, 'yaxis', {
+    get: function () {
+        return this.left.concat(this.right).filter(function (r) {
+            return r instanceof models.Axis;
+        })[0];
+    }
+});
+Figure.prototype._vectorable = [
+    'fill_color',
+    'fill_alpha',
+    'line_color',
+    'line_alpha',
+    'line_width',
+    'text_color',
+    'text_alpha',
+    'text_font_size'
+];
+Figure.prototype._default_color = '#1f77b4';
+Figure.prototype._default_alpha = 1;
 exports.figure = function (attributes, options) {
-    if (attributes == null) {
+    if (attributes === void 0) {
         attributes = {};
     }
-    if (options == null) {
+    if (options === void 0) {
         options = {};
     }
-    return new exports.Figure(attributes, options);
+    return new Figure(attributes, options);
 };
 exports.show = function (obj, target) {
     var _obj, doc, element, j, len, multiple, root, views;
@@ -6472,7 +6524,7 @@ exports.show = function (obj, target) {
     } else {
         throw new Error('target should be HTMLElement, string selector, $ or null');
     }
-    root = dom_1.div({ 'class': embed_1.BOKEH_ROOT });
+    root = dom_1.div({ class: embed_1.BOKEH_ROOT });
     element.appendChild(root);
     views = embed.add_document_standalone(doc, root);
     if (!multiple) {
@@ -6485,13 +6537,13 @@ exports.color = function (r, g, b) {
     return sprintf_js_1.sprintf('#%02x%02x%02x', r, g, b);
 };
 exports.gridplot = function (children, options) {
-    var grid, item, j, k, l, layout, len, len1, len2, neighbor, row, row_children, row_tools, rows, sizing_mode, toolbar, toolbar_location, toolbar_sizing_mode, tools;
-    if (options == null) {
+    if (options === void 0) {
         options = {};
     }
+    var grid, height, item, j, k, l, layout, len, len1, len2, merge_tools, neighbor, row, row_children, row_tools, rows, sizing_mode, toolbar, toolbar_location, toolbar_sizing_mode, tools, width;
     toolbar_location = options.toolbar_location === void 0 ? 'above' : options.toolbar_location;
     sizing_mode = options.sizing_mode === void 0 ? 'fixed' : options.sizing_mode;
-    toolbar_sizing_mode = options.sizing_mode === 'fixed' ? 'scale_width' : sizing_mode;
+    merge_tools = options.merge_tools === void 0 ? true : options.merge_tools;
     tools = [];
     rows = [];
     for (j = 0, len = children.length; j < len; j++) {
@@ -6505,15 +6557,19 @@ exports.gridplot = function (children, options) {
                 item.toolbar_location = null;
             }
             if (item === null) {
+                width = 0;
+                height = 0;
                 for (l = 0, len2 = row.length; l < len2; l++) {
                     neighbor = row[l];
                     if (neighbor instanceof models.Plot) {
+                        width = neighbor.plot_width;
+                        height = neighbor.plot_height;
                         break;
                     }
                 }
                 item = new models.Spacer({
-                    width: neighbor.plot_width,
-                    height: neighbor.plot_height
+                    width: width,
+                    height: height
                 });
             }
             if (item instanceof models.LayoutDOM) {
@@ -6534,12 +6590,24 @@ exports.gridplot = function (children, options) {
         children: rows,
         sizing_mode: sizing_mode
     });
+    if (!merge_tools) {
+        return grid;
+    }
     layout = function () {
         if (toolbar_location) {
+            if (sizing_mode === 'fixed') {
+                if (toolbar_location === 'above' || toolbar_location === 'below') {
+                    toolbar_sizing_mode = 'scale_width';
+                } else {
+                    toolbar_sizing_mode = 'scale_height';
+                }
+            } else {
+                toolbar_sizing_mode = sizing_mode;
+            }
             toolbar = new models.ToolbarBox({
-                tools: tools,
-                sizing_mode: toolbar_sizing_mode,
-                toolbar_location: toolbar_location
+                toolbar: new models.ProxyToolbar({ tools: tools }),
+                toolbar_location: toolbar_location,
+                sizing_mode: toolbar_sizing_mode
             });
             switch (toolbar_location) {
             case 'above':
@@ -6582,7 +6650,7 @@ exports.gridplot = function (children, options) {
     return layout;
 };    
 }
-}, {"api/charts":362,"api/index":363,"api/linalg":364,"api/main":365,"api/models":366,"api/palettes":367,"api/plotting":368}, 365);
+}, {"api/charts":365,"api/index":366,"api/linalg":367,"api/main":368,"api/models":369,"api/palettes":370,"api/plotting":371}, 368);
 })
 
 //# sourceMappingURL=bokeh-api.js.map

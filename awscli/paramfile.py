@@ -51,6 +51,19 @@ PARAMFILE_DISABLED = set([
     'custom.mv.website-redirect',
     'custom.sync.website-redirect',
 
+    'guardduty.create-ip-set.location',
+    'guardduty.update-ip-set.location',
+    'guardduty.create-threat-intel-set.location',
+    'guardduty.update-threat-intel-set.location',
+    'comprehend.detect-dominant-language.text',
+    'comprehend.batch-detect-dominant-language.text-list',
+    'comprehend.detect-entities.text',
+    'comprehend.batch-detect-entities.text-list',
+    'comprehend.detect-key-phrases.text',
+    'comprehend.batch-detect-key-phrases.text-list',
+    'comprehend.detect-sentiment.text',
+    'comprehend.batch-detect-sentiment.text-list',
+
     'iam.create-open-id-connect-provider.url',
 
     'machinelearning.predict.predict-endpoint',
@@ -84,6 +97,9 @@ PARAMFILE_DISABLED = set([
 
     # Double check that this has been renamed!
     'sns.subscribe.notification-endpoint',
+
+    'iot.create-job.document-source',
+    'translate.translate-text.text',
 ])
 
 

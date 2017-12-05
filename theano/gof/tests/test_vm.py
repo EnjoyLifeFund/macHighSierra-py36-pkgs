@@ -20,9 +20,8 @@ import theano
 
 
 class TestCallbacks(unittest.TestCase):
-    """
-    Test the VM_Linker's callback argument, which can be useful for debugging.
-    """
+    # Test the VM_Linker's callback argument, which can be useful for debugging.
+
     def setUp(self):
         self.n_callbacks = {}
 
@@ -279,21 +278,6 @@ if run_memory_usage_tests:
     # these are not normal unit tests, do not run them as part of standard
     # suite.  I ran them while looking at top, and stopped when memory usage
     # was stable.
-    def test_leak2():
-        import theano.sandbox.cuda as cuda
-        for i in xrange(1000000):
-            n = np.asarray([2.3, 4.5], dtype='f')
-            c = sys.getrefcount(n)
-            a = cuda.CudaNdarray(n)
-            a.sum()
-            assert c == sys.getrefcount(n)
-            del a
-            if not i % 1000:
-                print('.', end=' ')
-                print(gc.collect(), end=' ')
-                print(gc.collect())
-            sys.stdout.flush()
-
     def test_no_leak_many_graphs():
         # Verify no memory leaks when creating and deleting a lot of functions
 
@@ -402,12 +386,11 @@ class RunOnce(theano.Op):
 
 
 def test_vm_gc():
-    """This already caused a bug in the trunk of Theano.
+    # This already caused a bug in the trunk of Theano.
+    #
+    # The bug was introduced in the trunk on July 5th, 2012 and fixed on
+    # July 30th.
 
-    The bug was introduced in the trunk on July 5th, 2012 and fixed on
-    July 30th.
-
-    """
     x = theano.tensor.vector()
     p = RunOnce()(x)
     mode = theano.Mode(linker=theano.gof.vm.VM_Linker(lazy=True))
@@ -453,3 +436,20 @@ def test_reallocation():
         assert check_storage(storage_map)[0]
         assert len(set(id(v) for v in
                        itervalues(storage_map))) < len(storage_map)
+
+
+def test_no_recycling():
+    if theano.config.cxx == '':
+        raise SkipTest('need c++')
+    x = theano.tensor.vector()
+    for lnk in [vm.VM_Linker(use_cloop=True),
+                vm.VM_Linker(use_cloop=False, lazy=True),
+                vm.VM_Linker(use_cloop=False, lazy=False, allow_gc=True),
+                vm.VM_Linker(use_cloop=False, lazy=False, allow_gc=False)]:
+
+        mode = theano.Mode(optimizer='fast_compile', linker=lnk)
+        f = theano.function([x], x + 1, mode=mode)
+        f2 = theano.function([x], (x + 1) * 2, mode=mode)
+        m1 = f.fn.thunks[0].thunk.module
+        m2 = f2.fn.thunks[0].thunk.module
+        assert m1 is m2

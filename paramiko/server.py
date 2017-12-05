@@ -223,7 +223,7 @@ class ServerInterface (object):
 
         The default implementation always returns ``AUTH_FAILED``.
 
-        :param list responses: list of `str` responses from the client
+        :param responses: list of `str` responses from the client
         :return:
             ``AUTH_FAILED`` if the authentication fails; ``AUTH_SUCCESSFUL`` if
             it succeeds; ``AUTH_PARTIALLY_SUCCESSFUL`` if the interactive auth
@@ -667,12 +667,13 @@ class SubsystemHandler (threading.Thread):
     def _run(self):
         try:
             self.__transport._log(
-                DEBUG, 'Starting handler for subsystem %s' % self.__name)
+                DEBUG, 'Starting handler for subsystem {}'.format(self.__name)
+            )
             self.start_subsystem(self.__name, self.__transport, self.__channel)
         except Exception as e:
             self.__transport._log(
                 ERROR,
-                'Exception in subsystem handler for "{0}": {1}'.format(
+                'Exception in subsystem handler for "{}": {}'.format(
                     self.__name, e
                 )
             )

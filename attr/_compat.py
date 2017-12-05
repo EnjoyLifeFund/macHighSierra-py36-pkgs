@@ -1,10 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import platform
 import sys
 import types
 
 
 PY2 = sys.version_info[0] == 2
+PYPY = platform.python_implementation() == "PyPy"
 
 
 if PY2:
@@ -20,9 +22,6 @@ if PY2:
 
     def iteritems(d):
         return d.iteritems()
-
-    def iterkeys(d):
-        return d.iterkeys()
 
     # Python 2 is bereft of a read-only dict proxy, so we make one!
     class ReadOnlyDict(IterableUserDict):
@@ -83,8 +82,14 @@ else:
     def iteritems(d):
         return d.items()
 
-    def iterkeys(d):
-        return d.keys()
-
     def metadata_proxy(d):
         return types.MappingProxyType(dict(d))
+
+if PYPY:  # pragma: no cover
+    def set_closure_cell(cell, value):
+        cell.__setstate__((value,))
+else:
+    import ctypes
+    set_closure_cell = ctypes.pythonapi.PyCell_Set
+    set_closure_cell.argtypes = (ctypes.py_object, ctypes.py_object)
+    set_closure_cell.restype = ctypes.c_int

@@ -17,68 +17,57 @@
     }
   })
 ({
-369: /* models/widgets/abstract_button */ function(require, module, exports) {
+372: /* models/widgets/abstract_button */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty, slice = [].slice;
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
 var build_views_1 = require(4    /* core/build_views */);
-var widget_1 = require(409    /* ./widget */);
-exports.AbstractButtonView = function (superClass) {
-    extend(AbstractButtonView, superClass);
+var widget_1 = require(412    /* ./widget */);
+exports.AbstractButtonView = function (_super) {
+    tslib_1.__extends(AbstractButtonView, _super);
     function AbstractButtonView() {
-        return AbstractButtonView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     AbstractButtonView.prototype.initialize = function (options) {
-        AbstractButtonView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         this.icon_views = {};
         return this.render();
     };
     AbstractButtonView.prototype.connect_signals = function () {
-        AbstractButtonView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     AbstractButtonView.prototype.remove = function () {
         build_views_1.remove_views(this.icon_views);
-        return AbstractButtonView.__super__.remove.call(this);
+        return _super.prototype.remove.call(this);
     };
     AbstractButtonView.prototype._render_button = function () {
-        var children;
-        children = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-        return dom_1.button.apply(null, [{
+        var children = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            children[_i] = arguments[_i];
+        }
+        return dom_1.button.apply(void 0, [{
                 type: 'button',
                 disabled: this.model.disabled,
-                'class': [
+                class: [
                     'bk-bs-btn',
                     'bk-bs-btn-' + this.model.button_type
                 ]
-            }].concat(slice.call(children)));
+            }].concat(children));
     };
     AbstractButtonView.prototype.render = function () {
+        var _this = this;
         var icon;
-        AbstractButtonView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         this.buttonEl = this._render_button(this.model.label);
-        this.buttonEl.addEventListener('click', function (_this) {
-            return function (event) {
-                return _this._button_click(event);
-            };
-        }(this));
+        this.buttonEl.addEventListener('click', function (event) {
+            return _this._button_click(event);
+        });
         this.el.appendChild(this.buttonEl);
         icon = this.model.icon;
         if (icon != null) {
@@ -97,107 +86,86 @@ exports.AbstractButtonView = function (superClass) {
     };
     return AbstractButtonView;
 }(widget_1.WidgetView);
-exports.AbstractButton = function (superClass) {
-    extend(AbstractButton, superClass);
+var AbstractButton = function (_super) {
+    tslib_1.__extends(AbstractButton, _super);
     function AbstractButton() {
-        return AbstractButton.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    AbstractButton.prototype.type = 'AbstractButton';
-    AbstractButton.prototype.default_view = exports.AbstractButtonView;
-    AbstractButton.define({
-        callback: [p.Instance],
-        label: [
-            p.String,
-            'Button'
-        ],
-        icon: [p.Instance],
-        button_type: [
-            p.String,
-            'default'
-        ]
-    });
     return AbstractButton;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.AbstractButton = AbstractButton;
+;
+AbstractButton.prototype.type = 'AbstractButton';
+AbstractButton.prototype.default_view = exports.AbstractButtonView;
+AbstractButton.define({
+    callback: [p.Instance],
+    label: [
+        p.String,
+        'Button'
+    ],
+    icon: [p.Instance],
+    button_type: [
+        p.String,
+        'default'    // TODO (bev)
+    ]
+});    
 },
-370: /* models/widgets/abstract_icon */ function(require, module, exports) {
+373: /* models/widgets/abstract_icon */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(409    /* ./widget */);
-exports.AbstractIcon = function (superClass) {
-    extend(AbstractIcon, superClass);
+var tslib_1 = require(364    /* tslib */);
+var widget_1 = require(412    /* ./widget */);
+var AbstractIcon = function (_super) {
+    tslib_1.__extends(AbstractIcon, _super);
     function AbstractIcon() {
-        return AbstractIcon.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    AbstractIcon.prototype.type = 'AbstractIcon';
     return AbstractIcon;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.AbstractIcon = AbstractIcon;
+;
+AbstractIcon.prototype.type = 'AbstractIcon';    
 },
-371: /* models/widgets/abstract_slider */ function(require, module, exports) {
+374: /* models/widgets/abstract_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var noUiSlider = require(400    /* nouislider */);
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var noUiSlider = require(403    /* nouislider */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-var logging_1 = require(13    /* core/logging */);
-var callback_1 = require(23    /* core/util/callback */);
-var widget_1 = require(409    /* ./widget */);
-exports.AbstractSliderView = function (superClass) {
-    extend(AbstractSliderView, superClass);
+var logging_1 = require(14    /* core/logging */);
+var callback_1 = require(24    /* core/util/callback */);
+var widget_1 = require(412    /* ./widget */);
+exports.AbstractSliderView = function (_super) {
+    tslib_1.__extends(AbstractSliderView, _super);
     function AbstractSliderView() {
-        return AbstractSliderView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     AbstractSliderView.prototype.initialize = function (options) {
-        AbstractSliderView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     AbstractSliderView.prototype.connect_signals = function () {
-        return this.connect(this.model.change, function (_this) {
-            return function () {
-                return _this.render();
-            };
-        }(this));
+        var _this = this;
+        return this.connect(this.model.change, function () {
+            return _this.render();
+        });
     };
     AbstractSliderView.prototype._calc_to = function () {
     };
     AbstractSliderView.prototype._calc_from = function (values) {
     };
     AbstractSliderView.prototype.render = function () {
-        var callback, end, formatter, i, prefix, pretty, ref, start, step, toggleTooltip, tooltips, v, value;
+        var _this = this;
+        var callback, end, formatter, handle, i, keypress, prefix, pretty, start, step, toggleTooltip, tooltips, v, value;
         if (this.sliderEl == null) {
-            AbstractSliderView.__super__.render.call(this);
+            // XXX: temporary workaround for _render_css()
+            _super.prototype.render.call(this);
         }
         if (this.model.callback != null) {
-            callback = function (_this) {
-                return function () {
-                    return _this.model.callback.execute(_this.model);
-                };
-            }(this);
+            callback = function () {
+                return _this.model.callback.execute(_this.model);
+            };
             switch (this.model.callback_policy) {
             case 'continuous':
                 this.callback_wrapper = callback;
@@ -207,19 +175,17 @@ exports.AbstractSliderView = function (superClass) {
             }
         }
         prefix = 'bk-noUi-';
-        ref = this._calc_to(), start = ref.start, end = ref.end, value = ref.value, step = ref.step;
+        _a = this._calc_to(), start = _a.start, end = _a.end, value = _a.value, step = _a.step;
         if (this.model.tooltips) {
             formatter = {
-                to: function (_this) {
-                    return function (value) {
-                        return _this.model.pretty(value);
-                    };
-                }(this)
+                to: function (value) {
+                    return _this.model.pretty(value);
+                }
             };
             tooltips = function () {
-                var j, ref1, results;
+                var j, ref, results;
                 results = [];
-                for (i = j = 0, ref1 = value.length; 0 <= ref1 ? j < ref1 : j > ref1; i = 0 <= ref1 ? ++j : --j) {
+                for (i = j = 0, ref = value.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
                     results.push(formatter);
                 }
                 return results;
@@ -245,34 +211,51 @@ exports.AbstractSliderView = function (superClass) {
                 orientation: this.model.orientation,
                 direction: this.model.direction
             });
-            this.sliderEl.noUiSlider.on('slide', function (_this) {
-                return function (_, __, values) {
-                    return _this._slide(values);
-                };
-            }(this));
-            this.sliderEl.noUiSlider.on('change', function (_this) {
-                return function (_, __, values) {
-                    return _this._change(values);
-                };
-            }(this));
-            toggleTooltip = function (_this) {
-                return function (i, show) {
-                    var handle, tooltip;
-                    handle = _this.sliderEl.querySelectorAll('.' + prefix + 'handle')[i];
-                    tooltip = handle.querySelector('.' + prefix + 'tooltip');
-                    return tooltip.style.display = show ? 'block' : '';
-                };
-            }(this);
-            this.sliderEl.noUiSlider.on('start', function (_this) {
-                return function (_, i) {
-                    return toggleTooltip(i, true);
-                };
-            }(this));
-            this.sliderEl.noUiSlider.on('end', function (_this) {
-                return function (_, i) {
-                    return toggleTooltip(i, false);
-                };
-            }(this));
+            this.sliderEl.noUiSlider.on('slide', function (_, __, values) {
+                return _this._slide(values);
+            });
+            this.sliderEl.noUiSlider.on('change', function (_, __, values) {
+                return _this._change(values);
+            });
+            // Add keyboard support
+            keypress = function (e) {
+                var pretty;
+                value = Number(_this.sliderEl.noUiSlider.get());
+                switch (e.which) {
+                case 37:
+                    value -= step;
+                    break;
+                case 39:
+                    value += step;
+                    break;
+                default:
+                    return;
+                }
+                pretty = _this.model.pretty(value);
+                logging_1.logger.debug('[slider keypress] value = ' + pretty);
+                _this.model.value = value;
+                _this.sliderEl.noUiSlider.set(value);
+                if (_this.valueEl != null) {
+                    _this.valueEl.textContent = pretty;
+                }
+                return typeof _this.callback_wrapper === 'function' ? _this.callback_wrapper() : void 0;
+            };
+            handle = this.sliderEl.querySelector('.' + prefix + 'handle');
+            handle.setAttribute('tabindex', 0);
+            handle.addEventListener('click', this.focus);
+            handle.addEventListener('keydown', keypress);
+            toggleTooltip = function (i, show) {
+                var tooltip;
+                handle = _this.sliderEl.querySelectorAll('.' + prefix + 'handle')[i];
+                tooltip = handle.querySelector('.' + prefix + 'tooltip');
+                return tooltip.style.display = show ? 'block' : '';
+            };
+            this.sliderEl.noUiSlider.on('start', function (_, i) {
+                return toggleTooltip(i, true);
+            });
+            this.sliderEl.noUiSlider.on('end', function (_, i) {
+                return toggleTooltip(i, false);
+            });
         } else {
             this.sliderEl.noUiSlider.updateOptions({
                 range: {
@@ -304,7 +287,7 @@ exports.AbstractSliderView = function (superClass) {
                     }
                     return results;
                 }.call(this).join(' .. ');
-                this.valueEl = dom_1.div({ 'class': 'bk-slider-value' }, pretty);
+                this.valueEl = dom_1.div({ class: 'bk-slider-value' }, pretty);
                 this.el.insertBefore(this.valueEl, this.sliderEl);
             }
         }
@@ -317,6 +300,7 @@ exports.AbstractSliderView = function (superClass) {
             this.sliderEl.removeAttribute('disabled');
         }
         return this;
+        var _a;
     };
     AbstractSliderView.prototype._slide = function (values) {
         var pretty, v, value;
@@ -362,58 +346,11 @@ exports.AbstractSliderView = function (superClass) {
     };
     return AbstractSliderView;
 }(widget_1.WidgetView);
-exports.AbstractSlider = function (superClass) {
-    extend(AbstractSlider, superClass);
+var AbstractSlider = function (_super) {
+    tslib_1.__extends(AbstractSlider, _super);
     function AbstractSlider() {
-        return AbstractSlider.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    AbstractSlider.prototype.type = 'AbstractSlider';
-    AbstractSlider.prototype.default_view = exports.AbstractSliderView;
-    AbstractSlider.define({
-        title: [
-            p.String,
-            ''
-        ],
-        show_value: [
-            p.Bool,
-            true
-        ],
-        start: [p.Any],
-        end: [p.Any],
-        value: [p.Any],
-        step: [
-            p.Number,
-            1
-        ],
-        format: [p.String],
-        orientation: [
-            p.Orientation,
-            'horizontal'
-        ],
-        direction: [
-            p.Any,
-            'ltr'
-        ],
-        tooltips: [
-            p.Boolean,
-            true
-        ],
-        callback: [p.Instance],
-        callback_throttle: [
-            p.Number,
-            200
-        ],
-        callback_policy: [
-            p.String,
-            'throttle'
-        ],
-        bar_color: [
-            p.Color,
-            '#e6e6e6'
-        ]
-    });
-    AbstractSlider.prototype.behaviour = null;
-    AbstractSlider.prototype.connected = false;
     AbstractSlider.prototype._formatter = function (value, format) {
         return '' + value;
     };
@@ -421,60 +358,91 @@ exports.AbstractSlider = function (superClass) {
         return this._formatter(value, this.format);
     };
     return AbstractSlider;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.AbstractSlider = AbstractSlider;
+;
+AbstractSlider.prototype.type = 'AbstractSlider';
+AbstractSlider.prototype.default_view = exports.AbstractSliderView;
+AbstractSlider.define({
+    title: [
+        p.String,
+        ''
+    ],
+    show_value: [
+        p.Bool,
+        true
+    ],
+    start: [p.Any],
+    end: [p.Any],
+    value: [p.Any],
+    step: [
+        p.Number,
+        1
+    ],
+    format: [p.String],
+    orientation: [
+        p.Orientation,
+        'horizontal'
+    ],
+    direction: [
+        p.Any,
+        'ltr'
+    ],
+    tooltips: [
+        p.Boolean,
+        true
+    ],
+    callback: [p.Instance],
+    callback_throttle: [
+        p.Number,
+        200
+    ],
+    callback_policy: [
+        p.String,
+        'throttle'    // TODO (bev) enum
+    ],
+    bar_color: [
+        p.Color,
+        '#e6e6e6'
+    ]
+});
+AbstractSlider.prototype.behaviour = null;
+AbstractSlider.prototype.connected = false;    
 },
-372: /* models/widgets/autocomplete_input */ function(require, module, exports) {
+375: /* models/widgets/autocomplete_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var text_input_1 = require(397    /* ./text_input */);
-var common_1 = require(376    /* ./common */);
+var tslib_1 = require(364    /* tslib */);
+var text_input_1 = require(400    /* ./text_input */);
+var common_1 = require(379    /* ./common */);
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-exports.AutocompleteInputView = function (superClass) {
-    extend(AutocompleteInputView, superClass);
+var p = require(15    /* core/properties */);
+exports.AutocompleteInputView = function (_super) {
+    tslib_1.__extends(AutocompleteInputView, _super);
     function AutocompleteInputView() {
-        return AutocompleteInputView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     AutocompleteInputView.prototype.connect_signals = function () {
-        AutocompleteInputView.__super__.connect_signals.call(this);
-        return common_1.clear_menus.connect(function (_this) {
-            return function () {
-                return _this._clear_menu();
-            };
-        }(this));
+        var _this = this;
+        _super.prototype.connect_signals.call(this);
+        return common_1.clear_menus.connect(function () {
+            return _this._clear_menu();
+        });
     };
     AutocompleteInputView.prototype.render = function () {
-        AutocompleteInputView.__super__.render.call(this);
+        var _this = this;
+        _super.prototype.render.call(this);
         this.inputEl.classList.add('bk-autocomplete-input');
-        this.inputEl.addEventListener('keydown', function (_this) {
-            return function (event) {
-                return _this._keydown(event);
-            };
-        }(this));
-        this.inputEl.addEventListener('keyup', function (_this) {
-            return function (event) {
-                return _this._keyup(event);
-            };
-        }(this));
-        this.menuEl = dom_1.ul({ 'class': 'bk-bs-dropdown-menu' });
-        this.menuEl.addEventListener('click', function (_this) {
-            return function (event) {
-                return _this._item_click(event);
-            };
-        }(this));
+        this.inputEl.addEventListener('keydown', function (event) {
+            return _this._keydown(event);
+        });
+        this.inputEl.addEventListener('keyup', function (event) {
+            return _this._keyup(event);
+        });
+        this.menuEl = dom_1.ul({ class: 'bk-bs-dropdown-menu' });
+        this.menuEl.addEventListener('click', function (event) {
+            return _this._item_click(event);
+        });
         this.el.appendChild(this.menuEl);
         return this;
     };
@@ -504,6 +472,7 @@ exports.AutocompleteInputView = function (superClass) {
             return this.model.value = text;
         }
     };
+    //@inputEl.value = text
     AutocompleteInputView.prototype._keydown = function (event) {
     };
     AutocompleteInputView.prototype._keyup = function (event) {
@@ -540,121 +509,97 @@ exports.AutocompleteInputView = function (superClass) {
     };
     return AutocompleteInputView;
 }(text_input_1.TextInputView);
-exports.AutocompleteInput = function (superClass) {
-    extend(AutocompleteInput, superClass);
+var AutocompleteInput = function (_super) {
+    tslib_1.__extends(AutocompleteInput, _super);
     function AutocompleteInput() {
-        return AutocompleteInput.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    AutocompleteInput.prototype.type = 'AutocompleteInput';
-    AutocompleteInput.prototype.default_view = exports.AutocompleteInputView;
-    AutocompleteInput.define({
-        completions: [
-            p.Array,
-            []
-        ]
-    });
-    AutocompleteInput.internal({
-        active: [
-            p.Boolean,
-            true
-        ]
-    });
     return AutocompleteInput;
-}(text_input_1.TextInput);    
+}(text_input_1.TextInput);
+exports.AutocompleteInput = AutocompleteInput;
+;
+AutocompleteInput.prototype.type = 'AutocompleteInput';
+AutocompleteInput.prototype.default_view = exports.AutocompleteInputView;
+AutocompleteInput.define({
+    completions: [
+        p.Array,
+        []
+    ]
+});
+AutocompleteInput.internal({
+    active: [
+        p.Boolean,
+        true
+    ]
+});    
 },
-373: /* models/widgets/button */ function(require, module, exports) {
+376: /* models/widgets/button */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var p = require(15    /* core/properties */);
 var bokeh_events_1 = require(3    /* core/bokeh_events */);
-var abstract_button_1 = require(369    /* ./abstract_button */);
-exports.ButtonView = function (superClass) {
-    extend(ButtonView, superClass);
+var abstract_button_1 = require(372    /* ./abstract_button */);
+exports.ButtonView = function (_super) {
+    tslib_1.__extends(ButtonView, _super);
     function ButtonView() {
-        return ButtonView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     ButtonView.prototype.change_input = function () {
         this.model.trigger_event(new bokeh_events_1.ButtonClick({}));
         this.model.clicks = this.model.clicks + 1;
-        return ButtonView.__super__.change_input.call(this);
+        return _super.prototype.change_input.call(this);
     };
     return ButtonView;
 }(abstract_button_1.AbstractButtonView);
-exports.Button = function (superClass) {
-    extend(Button, superClass);
+var Button = function (_super) {
+    tslib_1.__extends(Button, _super);
     function Button() {
-        return Button.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Button.prototype.type = 'Button';
-    Button.prototype.default_view = exports.ButtonView;
-    Button.define({
-        clicks: [
-            p.Number,
-            0
-        ]
-    });
     return Button;
 }(abstract_button_1.AbstractButton);
-bokeh_events_1.register_with_event(bokeh_events_1.ButtonClick, exports.Button);    
+exports.Button = Button;
+;
+Button.prototype.type = 'Button';
+Button.prototype.default_view = exports.ButtonView;
+Button.define({
+    clicks: [
+        p.Number,
+        0
+    ]
+});
+bokeh_events_1.register_with_event(bokeh_events_1.ButtonClick, Button);    
 },
-374: /* models/widgets/checkbox_button_group */ function(require, module, exports) {
+377: /* models/widgets/checkbox_button_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty, indexOf = [].indexOf || function (item) {
-        for (var i = 0, l = this.length; i < l; i++) {
-            if (i in this && this[i] === item)
-                return i;
-        }
-        return -1;
-    };
+var tslib_1 = require(364    /* tslib */);
+var indexOf = [].indexOf;
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-var widget_1 = require(409    /* ./widget */);
-exports.CheckboxButtonGroupView = function (superClass) {
-    extend(CheckboxButtonGroupView, superClass);
+var p = require(15    /* core/properties */);
+var widget_1 = require(412    /* ./widget */);
+exports.CheckboxButtonGroupView = function (_super) {
+    tslib_1.__extends(CheckboxButtonGroupView, _super);
     function CheckboxButtonGroupView() {
-        return CheckboxButtonGroupView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     CheckboxButtonGroupView.prototype.initialize = function (options) {
-        CheckboxButtonGroupView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     CheckboxButtonGroupView.prototype.connect_signals = function () {
-        CheckboxButtonGroupView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     CheckboxButtonGroupView.prototype.render = function () {
+        var _this = this;
         var active, divEl, i, inputEl, j, labelEl, len, ref, text;
-        CheckboxButtonGroupView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
-        divEl = dom_1.div({ 'class': 'bk-bs-btn-group' });
+        divEl = dom_1.div({ class: 'bk-bs-btn-group' });
         this.el.appendChild(divEl);
         active = this.model.active;
         ref = this.model.labels;
@@ -665,13 +610,11 @@ exports.CheckboxButtonGroupView = function (superClass) {
                 value: '' + i,
                 checked: indexOf.call(active, i) >= 0
             });
-            inputEl.addEventListener('change', function (_this) {
-                return function () {
-                    return _this.change_input();
-                };
-            }(this));
+            inputEl.addEventListener('change', function () {
+                return _this.change_input();
+            });
             labelEl = dom_1.label({
-                'class': [
+                class: [
                     'bk-bs-btn',
                     'bk-bs-btn-' + this.model.button_type
                 ]
@@ -702,74 +645,60 @@ exports.CheckboxButtonGroupView = function (superClass) {
     };
     return CheckboxButtonGroupView;
 }(widget_1.WidgetView);
-exports.CheckboxButtonGroup = function (superClass) {
-    extend(CheckboxButtonGroup, superClass);
+var CheckboxButtonGroup = function (_super) {
+    tslib_1.__extends(CheckboxButtonGroup, _super);
     function CheckboxButtonGroup() {
-        return CheckboxButtonGroup.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    CheckboxButtonGroup.prototype.type = 'CheckboxButtonGroup';
-    CheckboxButtonGroup.prototype.default_view = exports.CheckboxButtonGroupView;
-    CheckboxButtonGroup.define({
-        active: [
-            p.Array,
-            []
-        ],
-        labels: [
-            p.Array,
-            []
-        ],
-        button_type: [
-            p.String,
-            'default'
-        ],
-        callback: [p.Instance]
-    });
     return CheckboxButtonGroup;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.CheckboxButtonGroup = CheckboxButtonGroup;
+;
+CheckboxButtonGroup.prototype.type = 'CheckboxButtonGroup';
+CheckboxButtonGroup.prototype.default_view = exports.CheckboxButtonGroupView;
+CheckboxButtonGroup.define({
+    active: [
+        p.Array,
+        []
+    ],
+    labels: [
+        p.Array,
+        []
+    ],
+    button_type: [
+        p.String,
+        'default'
+    ],
+    callback: [p.Instance]
+});    
 },
-375: /* models/widgets/checkbox_group */ function(require, module, exports) {
+378: /* models/widgets/checkbox_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty, indexOf = [].indexOf || function (item) {
-        for (var i = 0, l = this.length; i < l; i++) {
-            if (i in this && this[i] === item)
-                return i;
-        }
-        return -1;
-    };
+var tslib_1 = require(364    /* tslib */);
+var indexOf = [].indexOf;
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-var widget_1 = require(409    /* ./widget */);
-exports.CheckboxGroupView = function (superClass) {
-    extend(CheckboxGroupView, superClass);
+var p = require(15    /* core/properties */);
+var widget_1 = require(412    /* ./widget */);
+exports.CheckboxGroupView = function (_super) {
+    tslib_1.__extends(CheckboxGroupView, _super);
     function CheckboxGroupView() {
-        return CheckboxGroupView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     CheckboxGroupView.prototype.initialize = function (options) {
-        CheckboxGroupView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     CheckboxGroupView.prototype.connect_signals = function () {
-        CheckboxGroupView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     CheckboxGroupView.prototype.render = function () {
+        var _this = this;
         var active, divEl, i, inputEl, j, labelEl, len, ref, text;
-        CheckboxGroupView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         active = this.model.active;
         ref = this.model.labels;
@@ -779,11 +708,9 @@ exports.CheckboxGroupView = function (superClass) {
                 type: 'checkbox',
                 value: '' + i
             });
-            inputEl.addEventListener('change', function (_this) {
-                return function () {
-                    return _this.change_input();
-                };
-            }(this));
+            inputEl.addEventListener('change', function () {
+                return _this.change_input();
+            });
             if (this.model.disabled) {
                 inputEl.disabled = true;
             }
@@ -795,7 +722,7 @@ exports.CheckboxGroupView = function (superClass) {
                 labelEl.classList.add('bk-bs-checkbox-inline');
                 this.el.appendChild(labelEl);
             } else {
-                divEl = dom_1.div({ 'class': 'bk-bs-checkbox' }, labelEl);
+                divEl = dom_1.div({ class: 'bk-bs-checkbox' }, labelEl);
                 this.el.appendChild(divEl);
             }
         }
@@ -820,64 +747,55 @@ exports.CheckboxGroupView = function (superClass) {
     };
     return CheckboxGroupView;
 }(widget_1.WidgetView);
-exports.CheckboxGroup = function (superClass) {
-    extend(CheckboxGroup, superClass);
+var CheckboxGroup = function (_super) {
+    tslib_1.__extends(CheckboxGroup, _super);
     function CheckboxGroup() {
-        return CheckboxGroup.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    CheckboxGroup.prototype.type = 'CheckboxGroup';
-    CheckboxGroup.prototype.default_view = exports.CheckboxGroupView;
-    CheckboxGroup.define({
-        active: [
-            p.Array,
-            []
-        ],
-        labels: [
-            p.Array,
-            []
-        ],
-        inline: [
-            p.Bool,
-            false
-        ],
-        callback: [p.Instance]
-    });
     return CheckboxGroup;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.CheckboxGroup = CheckboxGroup;
+;
+CheckboxGroup.prototype.type = 'CheckboxGroup';
+CheckboxGroup.prototype.default_view = exports.CheckboxGroupView;
+CheckboxGroup.define({
+    active: [
+        p.Array,
+        []
+    ],
+    labels: [
+        p.Array,
+        []
+    ],
+    inline: [
+        p.Bool,
+        false
+    ],
+    callback: [p.Instance]
+});    
 },
-376: /* models/widgets/common */ function(require, module, exports) {
+379: /* models/widgets/common */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var signaling_1 = require(19    /* core/signaling */);
+var signaling_1 = require(20    /* core/signaling */);
 exports.clear_menus = new signaling_1.Signal({}, 'clear_menus');
 document.addEventListener('click', function () {
     return exports.clear_menus.emit(undefined);
 });    
 },
-377: /* models/widgets/date_picker */ function(require, module, exports) {
+380: /* models/widgets/date_picker */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var bind = function (fn, me) {
-        return function () {
-            return fn.apply(me, arguments);
-        };
-    }, extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var input_widget_1 = require(383    /* ./input_widget */);
+var tslib_1 = require(364    /* tslib */);
+var boundMethodCheck = function (instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+        throw new Error('Bound instance method accessed before binding');
+    }
+};
+var input_widget_1 = require(386    /* ./input_widget */);
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-var Pikaday = require(401    /* pikaday */);
+var p = require(15    /* core/properties */);
+var Pikaday = require(404    /* pikaday */);
 Pikaday.prototype.adjustPosition = function () {
     var clientRect, field, height, left, scrollTop, top, viewportHeight, viewportWidth, width;
     if (this._o.container) {
@@ -893,8 +811,10 @@ Pikaday.prototype.adjustPosition = function () {
     clientRect = field.getBoundingClientRect();
     left = clientRect.left + window.pageXOffset;
     top = clientRect.bottom + window.pageYOffset;
+    // adjust left/top origin to bk-root
     left -= this.el.parentElement.offsetLeft;
     top -= this.el.parentElement.offsetTop;
+    // default position is bottom & left
     if (this._o.reposition && left + width > viewportWidth || this._o.position.indexOf('right') > -1 && left - width + field.offsetWidth > 0) {
         left = left - width + field.offsetWidth;
     }
@@ -904,15 +824,15 @@ Pikaday.prototype.adjustPosition = function () {
     this.el.style.left = left + 'px';
     return this.el.style.top = top + 'px';
 };
-exports.DatePickerView = function (superClass) {
-    extend(DatePickerView, superClass);
+var DatePickerView = function (_super) {
+    tslib_1.__extends(DatePickerView, _super);
     function DatePickerView() {
-        this._on_select = bind(this._on_select, this);
-        return DatePickerView.__super__.constructor.apply(this, arguments);
+        var _this = _super.apply(this, arguments) || this;
+        _this._on_select = _this._on_select.bind(_this);
+        return _this;
     }
-    DatePickerView.prototype.className = 'bk-widget-form-group';
     DatePickerView.prototype.render = function () {
-        DatePickerView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         if (this._picker != null) {
             this._picker.destroy();
         }
@@ -921,7 +841,7 @@ exports.DatePickerView = function (superClass) {
         this.el.appendChild(this.labelEl);
         this.inputEl = dom_1.input({
             type: 'text',
-            'class': 'bk-widget-form-input',
+            class: 'bk-widget-form-input',
             disabled: this.model.disabled
         });
         this.el.appendChild(this.inputEl);
@@ -933,55 +853,54 @@ exports.DatePickerView = function (superClass) {
             maxDate: this.model.max_date != null ? new Date(this.model.max_date) : null,
             onSelect: this._on_select
         });
+        // move date picker's element from body to bk-root
         this._root_element.appendChild(this._picker.el);
         return this;
     };
     DatePickerView.prototype._on_select = function (date) {
+        boundMethodCheck(this, DatePickerView);
+        // Always use toDateString()!
+        // toString() breaks the websocket #4965.
+        // toISOString() returns the wrong day (IE on day earlier) #7048
         this.model.value = date.toDateString();
         return this.change_input();
     };
     return DatePickerView;
 }(input_widget_1.InputWidgetView);
-exports.DatePicker = function (superClass) {
-    extend(DatePicker, superClass);
+exports.DatePickerView = DatePickerView;
+;
+DatePickerView.prototype.className = 'bk-widget-form-group';
+var DatePicker = function (_super) {
+    tslib_1.__extends(DatePicker, _super);
     function DatePicker() {
-        return DatePicker.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DatePicker.prototype.type = 'DatePicker';
-    DatePicker.prototype.default_view = exports.DatePickerView;
-    DatePicker.define({
-        value: [
-            p.Any,
-            Date.now()
-        ],
-        min_date: [p.Any],
-        max_date: [p.Any]
-    });
     return DatePicker;
-}(input_widget_1.InputWidget);    
+}(input_widget_1.InputWidget);
+exports.DatePicker = DatePicker;
+;
+DatePicker.prototype.type = 'DatePicker';
+DatePicker.prototype.default_view = DatePickerView;
+DatePicker.define({
+    // TODO (bev) types
+    value: [
+        p.Any,
+        Date.now()
+    ],
+    min_date: [p.Any],
+    max_date: [p.Any]
+});    
 },
-378: /* models/widgets/date_range_slider */ function(require, module, exports) {
+381: /* models/widgets/date_range_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var tz = require(360    /* timezone */);
-var abstract_slider_1 = require(371    /* ./abstract_slider */);
-exports.DateRangeSliderView = function (superClass) {
-    extend(DateRangeSliderView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var tz = require(363    /* timezone */);
+var abstract_slider_1 = require(374    /* ./abstract_slider */);
+exports.DateRangeSliderView = function (_super) {
+    tslib_1.__extends(DateRangeSliderView, _super);
     function DateRangeSliderView() {
-        return DateRangeSliderView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DateRangeSliderView.prototype._calc_to = function () {
         return {
@@ -996,46 +915,36 @@ exports.DateRangeSliderView = function (superClass) {
     };
     return DateRangeSliderView;
 }(abstract_slider_1.AbstractSliderView);
-exports.DateRangeSlider = function (superClass) {
-    extend(DateRangeSlider, superClass);
+var DateRangeSlider = function (_super) {
+    tslib_1.__extends(DateRangeSlider, _super);
     function DateRangeSlider() {
-        return DateRangeSlider.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DateRangeSlider.prototype.type = 'DateRangeSlider';
-    DateRangeSlider.prototype.default_view = exports.DateRangeSliderView;
-    DateRangeSlider.prototype.behaviour = 'drag';
-    DateRangeSlider.prototype.connected = [
-        false,
-        true,
-        false
-    ];
-    DateRangeSlider.prototype._formatter = tz;
-    DateRangeSlider.override({ format: '%d %b %Y' });
     return DateRangeSlider;
-}(abstract_slider_1.AbstractSlider);    
+}(abstract_slider_1.AbstractSlider);
+exports.DateRangeSlider = DateRangeSlider;
+;
+DateRangeSlider.prototype.type = 'DateRangeSlider';
+DateRangeSlider.prototype.default_view = exports.DateRangeSliderView;
+DateRangeSlider.prototype.behaviour = 'drag';
+DateRangeSlider.prototype.connected = [
+    false,
+    true,
+    false
+];
+DateRangeSlider.prototype._formatter = tz;
+DateRangeSlider.override({ format: '%d %b %Y' });    
 },
-379: /* models/widgets/date_slider */ function(require, module, exports) {
+382: /* models/widgets/date_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var tz = require(360    /* timezone */);
-var abstract_slider_1 = require(371    /* ./abstract_slider */);
-exports.DateSliderView = function (superClass) {
-    extend(DateSliderView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var tz = require(363    /* timezone */);
+var abstract_slider_1 = require(374    /* ./abstract_slider */);
+exports.DateSliderView = function (_super) {
+    tslib_1.__extends(DateSliderView, _super);
     function DateSliderView() {
-        return DateSliderView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DateSliderView.prototype._calc_to = function () {
         return {
@@ -1045,57 +954,46 @@ exports.DateSliderView = function (superClass) {
             step: this.model.step
         };
     };
-    DateSliderView.prototype._calc_from = function (arg) {
-        var value;
-        value = arg[0];
+    DateSliderView.prototype._calc_from = function (_a) {
+        var value = _a[0];
         return value;
     };
     return DateSliderView;
 }(abstract_slider_1.AbstractSliderView);
-exports.DateSlider = function (superClass) {
-    extend(DateSlider, superClass);
+var DateSlider = function (_super) {
+    tslib_1.__extends(DateSlider, _super);
     function DateSlider() {
-        return DateSlider.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    DateSlider.prototype.type = 'DateSlider';
-    DateSlider.prototype.default_view = exports.DateSliderView;
-    DateSlider.prototype.behaviour = 'tap';
-    DateSlider.prototype.connected = [
-        true,
-        false
-    ];
-    DateSlider.prototype._formatter = tz;
-    DateSlider.override({ format: '%d %b %Y' });
     return DateSlider;
-}(abstract_slider_1.AbstractSlider);    
+}(abstract_slider_1.AbstractSlider);
+exports.DateSlider = DateSlider;
+;
+DateSlider.prototype.type = 'DateSlider';
+DateSlider.prototype.default_view = exports.DateSliderView;
+DateSlider.prototype.behaviour = 'tap';
+DateSlider.prototype.connected = [
+    true,
+    false
+];
+DateSlider.prototype._formatter = tz;
+DateSlider.override({ format: '%d %b %Y' });    
 },
-380: /* models/widgets/div */ function(require, module, exports) {
+383: /* models/widgets/div */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(385    /* ./markup */);
+var tslib_1 = require(364    /* tslib */);
+var markup_1 = require(388    /* ./markup */);
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-exports.DivView = function (superClass) {
-    extend(DivView, superClass);
+var p = require(15    /* core/properties */);
+exports.DivView = function (_super) {
+    tslib_1.__extends(DivView, _super);
     function DivView() {
-        return DivView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DivView.prototype.render = function () {
         var content;
-        DivView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         content = dom_1.div();
         if (this.model.render_as_text) {
             content.textContent = this.model.text;
@@ -1107,71 +1005,59 @@ exports.DivView = function (superClass) {
     };
     return DivView;
 }(markup_1.MarkupView);
-exports.Div = function (superClass) {
-    extend(Div, superClass);
+var Div = function (_super) {
+    tslib_1.__extends(Div, _super);
     function Div() {
-        return Div.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Div.prototype.type = 'Div';
-    Div.prototype.default_view = exports.DivView;
-    Div.define({
-        render_as_text: [
-            p.Bool,
-            false
-        ]
-    });
     return Div;
-}(markup_1.Markup);    
+}(markup_1.Markup);
+exports.Div = Div;
+;
+Div.prototype.type = 'Div';
+Div.prototype.default_view = exports.DivView;
+Div.define({
+    render_as_text: [
+        p.Bool,
+        false
+    ]
+});    
 },
-381: /* models/widgets/dropdown */ function(require, module, exports) {
+384: /* models/widgets/dropdown */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
+var tslib_1 = require(364    /* tslib */);
 var dom_1 = require(5    /* core/dom */);
-var p = require(14    /* core/properties */);
-var abstract_button_1 = require(369    /* ./abstract_button */);
-var common_1 = require(376    /* ./common */);
-exports.DropdownView = function (superClass) {
-    extend(DropdownView, superClass);
+var p = require(15    /* core/properties */);
+var abstract_button_1 = require(372    /* ./abstract_button */);
+var common_1 = require(379    /* ./common */);
+exports.DropdownView = function (_super) {
+    tslib_1.__extends(DropdownView, _super);
     function DropdownView() {
-        return DropdownView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     DropdownView.prototype.connect_signals = function () {
-        DropdownView.__super__.connect_signals.call(this);
-        return common_1.clear_menus.connect(function (_this) {
-            return function () {
-                return _this._clear_menu();
-            };
-        }(this));
+        var _this = this;
+        _super.prototype.connect_signals.call(this);
+        return common_1.clear_menus.connect(function () {
+            return _this._clear_menu();
+        });
     };
     DropdownView.prototype.render = function () {
+        var _this = this;
         var caretEl, i, item, itemEl, items, label, len, link, menuEl, ref, value;
-        DropdownView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         if (!this.model.is_split_button) {
             this.el.classList.add('bk-bs-dropdown');
             this.buttonEl.classList.add('bk-bs-dropdown-toggle');
-            this.buttonEl.appendChild(dom_1.span({ 'class': 'bk-bs-caret' }));
+            this.buttonEl.appendChild(dom_1.span({ class: 'bk-bs-caret' }));
         } else {
             this.el.classList.add('bk-bs-btn-group');
-            caretEl = this._render_button(dom_1.span({ 'class': 'bk-bs-caret' }));
+            caretEl = this._render_button(dom_1.span({ class: 'bk-bs-caret' }));
             caretEl.classList.add('bk-bs-dropdown-toggle');
-            caretEl.addEventListener('click', function (_this) {
-                return function (event) {
-                    return _this._caret_click(event);
-                };
-            }(this));
+            caretEl.addEventListener('click', function (event) {
+                return _this._caret_click(event);
+            });
             this.el.appendChild(caretEl);
         }
         if (this.model.active) {
@@ -1185,18 +1071,16 @@ exports.DropdownView = function (superClass) {
                 label = item[0], value = item[1];
                 link = dom_1.a({}, label);
                 link.dataset.value = value;
-                link.addEventListener('click', function (_this) {
-                    return function (event) {
-                        return _this._item_click(event);
-                    };
-                }(this));
+                link.addEventListener('click', function (event) {
+                    return _this._item_click(event);
+                });
                 itemEl = dom_1.li({}, link);
             } else {
-                itemEl = dom_1.li({ 'class': 'bk-bs-divider' });
+                itemEl = dom_1.li({ class: 'bk-bs-divider' });
             }
             items.push(itemEl);
         }
-        menuEl = dom_1.ul({ 'class': 'bk-bs-dropdown-menu' }, items);
+        menuEl = dom_1.ul({ class: 'bk-bs-dropdown-menu' }, items);
         this.el.appendChild(menuEl);
         return this;
     };
@@ -1237,116 +1121,106 @@ exports.DropdownView = function (superClass) {
     };
     return DropdownView;
 }(abstract_button_1.AbstractButtonView);
-exports.Dropdown = function (superClass) {
-    extend(Dropdown, superClass);
+var Dropdown = function (_super) {
+    tslib_1.__extends(Dropdown, _super);
     function Dropdown() {
-        return Dropdown.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Dropdown.prototype.type = 'Dropdown';
-    Dropdown.prototype.default_view = exports.DropdownView;
-    Dropdown.define({
-        value: [p.String],
-        default_value: [p.String],
-        menu: [
-            p.Array,
-            []
-        ]
-    });
-    Dropdown.override({ label: 'Dropdown' });
-    Dropdown.internal({
-        active: [
-            p.Boolean,
-            false
-        ]
-    });
-    Dropdown.getters({
-        is_split_button: function () {
-            return this.default_value != null;
-        }
-    });
     return Dropdown;
-}(abstract_button_1.AbstractButton);    
+}(abstract_button_1.AbstractButton);
+exports.Dropdown = Dropdown;
+;
+Dropdown.prototype.type = 'Dropdown';
+Dropdown.prototype.default_view = exports.DropdownView;
+Dropdown.define({
+    value: [p.String],
+    default_value: [p.String],
+    menu: [
+        p.Array,
+        []
+    ]
+});
+Dropdown.override({ label: 'Dropdown' });
+Dropdown.internal({
+    active: [
+        p.Boolean,
+        false
+    ]
+});
+Dropdown.getters({
+    is_split_button: function () {
+        return this.default_value != null;
+    }
+});    
 },
-382: /* models/widgets/index */ function(require, module, exports) {
+385: /* models/widgets/index */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var abstract_button_1 = require(369    /* ./abstract_button */);
+var abstract_button_1 = require(372    /* ./abstract_button */);
 exports.AbstractButton = abstract_button_1.AbstractButton;
-var abstract_icon_1 = require(370    /* ./abstract_icon */);
+var abstract_icon_1 = require(373    /* ./abstract_icon */);
 exports.AbstractIcon = abstract_icon_1.AbstractIcon;
-var autocomplete_input_1 = require(372    /* ./autocomplete_input */);
+var autocomplete_input_1 = require(375    /* ./autocomplete_input */);
 exports.AutocompleteInput = autocomplete_input_1.AutocompleteInput;
-var button_1 = require(373    /* ./button */);
+var button_1 = require(376    /* ./button */);
 exports.Button = button_1.Button;
-var checkbox_button_group_1 = require(374    /* ./checkbox_button_group */);
+var checkbox_button_group_1 = require(377    /* ./checkbox_button_group */);
 exports.CheckboxButtonGroup = checkbox_button_group_1.CheckboxButtonGroup;
-var checkbox_group_1 = require(375    /* ./checkbox_group */);
+var checkbox_group_1 = require(378    /* ./checkbox_group */);
 exports.CheckboxGroup = checkbox_group_1.CheckboxGroup;
-var date_picker_1 = require(377    /* ./date_picker */);
+var date_picker_1 = require(380    /* ./date_picker */);
 exports.DatePicker = date_picker_1.DatePicker;
-var date_range_slider_1 = require(378    /* ./date_range_slider */);
+var date_range_slider_1 = require(381    /* ./date_range_slider */);
 exports.DateRangeSlider = date_range_slider_1.DateRangeSlider;
-var date_slider_1 = require(379    /* ./date_slider */);
+var date_slider_1 = require(382    /* ./date_slider */);
 exports.DateSlider = date_slider_1.DateSlider;
-var div_1 = require(380    /* ./div */);
+var div_1 = require(383    /* ./div */);
 exports.Div = div_1.Div;
-var dropdown_1 = require(381    /* ./dropdown */);
+var dropdown_1 = require(384    /* ./dropdown */);
 exports.Dropdown = dropdown_1.Dropdown;
-var input_widget_1 = require(383    /* ./input_widget */);
+var input_widget_1 = require(386    /* ./input_widget */);
 exports.InputWidget = input_widget_1.InputWidget;
-var markup_1 = require(385    /* ./markup */);
+var markup_1 = require(388    /* ./markup */);
 exports.Markup = markup_1.Markup;
-var multiselect_1 = require(386    /* ./multiselect */);
+var multiselect_1 = require(389    /* ./multiselect */);
 exports.MultiSelect = multiselect_1.MultiSelect;
-var panel_1 = require(387    /* ./panel */);
+var panel_1 = require(390    /* ./panel */);
 exports.Panel = panel_1.Panel;
-var paragraph_1 = require(388    /* ./paragraph */);
+var paragraph_1 = require(391    /* ./paragraph */);
 exports.Paragraph = paragraph_1.Paragraph;
-var password_input_1 = require(389    /* ./password_input */);
+var password_input_1 = require(392    /* ./password_input */);
 exports.PasswordInput = password_input_1.PasswordInput;
-var pretext_1 = require(390    /* ./pretext */);
+var pretext_1 = require(393    /* ./pretext */);
 exports.PreText = pretext_1.PreText;
-var radio_button_group_1 = require(391    /* ./radio_button_group */);
+var radio_button_group_1 = require(394    /* ./radio_button_group */);
 exports.RadioButtonGroup = radio_button_group_1.RadioButtonGroup;
-var radio_group_1 = require(392    /* ./radio_group */);
+var radio_group_1 = require(395    /* ./radio_group */);
 exports.RadioGroup = radio_group_1.RadioGroup;
-var range_slider_1 = require(393    /* ./range_slider */);
+var range_slider_1 = require(396    /* ./range_slider */);
 exports.RangeSlider = range_slider_1.RangeSlider;
-var selectbox_1 = require(394    /* ./selectbox */);
+var selectbox_1 = require(397    /* ./selectbox */);
 exports.Select = selectbox_1.Select;
-var slider_1 = require(395    /* ./slider */);
+var slider_1 = require(398    /* ./slider */);
 exports.Slider = slider_1.Slider;
-var tabs_1 = require(396    /* ./tabs */);
+var tabs_1 = require(399    /* ./tabs */);
 exports.Tabs = tabs_1.Tabs;
-var text_input_1 = require(397    /* ./text_input */);
+var text_input_1 = require(400    /* ./text_input */);
 exports.TextInput = text_input_1.TextInput;
-var toggle_1 = require(398    /* ./toggle */);
+var toggle_1 = require(401    /* ./toggle */);
 exports.Toggle = toggle_1.Toggle;
-var widget_1 = require(409    /* ./widget */);
+var widget_1 = require(412    /* ./widget */);
 exports.Widget = widget_1.Widget;    
 },
-383: /* models/widgets/input_widget */ function(require, module, exports) {
+386: /* models/widgets/input_widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(409    /* ./widget */);
-var p = require(14    /* core/properties */);
-exports.InputWidgetView = function (superClass) {
-    extend(InputWidgetView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var widget_1 = require(412    /* ./widget */);
+var p = require(15    /* core/properties */);
+exports.InputWidgetView = function (_super) {
+    tslib_1.__extends(InputWidgetView, _super);
     function InputWidgetView() {
-        return InputWidgetView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     InputWidgetView.prototype.change_input = function () {
         var ref;
@@ -1354,69 +1228,59 @@ exports.InputWidgetView = function (superClass) {
     };
     return InputWidgetView;
 }(widget_1.WidgetView);
-exports.InputWidget = function (superClass) {
-    extend(InputWidget, superClass);
+var InputWidget = function (_super) {
+    tslib_1.__extends(InputWidget, _super);
     function InputWidget() {
-        return InputWidget.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    InputWidget.prototype.type = 'InputWidget';
-    InputWidget.prototype.default_view = exports.InputWidgetView;
-    InputWidget.define({
-        callback: [p.Instance],
-        title: [
-            p.String,
-            ''
-        ]
-    });
     return InputWidget;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.InputWidget = InputWidget;
+;
+InputWidget.prototype.type = 'InputWidget';
+InputWidget.prototype.default_view = exports.InputWidgetView;
+InputWidget.define({
+    callback: [p.Instance],
+    title: [
+        p.String,
+        ''
+    ]
+});    
 },
-384: /* models/widgets/main */ function(require, module, exports) {
+387: /* models/widgets/main */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var Widgets = require(382    /* ./index */);
+var Widgets = require(385    /* ./index */);
 exports.Widgets = Widgets;
 var base_1 = require(0    /* ../../base */);
 base_1.register_models(Widgets);    
 },
-385: /* models/widgets/markup */ function(require, module, exports) {
+388: /* models/widgets/markup */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend1 = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-var object_1 = require(29    /* core/util/object */);
-var widget_1 = require(409    /* ./widget */);
-exports.MarkupView = function (superClass) {
-    extend1(MarkupView, superClass);
+var object_1 = require(30    /* core/util/object */);
+var widget_1 = require(412    /* ./widget */);
+exports.MarkupView = function (_super) {
+    tslib_1.__extends(MarkupView, _super);
     function MarkupView() {
-        return MarkupView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     MarkupView.prototype.initialize = function (options) {
-        MarkupView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     MarkupView.prototype.connect_signals = function () {
-        MarkupView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     MarkupView.prototype.render = function () {
         var style;
-        MarkupView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         style = object_1.extend({
             width: this.model.width + 'px',
@@ -1427,70 +1291,56 @@ exports.MarkupView = function (superClass) {
     };
     return MarkupView;
 }(widget_1.WidgetView);
-exports.Markup = function (superClass) {
-    extend1(Markup, superClass);
+var Markup = function (_super) {
+    tslib_1.__extends(Markup, _super);
     function Markup() {
-        return Markup.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Markup.prototype.type = 'Markup';
     Markup.prototype.initialize = function (options) {
-        return Markup.__super__.initialize.call(this, options);
+        return _super.prototype.initialize.call(this, options);
     };
-    Markup.define({
-        text: [
-            p.String,
-            ''
-        ],
-        style: [
-            p.Any,
-            {}
-        ]
-    });
     return Markup;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.Markup = Markup;
+;
+Markup.prototype.type = 'Markup';
+Markup.define({
+    text: [
+        p.String,
+        ''
+    ],
+    style: [
+        p.Any,
+        {}
+    ]
+});    
 },
-386: /* models/widgets/multiselect */ function(require, module, exports) {
+389: /* models/widgets/multiselect */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var bind = function (fn, me) {
-        return function () {
-            return fn.apply(me, arguments);
-        };
-    }, extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
+var tslib_1 = require(364    /* tslib */);
+var indexOf = [].indexOf, boundMethodCheck = function (instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new Error('Bound instance method accessed before binding');
         }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty, indexOf = [].indexOf || function (item) {
-        for (var i = 0, l = this.length; i < l; i++) {
-            if (i in this && this[i] === item)
-                return i;
-        }
-        return -1;
     };
 var dom_1 = require(5    /* core/dom */);
-var types_1 = require(41    /* core/util/types */);
-var p = require(14    /* core/properties */);
-var input_widget_1 = require(383    /* ./input_widget */);
-exports.MultiSelectView = function (superClass) {
-    extend(MultiSelectView, superClass);
+var types_1 = require(42    /* core/util/types */);
+var p = require(15    /* core/properties */);
+var input_widget_1 = require(386    /* ./input_widget */);
+exports.MultiSelectView = function (_super) {
+    tslib_1.__extends(MultiSelectView, _super);
     function MultiSelectView() {
-        this.render_selection = bind(this.render_selection, this);
-        return MultiSelectView.__super__.constructor.apply(this, arguments);
+        var _this = _super.apply(this, arguments) || this;
+        _this.render_selection = _this.render_selection.bind(_this);
+        return _this;
     }
     MultiSelectView.prototype.initialize = function (options) {
-        MultiSelectView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     MultiSelectView.prototype.connect_signals = function () {
-        MultiSelectView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         this.connect(this.model.properties.value.change, function () {
             return this.render_selection();
         });
@@ -1503,48 +1353,50 @@ exports.MultiSelectView = function (superClass) {
         this.connect(this.model.properties.title.change, function () {
             return this.render();
         });
-        return this.connect(this.model.properties.size.change, function () {
+        this.connect(this.model.properties.size.change, function () {
+            return this.render();
+        });
+        return this.connect(this.model.properties.disabled.change, function () {
             return this.render();
         });
     };
     MultiSelectView.prototype.render = function () {
+        var _this = this;
         var labelEl, options;
-        MultiSelectView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
-        labelEl = dom_1.label({ 'for': this.model.id }, this.model.title);
+        labelEl = dom_1.label({ for: this.model.id }, this.model.title);
         this.el.appendChild(labelEl);
-        options = this.model.options.map(function (_this) {
-            return function (opt) {
-                var _label, selected, value;
-                if (types_1.isString(opt)) {
-                    value = _label = opt;
-                } else {
-                    value = opt[0], _label = opt[1];
-                }
-                selected = indexOf.call(_this.model.value, value) >= 0;
-                return dom_1.option({
-                    selected: selected,
-                    value: value
-                }, _label);
-            };
-        }(this));
+        options = this.model.options.map(function (opt) {
+            var _label, selected, value;
+            if (types_1.isString(opt)) {
+                value = _label = opt;
+            } else {
+                value = opt[0], _label = opt[1];
+            }
+            selected = indexOf.call(_this.model.value, value) >= 0;
+            return dom_1.option({
+                selected: selected,
+                value: value
+            }, _label);
+        });
         this.selectEl = dom_1.select({
             multiple: true,
-            'class': 'bk-widget-form-input',
+            class: 'bk-widget-form-input',
             id: this.model.id,
             name: this.model.name,
-            size: this.model.size
+            size: this.model.size,
+            disabled: this.model.disabled
         }, options);
-        this.selectEl.addEventListener('change', function (_this) {
-            return function () {
-                return _this.change_input();
-            };
-        }(this));
+        this.selectEl.addEventListener('change', function () {
+            return _this.change_input();
+        });
         this.el.appendChild(this.selectEl);
         return this;
     };
     MultiSelectView.prototype.render_selection = function () {
         var el, i, j, len, len1, ref, ref1, values, x;
+        boundMethodCheck(this, MultiSelectView);
         values = {};
         ref = this.model.value;
         for (i = 0, len = ref.length; i < len; i++) {
@@ -1558,6 +1410,8 @@ exports.MultiSelectView = function (superClass) {
                 el.selected = 'selected';
             }
         }
+        // Note that some browser implementations might not reduce
+        // the number of visible options for size <= 3.
         return this.selectEl.size = this.model.size;
     };
     MultiSelectView.prototype.change_input = function () {
@@ -1572,249 +1426,205 @@ exports.MultiSelectView = function (superClass) {
             }
         }
         this.model.value = values;
-        MultiSelectView.__super__.change_input.call(this);
+        _super.prototype.change_input.call(this);
+        // Restore focus back to the <select> afterwards,
+        // so that even if python on_change callback is invoked,
+        // focus remains on <select> and one can seamlessly scroll
+        // up/down.
         if (is_focused) {
             return this.selectEl.focus();
         }
     };
     return MultiSelectView;
 }(input_widget_1.InputWidgetView);
-exports.MultiSelect = function (superClass) {
-    extend(MultiSelect, superClass);
+var MultiSelect = function (_super) {
+    tslib_1.__extends(MultiSelect, _super);
     function MultiSelect() {
-        return MultiSelect.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    MultiSelect.prototype.type = 'MultiSelect';
-    MultiSelect.prototype.default_view = exports.MultiSelectView;
-    MultiSelect.define({
-        value: [
-            p.Array,
-            []
-        ],
-        options: [
-            p.Array,
-            []
-        ],
-        size: [
-            p.Number,
-            4
-        ]
-    });
     return MultiSelect;
-}(input_widget_1.InputWidget);    
+}(input_widget_1.InputWidget);
+exports.MultiSelect = MultiSelect;
+;
+MultiSelect.prototype.type = 'MultiSelect';
+MultiSelect.prototype.default_view = exports.MultiSelectView;
+MultiSelect.define({
+    value: [
+        p.Array,
+        []
+    ],
+    options: [
+        p.Array,
+        []
+    ],
+    size: [
+        p.Number,
+        4    // 4 is the HTML default
+    ]
+});    
 },
-387: /* models/widgets/panel */ function(require, module, exports) {
+390: /* models/widgets/panel */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var widget_1 = require(409    /* ./widget */);
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var widget_1 = require(412    /* ./widget */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-exports.PanelView = function (superClass) {
-    extend(PanelView, superClass);
+exports.PanelView = function (_super) {
+    tslib_1.__extends(PanelView, _super);
     function PanelView() {
-        return PanelView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     PanelView.prototype.render = function () {
-        PanelView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         return this;
     };
     return PanelView;
 }(widget_1.WidgetView);
-exports.Panel = function (superClass) {
-    extend(Panel, superClass);
+var Panel = function (_super) {
+    tslib_1.__extends(Panel, _super);
     function Panel() {
-        return Panel.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Panel.prototype.type = 'Panel';
-    Panel.prototype.default_view = exports.PanelView;
-    Panel.define({
-        title: [
-            p.String,
-            ''
-        ],
-        child: [p.Instance],
-        closable: [
-            p.Bool,
-            false
-        ]
-    });
     return Panel;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.Panel = Panel;
+;
+Panel.prototype.type = 'Panel';
+Panel.prototype.default_view = exports.PanelView;
+Panel.define({
+    title: [
+        p.String,
+        ''
+    ],
+    child: [p.Instance],
+    closable: [
+        p.Bool,
+        false
+    ]
+});    
 },
-388: /* models/widgets/paragraph */ function(require, module, exports) {
+391: /* models/widgets/paragraph */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(385    /* ./markup */);
+var tslib_1 = require(364    /* tslib */);
+var markup_1 = require(388    /* ./markup */);
 var dom_1 = require(5    /* core/dom */);
-exports.ParagraphView = function (superClass) {
-    extend(ParagraphView, superClass);
+exports.ParagraphView = function (_super) {
+    tslib_1.__extends(ParagraphView, _super);
     function ParagraphView() {
-        return ParagraphView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     ParagraphView.prototype.render = function () {
         var content;
-        ParagraphView.__super__.render.call(this);
+        _super.prototype.render.call(this);
+        // This overrides default user-agent styling and helps layout work
         content = dom_1.p({ style: { margin: 0 } }, this.model.text);
         return this.markupEl.appendChild(content);
     };
     return ParagraphView;
 }(markup_1.MarkupView);
-exports.Paragraph = function (superClass) {
-    extend(Paragraph, superClass);
+var Paragraph = function (_super) {
+    tslib_1.__extends(Paragraph, _super);
     function Paragraph() {
-        return Paragraph.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Paragraph.prototype.type = 'Paragraph';
-    Paragraph.prototype.default_view = exports.ParagraphView;
     return Paragraph;
-}(markup_1.Markup);    
+}(markup_1.Markup);
+exports.Paragraph = Paragraph;
+;
+Paragraph.prototype.type = 'Paragraph';
+Paragraph.prototype.default_view = exports.ParagraphView;    
 },
-389: /* models/widgets/password_input */ function(require, module, exports) {
+392: /* models/widgets/password_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var text_input_1 = require(397    /* ./text_input */);
-exports.PasswordInputView = function (superClass) {
-    extend(PasswordInputView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var text_input_1 = require(400    /* ./text_input */);
+exports.PasswordInputView = function (_super) {
+    tslib_1.__extends(PasswordInputView, _super);
     function PasswordInputView() {
-        return PasswordInputView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     PasswordInputView.prototype.render = function () {
-        PasswordInputView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         return this.inputEl.type = 'password';
     };
     return PasswordInputView;
 }(text_input_1.TextInputView);
-exports.PasswordInput = function (superClass) {
-    extend(PasswordInput, superClass);
+var PasswordInput = function (_super) {
+    tslib_1.__extends(PasswordInput, _super);
     function PasswordInput() {
-        return PasswordInput.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    PasswordInput.prototype.type = 'PasswordInput';
-    PasswordInput.prototype.default_view = exports.PasswordInputView;
     return PasswordInput;
-}(text_input_1.TextInput);    
+}(text_input_1.TextInput);
+exports.PasswordInput = PasswordInput;
+;
+PasswordInput.prototype.type = 'PasswordInput';
+PasswordInput.prototype.default_view = exports.PasswordInputView;    
 },
-390: /* models/widgets/pretext */ function(require, module, exports) {
+393: /* models/widgets/pretext */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var markup_1 = require(385    /* ./markup */);
+var tslib_1 = require(364    /* tslib */);
+var markup_1 = require(388    /* ./markup */);
 var dom_1 = require(5    /* core/dom */);
-exports.PreTextView = function (superClass) {
-    extend(PreTextView, superClass);
+exports.PreTextView = function (_super) {
+    tslib_1.__extends(PreTextView, _super);
     function PreTextView() {
-        return PreTextView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     PreTextView.prototype.render = function () {
         var content;
-        PreTextView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         content = dom_1.pre({ style: { overflow: 'auto' } }, this.model.text);
         return this.markupEl.appendChild(content);
     };
     return PreTextView;
 }(markup_1.MarkupView);
-exports.PreText = function (superClass) {
-    extend(PreText, superClass);
+var PreText = function (_super) {
+    tslib_1.__extends(PreText, _super);
     function PreText() {
-        return PreText.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    PreText.prototype.type = 'PreText';
-    PreText.prototype.default_view = exports.PreTextView;
     return PreText;
-}(markup_1.Markup);    
+}(markup_1.Markup);
+exports.PreText = PreText;
+;
+PreText.prototype.type = 'PreText';
+PreText.prototype.default_view = exports.PreTextView;    
 },
-391: /* models/widgets/radio_button_group */ function(require, module, exports) {
+394: /* models/widgets/radio_button_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
+var tslib_1 = require(364    /* tslib */);
 var dom_1 = require(5    /* core/dom */);
-var string_1 = require(36    /* core/util/string */);
-var p = require(14    /* core/properties */);
-var widget_1 = require(409    /* ./widget */);
-exports.RadioButtonGroupView = function (superClass) {
-    extend(RadioButtonGroupView, superClass);
+var string_1 = require(37    /* core/util/string */);
+var p = require(15    /* core/properties */);
+var widget_1 = require(412    /* ./widget */);
+exports.RadioButtonGroupView = function (_super) {
+    tslib_1.__extends(RadioButtonGroupView, _super);
     function RadioButtonGroupView() {
-        return RadioButtonGroupView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     RadioButtonGroupView.prototype.initialize = function (options) {
-        RadioButtonGroupView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     RadioButtonGroupView.prototype.connect_signals = function () {
-        RadioButtonGroupView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     RadioButtonGroupView.prototype.render = function () {
+        var _this = this;
         var active, divEl, i, inputEl, j, labelEl, len, name, ref, text;
-        RadioButtonGroupView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
-        divEl = dom_1.div({ 'class': 'bk-bs-btn-group' });
+        divEl = dom_1.div({ class: 'bk-bs-btn-group' });
         this.el.appendChild(divEl);
         name = string_1.uniqueId();
         active = this.model.active;
@@ -1827,13 +1637,11 @@ exports.RadioButtonGroupView = function (superClass) {
                 value: '' + i,
                 checked: i === active
             });
-            inputEl.addEventListener('change', function (_this) {
-                return function () {
-                    return _this.change_input();
-                };
-            }(this));
+            inputEl.addEventListener('change', function () {
+                return _this.change_input();
+            });
             labelEl = dom_1.label({
-                'class': [
+                class: [
                     'bk-bs-btn',
                     'bk-bs-btn-' + this.model.button_type
                 ]
@@ -1864,69 +1672,60 @@ exports.RadioButtonGroupView = function (superClass) {
     };
     return RadioButtonGroupView;
 }(widget_1.WidgetView);
-exports.RadioButtonGroup = function (superClass) {
-    extend(RadioButtonGroup, superClass);
+var RadioButtonGroup = function (_super) {
+    tslib_1.__extends(RadioButtonGroup, _super);
     function RadioButtonGroup() {
-        return RadioButtonGroup.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    RadioButtonGroup.prototype.type = 'RadioButtonGroup';
-    RadioButtonGroup.prototype.default_view = exports.RadioButtonGroupView;
-    RadioButtonGroup.define({
-        active: [
-            p.Any,
-            null
-        ],
-        labels: [
-            p.Array,
-            []
-        ],
-        button_type: [
-            p.String,
-            'default'
-        ],
-        callback: [p.Instance]
-    });
     return RadioButtonGroup;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.RadioButtonGroup = RadioButtonGroup;
+;
+RadioButtonGroup.prototype.type = 'RadioButtonGroup';
+RadioButtonGroup.prototype.default_view = exports.RadioButtonGroupView;
+RadioButtonGroup.define({
+    active: [
+        p.Any,
+        null    // TODO (bev) better type?
+    ],
+    labels: [
+        p.Array,
+        []
+    ],
+    button_type: [
+        p.String,
+        'default'
+    ],
+    callback: [p.Instance]
+});    
 },
-392: /* models/widgets/radio_group */ function(require, module, exports) {
+395: /* models/widgets/radio_group */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
+var tslib_1 = require(364    /* tslib */);
 var dom_1 = require(5    /* core/dom */);
-var string_1 = require(36    /* core/util/string */);
-var p = require(14    /* core/properties */);
-var widget_1 = require(409    /* ./widget */);
-exports.RadioGroupView = function (superClass) {
-    extend(RadioGroupView, superClass);
+var string_1 = require(37    /* core/util/string */);
+var p = require(15    /* core/properties */);
+var widget_1 = require(412    /* ./widget */);
+exports.RadioGroupView = function (_super) {
+    tslib_1.__extends(RadioGroupView, _super);
     function RadioGroupView() {
-        return RadioGroupView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     RadioGroupView.prototype.initialize = function (options) {
-        RadioGroupView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     RadioGroupView.prototype.connect_signals = function () {
-        RadioGroupView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     RadioGroupView.prototype.render = function () {
+        var _this = this;
         var active, divEl, i, inputEl, j, labelEl, len, name, ref, text;
-        RadioGroupView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         name = string_1.uniqueId();
         active = this.model.active;
@@ -1938,11 +1737,9 @@ exports.RadioGroupView = function (superClass) {
                 name: name,
                 value: '' + i
             });
-            inputEl.addEventListener('change', function (_this) {
-                return function () {
-                    return _this.change_input();
-                };
-            }(this));
+            inputEl.addEventListener('change', function () {
+                return _this.change_input();
+            });
             if (this.model.disabled) {
                 inputEl.disabled = true;
             }
@@ -1954,7 +1751,7 @@ exports.RadioGroupView = function (superClass) {
                 labelEl.classList.add('bk-bs-radio-inline');
                 this.el.appendChild(labelEl);
             } else {
-                divEl = dom_1.div({ 'class': 'bk-bs-radio' }, labelEl);
+                divEl = dom_1.div({ class: 'bk-bs-radio' }, labelEl);
                 this.el.appendChild(divEl);
             }
         }
@@ -1979,53 +1776,43 @@ exports.RadioGroupView = function (superClass) {
     };
     return RadioGroupView;
 }(widget_1.WidgetView);
-exports.RadioGroup = function (superClass) {
-    extend(RadioGroup, superClass);
+var RadioGroup = function (_super) {
+    tslib_1.__extends(RadioGroup, _super);
     function RadioGroup() {
-        return RadioGroup.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    RadioGroup.prototype.type = 'RadioGroup';
-    RadioGroup.prototype.default_view = exports.RadioGroupView;
-    RadioGroup.define({
-        active: [
-            p.Any,
-            null
-        ],
-        labels: [
-            p.Array,
-            []
-        ],
-        inline: [
-            p.Bool,
-            false
-        ],
-        callback: [p.Instance]
-    });
     return RadioGroup;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.RadioGroup = RadioGroup;
+;
+RadioGroup.prototype.type = 'RadioGroup';
+RadioGroup.prototype.default_view = exports.RadioGroupView;
+RadioGroup.define({
+    active: [
+        p.Any,
+        null    // TODO (bev) better type?
+    ],
+    labels: [
+        p.Array,
+        []
+    ],
+    inline: [
+        p.Bool,
+        false
+    ],
+    callback: [p.Instance]
+});    
 },
-393: /* models/widgets/range_slider */ function(require, module, exports) {
+396: /* models/widgets/range_slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var numbro_1 = require(329    /* numbro */);
-var abstract_slider_1 = require(371    /* ./abstract_slider */);
-exports.RangeSliderView = function (superClass) {
-    extend(RangeSliderView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var numbro_1 = require(332    /* numbro */);
+var abstract_slider_1 = require(374    /* ./abstract_slider */);
+exports.RangeSliderView = function (_super) {
+    tslib_1.__extends(RangeSliderView, _super);
     function RangeSliderView() {
-        return RangeSliderView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     RangeSliderView.prototype._calc_to = function () {
         return {
@@ -2040,91 +1827,92 @@ exports.RangeSliderView = function (superClass) {
     };
     return RangeSliderView;
 }(abstract_slider_1.AbstractSliderView);
-exports.RangeSlider = function (superClass) {
-    extend(RangeSlider, superClass);
+var RangeSlider = function (_super) {
+    tslib_1.__extends(RangeSlider, _super);
     function RangeSlider() {
-        return RangeSlider.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    RangeSlider.prototype.type = 'RangeSlider';
-    RangeSlider.prototype.default_view = exports.RangeSliderView;
-    RangeSlider.prototype.behaviour = 'drag';
-    RangeSlider.prototype.connected = [
-        false,
-        true,
-        false
-    ];
-    RangeSlider.prototype._formatter = numbro_1.format;
-    RangeSlider.override({ format: '0[.]00' });
     return RangeSlider;
-}(abstract_slider_1.AbstractSlider);    
+}(abstract_slider_1.AbstractSlider);
+exports.RangeSlider = RangeSlider;
+;
+RangeSlider.prototype.type = 'RangeSlider';
+RangeSlider.prototype.default_view = exports.RangeSliderView;
+RangeSlider.prototype.behaviour = 'drag';
+RangeSlider.prototype.connected = [
+    false,
+    true,
+    false
+];
+RangeSlider.prototype._formatter = numbro_1.format;
+RangeSlider.override({ format: '0[.]00' });    
 },
-394: /* models/widgets/selectbox */ function(require, module, exports) {
+397: /* models/widgets/selectbox */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
+var tslib_1 = require(364    /* tslib */);
 var dom_1 = require(5    /* core/dom */);
-var types_1 = require(41    /* core/util/types */);
-var logging_1 = require(13    /* core/logging */);
-var p = require(14    /* core/properties */);
-var input_widget_1 = require(383    /* ./input_widget */);
-exports.SelectView = function (superClass) {
-    extend(SelectView, superClass);
+var types_1 = require(42    /* core/util/types */);
+var logging_1 = require(14    /* core/logging */);
+var p = require(15    /* core/properties */);
+var input_widget_1 = require(386    /* ./input_widget */);
+exports.SelectView = function (_super) {
+    tslib_1.__extends(SelectView, _super);
     function SelectView() {
-        return SelectView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     SelectView.prototype.initialize = function (options) {
-        SelectView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     SelectView.prototype.connect_signals = function () {
-        SelectView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
+    SelectView.prototype.build_options = function (values) {
+        var _this = this;
+        return values.map(function (el) {
+            var _label, selected, value;
+            if (types_1.isString(el)) {
+                value = _label = el;
+            } else {
+                value = el[0], _label = el[1];
+            }
+            selected = _this.model.value === value;
+            return dom_1.option({
+                selected: selected,
+                value: value
+            }, _label);
+        });
+    };
     SelectView.prototype.render = function () {
-        var labelEl, options;
-        SelectView.__super__.render.call(this);
+        var _this = this;
+        var contents, key, labelEl, ref, value;
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
-        labelEl = dom_1.label({ 'for': this.model.id }, this.model.title);
+        labelEl = dom_1.label({ for: this.model.id }, this.model.title);
         this.el.appendChild(labelEl);
-        options = this.model.options.map(function (_this) {
-            return function (opt) {
-                var _label, selected, value;
-                if (types_1.isString(opt)) {
-                    value = _label = opt;
-                } else {
-                    value = opt[0], _label = opt[1];
-                }
-                selected = _this.model.value === value;
-                return dom_1.option({
-                    selected: selected,
-                    value: value
-                }, _label);
-            };
-        }(this));
+        if (types_1.isArray(this.model.options)) {
+            contents = this.build_options(this.model.options);
+        } else {
+            contents = [];
+            ref = this.model.options;
+            for (key in ref) {
+                value = ref[key];
+                contents.push(dom_1.optgroup({ label: key }, this.build_options(value)));
+            }
+        }
         this.selectEl = dom_1.select({
-            'class': 'bk-widget-form-input',
+            class: 'bk-widget-form-input',
             id: this.model.id,
-            name: this.model.name
-        }, options);
-        this.selectEl.addEventListener('change', function (_this) {
-            return function () {
-                return _this.change_input();
-            };
-        }(this));
+            name: this.model.name,
+            disabled: this.model.disabled
+        }, contents);
+        this.selectEl.addEventListener('change', function () {
+            return _this.change_input();
+        });
         this.el.appendChild(this.selectEl);
         return this;
     };
@@ -2133,52 +1921,42 @@ exports.SelectView = function (superClass) {
         value = this.selectEl.value;
         logging_1.logger.debug('selectbox: value = ' + value);
         this.model.value = value;
-        return SelectView.__super__.change_input.call(this);
+        return _super.prototype.change_input.call(this);
     };
     return SelectView;
 }(input_widget_1.InputWidgetView);
-exports.Select = function (superClass) {
-    extend(Select, superClass);
+var Select = function (_super) {
+    tslib_1.__extends(Select, _super);
     function Select() {
-        return Select.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Select.prototype.type = 'Select';
-    Select.prototype.default_view = exports.SelectView;
-    Select.define({
-        value: [
-            p.String,
-            ''
-        ],
-        options: [
-            p.Any,
-            []
-        ]
-    });
     return Select;
-}(input_widget_1.InputWidget);    
+}(input_widget_1.InputWidget);
+exports.Select = Select;
+;
+Select.prototype.type = 'Select';
+Select.prototype.default_view = exports.SelectView;
+Select.define({
+    value: [
+        p.String,
+        ''
+    ],
+    options: [
+        p.Any,
+        []
+    ]    // TODO (bev) is this used?
+});    
 },
-395: /* models/widgets/slider */ function(require, module, exports) {
+398: /* models/widgets/slider */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var numbro_1 = require(329    /* numbro */);
-var abstract_slider_1 = require(371    /* ./abstract_slider */);
-exports.SliderView = function (superClass) {
-    extend(SliderView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var numbro_1 = require(332    /* numbro */);
+var abstract_slider_1 = require(374    /* ./abstract_slider */);
+exports.SliderView = function (_super) {
+    tslib_1.__extends(SliderView, _super);
     function SliderView() {
-        return SliderView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     SliderView.prototype._calc_to = function () {
         return {
@@ -2188,70 +1966,62 @@ exports.SliderView = function (superClass) {
             step: this.model.step
         };
     };
-    SliderView.prototype._calc_from = function (arg) {
-        var value;
-        value = arg[0];
+    SliderView.prototype._calc_from = function (_a) {
+        var value = _a[0];
         if (Number.isInteger(this.model.start) && Number.isInteger(this.model.end) && Number.isInteger(this.model.step)) {
-            return value | 0;
+            return Math.round(value);
         } else {
             return value;
         }
     };
     return SliderView;
 }(abstract_slider_1.AbstractSliderView);
-exports.Slider = function (superClass) {
-    extend(Slider, superClass);
+var Slider = function (_super) {
+    tslib_1.__extends(Slider, _super);
     function Slider() {
-        return Slider.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Slider.prototype.type = 'Slider';
-    Slider.prototype.default_view = exports.SliderView;
-    Slider.prototype.behaviour = 'tap';
-    Slider.prototype.connected = [
-        true,
-        false
-    ];
-    Slider.prototype._formatter = numbro_1.format;
-    Slider.override({ format: '0[.]00' });
     return Slider;
-}(abstract_slider_1.AbstractSlider);    
+}(abstract_slider_1.AbstractSlider);
+exports.Slider = Slider;
+;
+Slider.prototype.type = 'Slider';
+Slider.prototype.default_view = exports.SliderView;
+Slider.prototype.behaviour = 'tap';
+Slider.prototype.connected = [
+    true,
+    false
+];
+Slider.prototype._formatter = numbro_1.format;
+Slider.override({ format: '0[.]00' });    
 },
-396: /* models/widgets/tabs */ function(require, module, exports) {
+399: /* models/widgets/tabs */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
+var tslib_1 = require(364    /* tslib */);
 var dom_1 = require(5    /* core/dom */);
-var array_1 = require(21    /* core/util/array */);
-var p = require(14    /* core/properties */);
-var widget_1 = require(409    /* ./widget */);
-exports.TabsView = function (superClass) {
-    extend(TabsView, superClass);
+var array_1 = require(22    /* core/util/array */);
+var p = require(15    /* core/properties */);
+var widget_1 = require(412    /* ./widget */);
+exports.TabsView = function (_super) {
+    tslib_1.__extends(TabsView, _super);
     function TabsView() {
-        return TabsView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     TabsView.prototype.connect_signals = function () {
-        TabsView.__super__.connect_signals.call(this);
-        return this.connect(this.model.properties.tabs.change, function (_this) {
-            return function () {
-                return _this.rebuild_child_views();
-            };
-        }(this));
+        var _this = this;
+        _super.prototype.connect_signals.call(this);
+        this.connect(this.model.properties.tabs.change, function () {
+            return _this.rebuild_child_views();
+        });
+        return this.connect(this.model.properties.active.change, function () {
+            return _this.render();
+        });
     };
     TabsView.prototype.render = function () {
-        var child, j, len, len1, panelEl, panels, panelsEl, ref, ref1, tabs, tabsEl;
-        TabsView.__super__.render.call(this);
+        var _this = this;
+        var child, j, len, len1, panelEl, panels, panelsEl, ref, tabs, tabsEl;
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
         len = this.model.tabs.length;
         if (len === 0) {
@@ -2264,139 +2034,127 @@ exports.TabsView = function (superClass) {
         });
         tabs[this.model.active].classList.add('bk-bs-active');
         tabsEl = dom_1.ul({
-            'class': [
+            class: [
                 'bk-bs-nav',
                 'bk-bs-nav-tabs'
             ]
         }, tabs);
         this.el.appendChild(tabsEl);
         panels = this.model.tabs.map(function (tab) {
-            return dom_1.div({ 'class': 'bk-bs-tab-pane' });
+            return dom_1.div({ class: 'bk-bs-tab-pane' });
         });
         panels[this.model.active].classList.add('bk-bs-active');
-        panelsEl = dom_1.div({ 'class': 'bk-bs-tab-content' }, panels);
+        panelsEl = dom_1.div({ class: 'bk-bs-tab-content' }, panels);
         this.el.appendChild(panelsEl);
-        tabsEl.addEventListener('click', function (_this) {
-            return function (event) {
-                var el, new_active, old_active, ref;
-                event.preventDefault();
-                if (event.target !== event.currentTarget) {
-                    el = event.target;
-                    old_active = _this.model.active;
-                    new_active = parseInt(el.dataset.index);
-                    if (old_active !== new_active) {
-                        tabs[old_active].classList.remove('bk-bs-active');
-                        panels[old_active].classList.remove('bk-bs-active');
-                        tabs[new_active].classList.add('bk-bs-active');
-                        panels[new_active].classList.add('bk-bs-active');
-                        _this.model.active = new_active;
-                        return (ref = _this.model.callback) != null ? ref.execute(_this.model) : void 0;
-                    }
+        tabsEl.addEventListener('click', function (event) {
+            var el, new_active, old_active, ref;
+            event.preventDefault();
+            if (event.target !== event.currentTarget) {
+                el = event.target;
+                old_active = _this.model.active;
+                new_active = parseInt(el.dataset.index);
+                if (old_active !== new_active) {
+                    tabs[old_active].classList.remove('bk-bs-active');
+                    panels[old_active].classList.remove('bk-bs-active');
+                    tabs[new_active].classList.add('bk-bs-active');
+                    panels[new_active].classList.add('bk-bs-active');
+                    _this.model.active = new_active;
+                    return (ref = _this.model.callback) != null ? ref.execute(_this.model) : void 0;
                 }
-            };
-        }(this));
+            }
+        });
         ref = array_1.zip(this.model.children, panels);
         for (j = 0, len1 = ref.length; j < len1; j++) {
-            ref1 = ref[j], child = ref1[0], panelEl = ref1[1];
+            _a = ref[j], child = _a[0], panelEl = _a[1];
             panelEl.appendChild(this.child_views[child.id].el);
         }
         return this;
+        var _a;
     };
     return TabsView;
 }(widget_1.WidgetView);
-exports.Tabs = function (superClass) {
-    extend(Tabs, superClass);
+var Tabs = function (_super) {
+    tslib_1.__extends(Tabs, _super);
     function Tabs() {
-        return Tabs.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Tabs.prototype.type = 'Tabs';
-    Tabs.prototype.default_view = exports.TabsView;
-    Tabs.define({
-        tabs: [
-            p.Array,
-            []
-        ],
-        active: [
-            p.Number,
-            0
-        ],
-        callback: [p.Instance]
-    });
-    Tabs.getters({
-        children: function () {
-            var j, len1, ref, results, tab;
-            ref = this.tabs;
-            results = [];
-            for (j = 0, len1 = ref.length; j < len1; j++) {
-                tab = ref[j];
-                results.push(tab.child);
-            }
-            return results;
-        }
-    });
     Tabs.prototype.get_layoutable_children = function () {
         return this.children;
     };
     return Tabs;
-}(widget_1.Widget);    
+}(widget_1.Widget);
+exports.Tabs = Tabs;
+;
+Tabs.prototype.type = 'Tabs';
+Tabs.prototype.default_view = exports.TabsView;
+Tabs.define({
+    tabs: [
+        p.Array,
+        []
+    ],
+    active: [
+        p.Number,
+        0
+    ],
+    callback: [p.Instance]
+});
+Tabs.getters({
+    children: function () {
+        var j, len1, ref, results, tab;
+        ref = this.tabs;
+        results = [];
+        for (j = 0, len1 = ref.length; j < len1; j++) {
+            tab = ref[j];
+            results.push(tab.child);
+        }
+        return results;
+    }
+});    
 },
-397: /* models/widgets/text_input */ function(require, module, exports) {
+400: /* models/widgets/text_input */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var logging_1 = require(13    /* core/logging */);
-var p = require(14    /* core/properties */);
+var tslib_1 = require(364    /* tslib */);
+var logging_1 = require(14    /* core/logging */);
+var p = require(15    /* core/properties */);
 var dom_1 = require(5    /* core/dom */);
-var input_widget_1 = require(383    /* ./input_widget */);
-exports.TextInputView = function (superClass) {
-    extend(TextInputView, superClass);
+var input_widget_1 = require(386    /* ./input_widget */);
+var TextInputView = function (_super) {
+    tslib_1.__extends(TextInputView, _super);
     function TextInputView() {
-        return TextInputView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TextInputView.prototype.className = 'bk-widget-form-group';
     TextInputView.prototype.initialize = function (options) {
-        TextInputView.__super__.initialize.call(this, options);
+        _super.prototype.initialize.call(this, options);
         return this.render();
     };
     TextInputView.prototype.connect_signals = function () {
-        TextInputView.__super__.connect_signals.call(this);
+        _super.prototype.connect_signals.call(this);
         return this.connect(this.model.change, function () {
             return this.render();
         });
     };
     TextInputView.prototype.render = function () {
+        var _this = this;
         var labelEl;
-        TextInputView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         dom_1.empty(this.el);
-        labelEl = dom_1.label({ 'for': this.model.id }, this.model.title);
+        labelEl = dom_1.label({ for: this.model.id }, this.model.title);
         this.el.appendChild(labelEl);
         this.inputEl = dom_1.input({
             type: 'text',
-            'class': 'bk-widget-form-input',
+            class: 'bk-widget-form-input',
             id: this.model.id,
             name: this.model.name,
             value: this.model.value,
             disabled: this.model.disabled,
             placeholder: this.model.placeholder
         });
-        this.inputEl.addEventListener('change', function (_this) {
-            return function () {
-                return _this.change_input();
-            };
-        }(this));
+        this.inputEl.addEventListener('change', function () {
+            return _this.change_input();
+        });
         this.el.appendChild(this.inputEl);
+        // TODO - This 35 is a hack we should be able to compute it
         if (this.model.height) {
             this.inputEl.style.height = this.model.height - 35 + 'px';
         }
@@ -2407,55 +2165,48 @@ exports.TextInputView = function (superClass) {
         value = this.inputEl.value;
         logging_1.logger.debug('widget/text_input: value = ' + value);
         this.model.value = value;
-        return TextInputView.__super__.change_input.call(this);
+        return _super.prototype.change_input.call(this);
     };
     return TextInputView;
 }(input_widget_1.InputWidgetView);
-exports.TextInput = function (superClass) {
-    extend(TextInput, superClass);
+exports.TextInputView = TextInputView;
+;
+TextInputView.prototype.className = 'bk-widget-form-group';
+var TextInput = function (_super) {
+    tslib_1.__extends(TextInput, _super);
     function TextInput() {
-        return TextInput.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    TextInput.prototype.type = 'TextInput';
-    TextInput.prototype.default_view = exports.TextInputView;
-    TextInput.define({
-        value: [
-            p.String,
-            ''
-        ],
-        placeholder: [
-            p.String,
-            ''
-        ]
-    });
     return TextInput;
-}(input_widget_1.InputWidget);    
+}(input_widget_1.InputWidget);
+exports.TextInput = TextInput;
+;
+TextInput.prototype.type = 'TextInput';
+TextInput.prototype.default_view = TextInputView;
+TextInput.define({
+    value: [
+        p.String,
+        ''
+    ],
+    placeholder: [
+        p.String,
+        ''
+    ]
+});    
 },
-398: /* models/widgets/toggle */ function(require, module, exports) {
+401: /* models/widgets/toggle */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var p = require(14    /* core/properties */);
-var abstract_button_1 = require(369    /* ./abstract_button */);
-exports.ToggleView = function (superClass) {
-    extend(ToggleView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var p = require(15    /* core/properties */);
+var abstract_button_1 = require(372    /* ./abstract_button */);
+exports.ToggleView = function (_super) {
+    tslib_1.__extends(ToggleView, _super);
     function ToggleView() {
-        return ToggleView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     ToggleView.prototype.render = function () {
-        ToggleView.__super__.render.call(this);
+        _super.prototype.render.call(this);
         if (this.model.active) {
             this.buttonEl.classList.add('bk-bs-active');
         }
@@ -2463,52 +2214,45 @@ exports.ToggleView = function (superClass) {
     };
     ToggleView.prototype.change_input = function () {
         this.model.active = !this.model.active;
-        return ToggleView.__super__.change_input.call(this);
+        return _super.prototype.change_input.call(this);
     };
     return ToggleView;
 }(abstract_button_1.AbstractButtonView);
-exports.Toggle = function (superClass) {
-    extend(Toggle, superClass);
+var Toggle = function (_super) {
+    tslib_1.__extends(Toggle, _super);
     function Toggle() {
-        return Toggle.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Toggle.prototype.type = 'Toggle';
-    Toggle.prototype.default_view = exports.ToggleView;
-    Toggle.define({
-        active: [
-            p.Bool,
-            false
-        ]
-    });
-    Toggle.override({ label: 'Toggle' });
     return Toggle;
-}(abstract_button_1.AbstractButton);    
+}(abstract_button_1.AbstractButton);
+exports.Toggle = Toggle;
+;
+Toggle.prototype.type = 'Toggle';
+Toggle.prototype.default_view = exports.ToggleView;
+Toggle.define({
+    active: [
+        p.Bool,
+        false
+    ]
+});
+Toggle.override({ label: 'Toggle' });    
 },
-409: /* models/widgets/widget */ function(require, module, exports) {
+412: /* models/widgets/widget */ function(require, module, exports) {
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-var extend = function (child, parent) {
-        for (var key in parent) {
-            if (hasProp.call(parent, key))
-                child[key] = parent[key];
-        }
-        function ctor() {
-            this.constructor = child;
-        }
-        ctor.prototype = parent.prototype;
-        child.prototype = new ctor();
-        child.__super__ = parent.prototype;
-        return child;
-    }, hasProp = {}.hasOwnProperty;
-var layout_dom_1 = require(136    /* ../layouts/layout_dom */);
-exports.WidgetView = function (superClass) {
-    extend(WidgetView, superClass);
+var tslib_1 = require(364    /* tslib */);
+var layout_dom_1 = require(139    /* ../layouts/layout_dom */);
+var WidgetView = function (_super) {
+    tslib_1.__extends(WidgetView, _super);
     function WidgetView() {
-        return WidgetView.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    WidgetView.prototype.className = 'bk-widget';
     WidgetView.prototype.render = function () {
         this._render_classes();
+        // XXX: because no super()
+        // LayoutDOMView sets up lots of helpful things, but
+        // it's render method is not suitable for widgets - who
+        // should provide their own.
         if (this.model.height != null) {
             this.el.style.height = this.model.height + 'px';
         }
@@ -2518,17 +2262,22 @@ exports.WidgetView = function (superClass) {
     };
     return WidgetView;
 }(layout_dom_1.LayoutDOMView);
-exports.Widget = function (superClass) {
-    extend(Widget, superClass);
+exports.WidgetView = WidgetView;
+;
+WidgetView.prototype.className = 'bk-widget';
+var Widget = function (_super) {
+    tslib_1.__extends(Widget, _super);
     function Widget() {
-        return Widget.__super__.constructor.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    Widget.prototype.type = 'Widget';
-    Widget.prototype.default_view = exports.WidgetView;
     return Widget;
-}(layout_dom_1.LayoutDOM);    
+}(layout_dom_1.LayoutDOM);
+exports.Widget = Widget;
+;
+Widget.prototype.type = 'Widget';
+Widget.prototype.default_view = WidgetView;    
 },
-400: /* nouislider/distribute/nouislider */ function(require, module, exports) {
+403: /* nouislider/distribute/nouislider */ function(require, module, exports) {
 /*! nouislider - 10.1.0 - 2017-07-28 17:11:18 */
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
@@ -4419,7 +4168,7 @@ exports.Widget = function (superClass) {
         create: initialize
     };
 }));},
-401: /* pikaday/pikaday */ function(require, module, exports) {
+404: /* pikaday/pikaday */ function(require, module, exports) {
 /*!
  * Pikaday
  *
@@ -5381,7 +5130,7 @@ exports.Widget = function (superClass) {
     };
     return Pikaday;
 }));}
-}, {"models/widgets/abstract_button":369,"models/widgets/abstract_icon":370,"models/widgets/abstract_slider":371,"models/widgets/autocomplete_input":372,"models/widgets/button":373,"models/widgets/checkbox_button_group":374,"models/widgets/checkbox_group":375,"models/widgets/common":376,"models/widgets/date_picker":377,"models/widgets/date_range_slider":378,"models/widgets/date_slider":379,"models/widgets/div":380,"models/widgets/dropdown":381,"models/widgets/index":382,"models/widgets/input_widget":383,"models/widgets/main":384,"models/widgets/markup":385,"models/widgets/multiselect":386,"models/widgets/panel":387,"models/widgets/paragraph":388,"models/widgets/password_input":389,"models/widgets/pretext":390,"models/widgets/radio_button_group":391,"models/widgets/radio_group":392,"models/widgets/range_slider":393,"models/widgets/selectbox":394,"models/widgets/slider":395,"models/widgets/tabs":396,"models/widgets/text_input":397,"models/widgets/toggle":398,"models/widgets/widget":409}, 384);
+}, {"models/widgets/abstract_button":372,"models/widgets/abstract_icon":373,"models/widgets/abstract_slider":374,"models/widgets/autocomplete_input":375,"models/widgets/button":376,"models/widgets/checkbox_button_group":377,"models/widgets/checkbox_group":378,"models/widgets/common":379,"models/widgets/date_picker":380,"models/widgets/date_range_slider":381,"models/widgets/date_slider":382,"models/widgets/div":383,"models/widgets/dropdown":384,"models/widgets/index":385,"models/widgets/input_widget":386,"models/widgets/main":387,"models/widgets/markup":388,"models/widgets/multiselect":389,"models/widgets/panel":390,"models/widgets/paragraph":391,"models/widgets/password_input":392,"models/widgets/pretext":393,"models/widgets/radio_button_group":394,"models/widgets/radio_group":395,"models/widgets/range_slider":396,"models/widgets/selectbox":397,"models/widgets/slider":398,"models/widgets/tabs":399,"models/widgets/text_input":400,"models/widgets/toggle":401,"models/widgets/widget":412}, 387);
 })
 
 //# sourceMappingURL=bokeh-widgets.js.map

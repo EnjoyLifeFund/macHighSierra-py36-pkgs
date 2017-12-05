@@ -27,6 +27,8 @@ class InboundNatRulesOperations(object):
     :ivar api_version: Client API version. Constant value: "2017-09-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -49,10 +51,9 @@ class InboundNatRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`InboundNatRule
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRule>`
-        :rtype: :class:`InboundNatRulePaged
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRulePaged>`
+        :return: An iterator like instance of InboundNatRule
+        :rtype:
+         ~azure.mgmt.network.v2017_09_01.models.InboundNatRulePaged[~azure.mgmt.network.v2017_09_01.models.InboundNatRule]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -120,14 +121,10 @@ class InboundNatRulesOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -170,7 +167,7 @@ class InboundNatRulesOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [204, 202, 200]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -207,13 +204,9 @@ class InboundNatRulesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`InboundNatRule
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`InboundNatRule
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: InboundNatRule or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2017_09_01.models.InboundNatRule or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -274,20 +267,16 @@ class InboundNatRulesOperations(object):
         :type inbound_nat_rule_name: str
         :param inbound_nat_rule_parameters: Parameters supplied to the create
          or update inbound nat rule operation.
-        :type inbound_nat_rule_parameters: :class:`InboundNatRule
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRule>`
+        :type inbound_nat_rule_parameters:
+         ~azure.mgmt.network.v2017_09_01.models.InboundNatRule
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`InboundNatRule
-         <azure.mgmt.network.v2017_09_01.models.InboundNatRule>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns
+         InboundNatRule or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_09_01.models.InboundNatRule]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -334,16 +323,16 @@ class InboundNatRulesOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [201, 200]:
+            if response.status_code not in [200, 201]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
 
             deserialized = None
 
-            if response.status_code == 201:
-                deserialized = self._deserialize('InboundNatRule', response)
             if response.status_code == 200:
+                deserialized = self._deserialize('InboundNatRule', response)
+            if response.status_code == 201:
                 deserialized = self._deserialize('InboundNatRule', response)
 
             if raw:

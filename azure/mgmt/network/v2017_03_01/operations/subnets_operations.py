@@ -27,6 +27,8 @@ class SubnetsOperations(object):
     :ivar api_version: Client API version. Constant value: "2017-03-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -49,14 +51,10 @@ class SubnetsOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -99,7 +97,7 @@ class SubnetsOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [200, 204, 202]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -136,12 +134,9 @@ class SubnetsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`Subnet
-         <azure.mgmt.network.v2017_03_01.models.Subnet>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`Subnet <azure.mgmt.network.v2017_03_01.models.Subnet>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: Subnet or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2017_03_01.models.Subnet or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -202,20 +197,15 @@ class SubnetsOperations(object):
         :type subnet_name: str
         :param subnet_parameters: Parameters supplied to the create or update
          subnet operation.
-        :type subnet_parameters: :class:`Subnet
-         <azure.mgmt.network.v2017_03_01.models.Subnet>`
+        :type subnet_parameters: ~azure.mgmt.network.v2017_03_01.models.Subnet
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`Subnet
-         <azure.mgmt.network.v2017_03_01.models.Subnet>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns Subnet or
+         ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_03_01.models.Subnet]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -304,10 +294,9 @@ class SubnetsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`Subnet
-         <azure.mgmt.network.v2017_03_01.models.Subnet>`
-        :rtype: :class:`SubnetPaged
-         <azure.mgmt.network.v2017_03_01.models.SubnetPaged>`
+        :return: An iterator like instance of Subnet
+        :rtype:
+         ~azure.mgmt.network.v2017_03_01.models.SubnetPaged[~azure.mgmt.network.v2017_03_01.models.Subnet]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

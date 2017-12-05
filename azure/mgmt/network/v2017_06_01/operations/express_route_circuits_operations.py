@@ -27,6 +27,8 @@ class ExpressRouteCircuitsOperations(object):
     :ivar api_version: Client API version. Constant value: "2017-06-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -47,14 +49,10 @@ class ExpressRouteCircuitsOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -96,7 +94,7 @@ class ExpressRouteCircuitsOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [204, 202, 200]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -129,13 +127,9 @@ class ExpressRouteCircuitsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: ExpressRouteCircuit or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -191,20 +185,16 @@ class ExpressRouteCircuitsOperations(object):
         :type circuit_name: str
         :param parameters: Parameters supplied to the create or update express
          route circuit operation.
-        :type parameters: :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>`
+        :type parameters:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns
+         ExpressRouteCircuit or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -250,16 +240,16 @@ class ExpressRouteCircuitsOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [201, 200]:
+            if response.status_code not in [200, 201]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
 
             deserialized = None
 
-            if response.status_code == 201:
-                deserialized = self._deserialize('ExpressRouteCircuit', response)
             if response.status_code == 200:
+                deserialized = self._deserialize('ExpressRouteCircuit', response)
+            if response.status_code == 201:
                 deserialized = self._deserialize('ExpressRouteCircuit', response)
 
             if raw:
@@ -295,15 +285,12 @@ class ExpressRouteCircuitsOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`ExpressRouteCircuitsArpTableListResult
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsArpTableListResult>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+        :return: An instance of AzureOperationPoller that returns
+         ExpressRouteCircuitsArpTableListResult or ClientRawResponse if
          raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsArpTableListResult]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -390,16 +377,12 @@ class ExpressRouteCircuitsOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns
-         :class:`ExpressRouteCircuitsRoutesTableListResult
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsRoutesTableListResult>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
+        :return: An instance of AzureOperationPoller that returns
+         ExpressRouteCircuitsRoutesTableListResult or ClientRawResponse if
          raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsRoutesTableListResult]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -486,16 +469,12 @@ class ExpressRouteCircuitsOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns
-         :class:`ExpressRouteCircuitsRoutesTableSummaryListResult
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsRoutesTableSummaryListResult>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns
+         ExpressRouteCircuitsRoutesTableSummaryListResult or ClientRawResponse
+         if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitsRoutesTableSummaryListResult]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -579,13 +558,10 @@ class ExpressRouteCircuitsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`ExpressRouteCircuitStats
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`ExpressRouteCircuitStats
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: ExpressRouteCircuitStats or ClientRawResponse if raw=true
+        :rtype:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -646,13 +622,10 @@ class ExpressRouteCircuitsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`ExpressRouteCircuitStats
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`ExpressRouteCircuitStats
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: ExpressRouteCircuitStats or ClientRawResponse if raw=true
+        :rtype:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitStats or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -710,10 +683,9 @@ class ExpressRouteCircuitsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>`
-        :rtype: :class:`ExpressRouteCircuitPaged
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitPaged>`
+        :return: An iterator like instance of ExpressRouteCircuit
+        :rtype:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitPaged[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -776,10 +748,9 @@ class ExpressRouteCircuitsOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`ExpressRouteCircuit
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit>`
-        :rtype: :class:`ExpressRouteCircuitPaged
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitPaged>`
+        :return: An iterator like instance of ExpressRouteCircuit
+        :rtype:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuitPaged[~azure.mgmt.network.v2017_06_01.models.ExpressRouteCircuit]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

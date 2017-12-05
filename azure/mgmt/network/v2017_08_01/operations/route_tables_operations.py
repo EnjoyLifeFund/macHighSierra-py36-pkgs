@@ -27,6 +27,8 @@ class RouteTablesOperations(object):
     :ivar api_version: Client API version. Constant value: "2017-08-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -47,14 +49,10 @@ class RouteTablesOperations(object):
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns None or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: An instance of AzureOperationPoller that returns None or
+         ClientRawResponse if raw=true
+        :rtype: ~msrestazure.azure_operation.AzureOperationPoller[None] or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -96,7 +94,7 @@ class RouteTablesOperations(object):
 
         def get_long_running_output(response):
 
-            if response.status_code not in [204, 200, 202]:
+            if response.status_code not in [200, 202, 204]:
                 exp = CloudError(response)
                 exp.request_id = response.headers.get('x-ms-request-id')
                 raise exp
@@ -131,13 +129,9 @@ class RouteTablesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
-        :rtype: :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+        :return: RouteTable or ClientRawResponse if raw=true
+        :rtype: ~azure.mgmt.network.v2017_08_01.models.RouteTable or
+         ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -195,20 +189,15 @@ class RouteTablesOperations(object):
         :type route_table_name: str
         :param parameters: Parameters supplied to the create or update route
          table operation.
-        :type parameters: :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>`
+        :type parameters: ~azure.mgmt.network.v2017_08_01.models.RouteTable
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
-        :return:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         instance that returns :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>` or
-         :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>` if
-         raw=true
+        :return: An instance of AzureOperationPoller that returns RouteTable
+         or ClientRawResponse if raw=true
         :rtype:
-         :class:`AzureOperationPoller<msrestazure.azure_operation.AzureOperationPoller>`
-         or :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
+         ~msrestazure.azure_operation.AzureOperationPoller[~azure.mgmt.network.v2017_08_01.models.RouteTable]
+         or ~msrest.pipeline.ClientRawResponse
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         # Construct URL
@@ -294,10 +283,9 @@ class RouteTablesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>`
-        :rtype: :class:`RouteTablePaged
-         <azure.mgmt.network.v2017_08_01.models.RouteTablePaged>`
+        :return: An iterator like instance of RouteTable
+        :rtype:
+         ~azure.mgmt.network.v2017_08_01.models.RouteTablePaged[~azure.mgmt.network.v2017_08_01.models.RouteTable]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
@@ -360,10 +348,9 @@ class RouteTablesOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`RouteTable
-         <azure.mgmt.network.v2017_08_01.models.RouteTable>`
-        :rtype: :class:`RouteTablePaged
-         <azure.mgmt.network.v2017_08_01.models.RouteTablePaged>`
+        :return: An iterator like instance of RouteTable
+        :rtype:
+         ~azure.mgmt.network.v2017_08_01.models.RouteTablePaged[~azure.mgmt.network.v2017_08_01.models.RouteTable]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

@@ -2,15 +2,16 @@ from __future__ import print_function, division, absolute_import
 
 import io
 import os
-
-from toolz import merge, partial
+from distutils.version import LooseVersion
 from warnings import warn
+
+from toolz import merge
 
 from .compression import seekable_files, files as compress_files
 from .utils import (SeekableFile, read_block, infer_compression,
                     infer_storage_options, build_name_function)
 from ..compatibility import PY2, unicode
-from ..base import tokenize, normalize_token
+from ..base import tokenize
 from ..delayed import delayed
 from ..utils import import_required, ensure_bytes, ensure_unicode, is_integer
 
@@ -266,10 +267,9 @@ class OpenFileCreator(object):
         return OpenFile(self.fs.open, path, self.compression, mode,
                         self.text, self.encoding, self.errors)
 
-
-@partial(normalize_token.register, OpenFileCreator)
-def normalize_OpenFileCreator(ofc):
-    return ofc.compression, ofc.text, ofc.encoding, ofc.protocol, ofc.storage_options
+    def __dask_tokenize__(self):
+        return (self.compression, self.text, self.encoding,
+                self.protocol, self.storage_options)
 
 
 class OpenFile(object):
@@ -483,12 +483,20 @@ def ensure_protocol(protocol):
                         "    or\n"
                         "    pip install s3fs")
 
+    elif protocol in ('gs', 'gcs'):
+        import_required('gcsfs',
+                        "Need to install `gcsfs` library for Google Cloud Storage support\n"
+                        "    conda install gcsfs -c conda-forge\n"
+                        "    or\n"
+                        "    pip install gcsfs")
+
     elif protocol == 'hdfs':
-        msg = ("Need to install `distributed` and `hdfs3` "
-               "for HDFS support\n"
-               "    conda install distributed hdfs3 -c conda-forge")
-        import_required('distributed.hdfs', msg)
-        import_required('hdfs3', msg)
+        msg = ("Need to install `hdfs3 > 0.2.0` for HDFS support\n"
+               "    conda install hdfs3 -c conda-forge")
+        hdfs3 = import_required('hdfs3', msg)
+        if not LooseVersion(hdfs3.__version__) > '0.2.0':
+            raise RuntimeError(msg)
+        import hdfs3.dask  # register dask filesystem
 
     elif protocol in _filesystems:
         return
@@ -518,3 +526,15 @@ class FileSystem(object):
 
     def get_block_locations(self, path):
         return None, None, None
+
+
+def get_pyarrow_filesystem(fs):
+    """Get an equivalent pyarrow filesystem.
+
+    Not for public use, will be removed once a consistent filesystem api
+    is defined."""
+    try:
+        return fs._get_pyarrow_filesystem()
+    except AttributeError:
+        raise NotImplementedError("Using pyarrow with a %r "
+                                  "filesystem object" % type(fs).__name__)

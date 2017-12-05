@@ -8,6 +8,7 @@ import imp
 import marshal
 import os
 import re
+import six
 import struct
 import sys
 import types
@@ -33,7 +34,6 @@ else:
 PYC_EXT = ".py" + (__debug__ and "c" or "o")
 PYC_TAIL = "." + PYTEST_TAG + PYC_EXT
 
-REWRITE_NEWLINES = sys.version_info[:2] != (2, 7) and sys.version_info < (3, 2)
 ASCII_IS_DEFAULT_ENCODING = sys.version_info[0] < 3
 
 if sys.version_info >= (3, 5):
@@ -168,7 +168,7 @@ class AssertionRewritingHook(object):
                 return True
 
         for marked in self._must_rewrite:
-            if name.startswith(marked):
+            if name == marked or name.startswith(marked + '.'):
                 state.trace("matched marked file %r (from %r)" % (name, marked))
                 return True
 
@@ -210,7 +210,7 @@ class AssertionRewritingHook(object):
             mod.__cached__ = pyc
             mod.__loader__ = self
             py.builtin.exec_(co, mod.__dict__)
-        except:
+        except:  # noqa
             if name in sys.modules:
                 del sys.modules[name]
             raise
@@ -320,10 +320,6 @@ def _rewrite_test(config, fn):
                     return None, None
             finally:
                 del state._indecode
-    # On Python versions which are not 2.7 and less than or equal to 3.1, the
-    # parser expects *nix newlines.
-    if REWRITE_NEWLINES:
-        source = source.replace(RN, N) + N
     try:
         tree = ast.parse(source)
     except SyntaxError:
@@ -405,10 +401,10 @@ def _saferepr(obj):
 
     """
     repr = py.io.saferepr(obj)
-    if py.builtin._istext(repr):
-        t = py.builtin.text
+    if isinstance(repr, six.text_type):
+        t = six.text_type
     else:
-        t = py.builtin.bytes
+        t = six.binary_type
     return repr.replace(t("\n"), t("\\n"))
 
 
@@ -427,16 +423,16 @@ def _format_assertmsg(obj):
     # contains a newline it gets escaped, however if an object has a
     # .__repr__() which contains newlines it does not get escaped.
     # However in either case we want to preserve the newline.
-    if py.builtin._istext(obj) or py.builtin._isbytes(obj):
+    if isinstance(obj, six.text_type) or isinstance(obj, six.binary_type):
         s = obj
         is_repr = False
     else:
         s = py.io.saferepr(obj)
         is_repr = True
-    if py.builtin._istext(s):
-        t = py.builtin.text
+    if isinstance(s, six.text_type):
+        t = six.text_type
     else:
-        t = py.builtin.bytes
+        t = six.binary_type
     s = s.replace(t("\n"), t("\n~")).replace(t("%"), t("%%"))
     if is_repr:
         s = s.replace(t("\\n"), t("\n~"))
@@ -444,15 +440,15 @@ def _format_assertmsg(obj):
 
 
 def _should_repr_global_name(obj):
-    return not hasattr(obj, "__name__") and not py.builtin.callable(obj)
+    return not hasattr(obj, "__name__") and not callable(obj)
 
 
 def _format_boolop(explanations, is_or):
     explanation = "(" + (is_or and " or " or " and ").join(explanations) + ")"
-    if py.builtin._istext(explanation):
-        t = py.builtin.text
+    if isinstance(explanation, six.text_type):
+        t = six.text_type
     else:
-        t = py.builtin.bytes
+        t = six.binary_type
     return explanation.replace(t('%'), t('%%'))
 
 
@@ -595,23 +591,26 @@ class AssertionRewriter(ast.NodeVisitor):
         # docstrings and __future__ imports.
         aliases = [ast.alias(py.builtin.builtins.__name__, "@py_builtins"),
                    ast.alias("_pytest.assertion.rewrite", "@pytest_ar")]
-        expect_docstring = True
+        doc = getattr(mod, "docstring", None)
+        expect_docstring = doc is None
+        if doc is not None and self.is_rewrite_disabled(doc):
+            return
         pos = 0
-        lineno = 0
+        lineno = 1
         for item in mod.body:
             if (expect_docstring and isinstance(item, ast.Expr) and
                     isinstance(item.value, ast.Str)):
                 doc = item.value.s
-                if "PYTEST_DONT_REWRITE" in doc:
-                    # The module has disabled assertion rewriting.
+                if self.is_rewrite_disabled(doc):
                     return
-                lineno += len(doc) - 1
                 expect_docstring = False
             elif (not isinstance(item, ast.ImportFrom) or item.level > 0 or
                   item.module != "__future__"):
                 lineno = item.lineno
                 break
             pos += 1
+        else:
+            lineno = item.lineno
         imports = [ast.Import([alias], lineno=lineno, col_offset=0)
                    for alias in aliases]
         mod.body[pos:pos] = imports
@@ -636,6 +635,9 @@ class AssertionRewriter(ast.NodeVisitor):
                       # asserts.
                       not isinstance(field, ast.expr)):
                     nodes.append(field)
+
+    def is_rewrite_disabled(self, docstring):
+        return "PYTEST_DONT_REWRITE" in docstring
 
     def variable(self):
         """Get a new variable."""

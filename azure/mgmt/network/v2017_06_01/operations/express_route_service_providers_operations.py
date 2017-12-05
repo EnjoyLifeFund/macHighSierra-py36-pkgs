@@ -26,6 +26,8 @@ class ExpressRouteServiceProvidersOperations(object):
     :ivar api_version: Client API version. Constant value: "2017-06-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -44,11 +46,9 @@ class ExpressRouteServiceProvidersOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of
-         :class:`ExpressRouteServiceProvider
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteServiceProvider>`
-        :rtype: :class:`ExpressRouteServiceProviderPaged
-         <azure.mgmt.network.v2017_06_01.models.ExpressRouteServiceProviderPaged>`
+        :return: An iterator like instance of ExpressRouteServiceProvider
+        :rtype:
+         ~azure.mgmt.network.v2017_06_01.models.ExpressRouteServiceProviderPaged[~azure.mgmt.network.v2017_06_01.models.ExpressRouteServiceProvider]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):
