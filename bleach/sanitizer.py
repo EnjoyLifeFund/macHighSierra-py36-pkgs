@@ -9,11 +9,15 @@ from xml.sax.saxutils import unescape
 import html5lib
 from html5lib.constants import (
     entities,
-    ReparseException,
     namespaces,
     prefixes,
     tokenTypes,
 )
+try:
+    from html5lib.constants import ReparseException
+except ImportError:
+    # html5lib-python 1.0 changed the name
+    from html5lib.constants import _ReparseException as ReparseException
 from html5lib.filters.base import Filter
 from html5lib.filters import sanitizer
 from html5lib.serializer import HTMLSerializer
@@ -194,7 +198,9 @@ class Cleaner(object):
 
         """
         if not isinstance(text, six.string_types):
-            raise TypeError('argument must be of text type')
+            message = "argument cannot be of '{name}' type, must be of text type".format(
+                name=text.__class__.__name__)
+            raise TypeError(message)
 
         if not text:
             return u''
