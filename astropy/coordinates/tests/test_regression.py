@@ -51,9 +51,9 @@ def test_regression_5085():
                                  lon=longitudes,
                                  distance=distances, equinox=times)
     # expected result
-    ras = Longitude([310.50095387, 314.67109863, 319.56507471]*u.deg)
-    decs = Latitude([-18.25190707, -17.1556641, -15.71616651]*u.deg)
-    distances = u.Quantity([1.78309902, 1.710874, 1.61326648]*u.au)
+    ras = Longitude([310.50095400, 314.67109920, 319.56507428]*u.deg)
+    decs = Latitude([-18.25190443, -17.1556676, -15.71616522]*u.deg)
+    distances = u.Quantity([1.78309901, 1.710874, 1.61326649]*u.au)
     expected_result = GCRS(ra=ras, dec=decs,
                            distance=distances, obstime="J2000").cartesian.xyz
     actual_result = coo.transform_to(GCRS(obstime="J2000")).cartesian.xyz
@@ -557,3 +557,40 @@ def test_regression_6448():
     sc2 = SkyCoord([c1, c2])
     # without 6448 this fails
     assert sc2.galcen_v_sun is None
+
+
+def test_regression_6597():
+    frame_name = 'galactic'
+    c1 = SkyCoord(1, 3, unit='deg', frame=frame_name)
+    c2 = SkyCoord(2, 4, unit='deg', frame=frame_name)
+    sc1 = SkyCoord([c1, c2])
+
+    assert sc1.frame.name == frame_name
+
+
+def test_regression_6597_2():
+    """
+    This tests the more subtle flaw that #6597 indirectly uncovered: that even
+    in the case that the frames are ra/dec, they still might be the wrong *kind*
+    """
+    frame = FK4(equinox='J1949')
+    c1 = SkyCoord(1, 3, unit='deg', frame=frame)
+    c2 = SkyCoord(2, 4, unit='deg', frame=frame)
+    sc1 = SkyCoord([c1, c2])
+
+    assert sc1.frame.name == frame.name
+
+
+def test_regression_6697():
+    """
+    Test for regression of a bug in get_gcrs_posvel that introduced errors at the 1m/s level.
+
+    Comparison data is derived from calculation in PINT
+    https://github.com/nanograv/PINT/blob/master/pint/erfautils.py
+    """
+    pint_vels = CartesianRepresentation(*(348.63632871, -212.31704928, -0.60154936), unit=u.m/u.s)
+    location = EarthLocation(*(5327448.9957829, -1718665.73869569,  3051566.90295403), unit=u.m)
+    t = Time(2458036.161966612, format='jd', scale='utc')
+    obsgeopos, obsgeovel = location.get_gcrs_posvel(t)
+    delta = (obsgeovel-pint_vels).norm()
+    assert delta < 1*u.cm/u.s

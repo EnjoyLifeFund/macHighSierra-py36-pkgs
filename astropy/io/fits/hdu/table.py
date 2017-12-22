@@ -39,7 +39,7 @@ from ....utils.decorators import deprecated_renamed_argument
 
 class FITSTableDumpDialect(csv.excel):
     """
-    A CSV dialect for the PyFITS format of ASCII dumps of FITS tables.
+    A CSV dialect for the Astropy format of ASCII dumps of FITS tables.
     """
 
     delimiter = ' '
@@ -748,7 +748,7 @@ class TableHDU(_TableBaseHDU):
             # We need to pad the data to a block length before calculating
             # the datasum.
             bytes_array = self.data.view(type=np.ndarray, dtype=np.ubyte)
-            padding = np.fromstring(_pad_length(self.size) * b' ',
+            padding = np.frombuffer(_pad_length(self.size) * b' ',
                                     dtype=np.ubyte)
 
             d = np.append(bytes_array, padding)

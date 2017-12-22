@@ -278,7 +278,7 @@ class Submodule(IndexObject, Iterable, Traversable):
             if not path.startswith(working_tree_linux):
                 raise ValueError("Submodule checkout path '%s' needs to be within the parents repository at '%s'"
                                  % (working_tree_linux, path))
-            path = path[len(working_tree_linux) + 1:]
+            path = path[len(working_tree_linux.rstrip('/')) + 1:]
             if not path:
                 raise ValueError("Absolute submodule path '%s' didn't yield a valid relative path" % path)
             # end verify converted relative path makes sense
@@ -358,7 +358,9 @@ class Submodule(IndexObject, Iterable, Traversable):
         if sm.exists():
             # reretrieve submodule from tree
             try:
-                return repo.head.commit.tree[path]
+                sm = repo.head.commit.tree[path]
+                sm._name = name
+                return sm
             except KeyError:
                 # could only be in index
                 index = repo.index

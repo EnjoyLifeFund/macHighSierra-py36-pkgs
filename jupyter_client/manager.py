@@ -11,11 +11,6 @@ import re
 import signal
 import sys
 import time
-import warnings
-try:
-    from queue import Empty  # Py 3
-except ImportError:
-    from Queue import Empty  # Py 2
 
 import zmq
 
@@ -29,7 +24,6 @@ from jupyter_client import (
     kernelspec,
 )
 from .connect import ConnectionFileMixin
-from .session import Session
 from .managerabc import (
     KernelManagerABC
 )
@@ -174,8 +168,10 @@ class KernelManager(ConnectionFileMixin):
         else:
             cmd = self.kernel_spec.argv + extra_arguments
 
-        if cmd and cmd[0] == 'python':
-            # executable is 'python', use sys.executable.
+        if cmd and cmd[0] in {'python',
+                              'python%i' % sys.version_info[0],
+                              'python%i.%i' % sys.version_info[:2]}:
+            # executable is 'python' or 'python3', use sys.executable.
             # These will typically be the same,
             # but if the current process is in an env
             # and has been launched by abspath without
@@ -186,6 +182,10 @@ class KernelManager(ConnectionFileMixin):
         ns = dict(connection_file=self.connection_file,
                   prefix=sys.prefix,
                  )
+
+        if self.kernel_spec:
+            ns["resource_dir"] = self.kernel_spec.resource_dir
+
         ns.update(self._launch_args)
 
         pat = re.compile(r'\{([A-Za-z0-9_]+)\}')
@@ -250,7 +250,7 @@ class KernelManager(ConnectionFileMixin):
             # If kernel_cmd has been set manually, don't refer to a kernel spec
             # Environment variables from kernel spec are added to os.environ
             env.update(self.kernel_spec.env or {})
-        
+
         # launch the kernel subprocess
         self.log.debug("Starting kernel: %s", kernel_cmd)
         self.kernel = self._launch_kernel(kernel_cmd, env=env,
@@ -326,11 +326,8 @@ class KernelManager(ConnectionFileMixin):
 
         self.cleanup(connection_file=not restart)
 
-    def restart_kernel(self, now=False, **kw):
+    def restart_kernel(self, now=False, newports=False, **kw):
         """Restarts a kernel with the arguments that were used to launch it.
-
-        If the old kernel was launched with random ports, the same ports will be
-        used for the new kernel. The same connection file is used again.
 
         Parameters
         ----------
@@ -342,6 +339,14 @@ class KernelManager(ConnectionFileMixin):
             In all cases the kernel is restarted, the only difference is whether
             it is given a chance to perform a clean shutdown or not.
 
+        newports : bool, optional
+            If the old kernel was launched with random ports, this flag decides
+            whether the same ports and connection file will be used again.
+            If False, the same ports and connection file are used. This is
+            the default. If True, new random port numbers are chosen and a
+            new connection file is written. It is still possible that the newly
+            chosen random port numbers happen to be the same as the old ones.
+
         `**kw` : optional
             Any options specified here will overwrite those used to launch the
             kernel.
@@ -352,6 +357,9 @@ class KernelManager(ConnectionFileMixin):
         else:
             # Stop currently running kernel.
             self.shutdown_kernel(now=now, restart=True)
+
+            if newports:
+                self.cleanup_random_ports()
 
             # Start new kernel.
             self._launch_args.update(kw)
@@ -372,7 +380,10 @@ class KernelManager(ConnectionFileMixin):
             # Signal the kernel to terminate (sends SIGKILL on Unix and calls
             # TerminateProcess() on Win32).
             try:
-                self.kernel.kill()
+                if hasattr(signal, 'SIGKILL'):
+                    self.signal_kernel(signal.SIGKILL)
+                else:
+                    self.kernel.kill()
             except OSError as e:
                 # In Windows, we will get an Access Denied error if the process
                 # has already terminated. Ignore it.
@@ -399,11 +410,18 @@ class KernelManager(ConnectionFileMixin):
         platforms.
         """
         if self.has_kernel:
-            if sys.platform == 'win32':
-                from .win_interrupt import send_interrupt
-                send_interrupt(self.kernel.win32_interrupt_event)
-            else:
-                self.signal_kernel(signal.SIGINT)
+            interrupt_mode = self.kernel_spec.interrupt_mode
+            if interrupt_mode == 'signal':
+                if sys.platform == 'win32':
+                    from .win_interrupt import send_interrupt
+                    send_interrupt(self.kernel.win32_interrupt_event)
+                else:
+                    self.signal_kernel(signal.SIGINT)
+
+            elif interrupt_mode == 'message':
+                msg = self.session.msg("interrupt_request", content={})
+                self._connect_control_socket()
+                self.session.send(self._control_socket, msg)
         else:
             raise RuntimeError("Cannot interrupt kernel. No kernel is running!")
 

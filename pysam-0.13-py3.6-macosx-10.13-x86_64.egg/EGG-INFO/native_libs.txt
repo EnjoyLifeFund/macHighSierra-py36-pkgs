@@ -1,0 +1,13 @@
+pysam/libcalignedsegment.cpython-36m-darwin.so
+pysam/libcalignmentfile.cpython-36m-darwin.so
+pysam/libcbcf.cpython-36m-darwin.so
+pysam/libcbcftools.cpython-36m-darwin.so
+pysam/libcbgzf.cpython-36m-darwin.so
+pysam/libcfaidx.cpython-36m-darwin.so
+pysam/libchtslib.cpython-36m-darwin.so
+pysam/libcsamfile.cpython-36m-darwin.so
+pysam/libcsamtools.cpython-36m-darwin.so
+pysam/libctabix.cpython-36m-darwin.so
+pysam/libctabixproxies.cpython-36m-darwin.so
+pysam/libcutils.cpython-36m-darwin.so
+pysam/libcvcf.cpython-36m-darwin.so

@@ -12,13 +12,14 @@ import copy
 import decimal
 from fractions import Fraction
 
+import pytest
 import numpy as np
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_almost_equal)
 
-from ...tests.helper import raises, pytest
+from ...tests.helper import raises
 from ...utils import isiterable, minversion
-from ...utils.compat import NUMPY_LT_1_10
+from ...utils.compat import NUMPY_LT_1_10, NUMPY_LT_1_14
 from ...utils.compat.numpy import matmul
 from ... import units as u
 from ...units.quantity import _UNIT_NOT_INITIALISED
@@ -781,16 +782,23 @@ class TestQuantityDisplay(object):
     def test_dimensionless_quantity_repr(self):
         q2 = u.Quantity(1., unit='m-1')
         q3 = u.Quantity(1, unit='m-1', dtype=int)
-        assert repr(self.scalarintq * q2) == "<Quantity 1.0>"
+        if NUMPY_LT_1_14:
+            assert repr(self.scalarintq * q2) == "<Quantity 1.0>"
+            assert repr(self.arrq * q2) == "<Quantity [ 1. , 2.3, 8.9]>"
+        else:
+            assert repr(self.scalarintq * q2) == "<Quantity 1.>"
+            assert repr(self.arrq * q2) == "<Quantity [1. , 2.3, 8.9]>"
         assert repr(self.scalarintq * q3) == "<Quantity 1>"
-        assert repr(self.arrq * q2) == "<Quantity [ 1. , 2.3, 8.9]>"
 
     def test_dimensionless_quantity_str(self):
         q2 = u.Quantity(1., unit='m-1')
         q3 = u.Quantity(1, unit='m-1', dtype=int)
         assert str(self.scalarintq * q2) == "1.0"
         assert str(self.scalarintq * q3) == "1"
-        assert str(self.arrq * q2) == "[ 1.   2.3  8.9]"
+        if NUMPY_LT_1_14:
+            assert str(self.arrq * q2) == "[ 1.   2.3  8.9]"
+        else:
+            assert str(self.arrq * q2) == "[1.  2.3 8.9]"
 
     def test_dimensionless_quantity_format(self):
         q1 = u.Quantity(3.14)
@@ -805,10 +813,16 @@ class TestQuantityDisplay(object):
         assert repr(self.scalarfloatq) == "<Quantity 1.3 m>"
 
     def test_array_quantity_str(self):
-        assert str(self.arrq) == "[ 1.   2.3  8.9] m"
+        if NUMPY_LT_1_14:
+            assert str(self.arrq) == "[ 1.   2.3  8.9] m"
+        else:
+            assert str(self.arrq) == "[1.  2.3 8.9] m"
 
     def test_array_quantity_repr(self):
-        assert repr(self.arrq) == "<Quantity [ 1. , 2.3, 8.9] m>"
+        if NUMPY_LT_1_14:
+            assert repr(self.arrq) == "<Quantity [ 1. , 2.3, 8.9] m>"
+        else:
+            assert repr(self.arrq) == "<Quantity [1. , 2.3, 8.9] m>"
 
     def test_scalar_quantity_format(self):
         assert format(self.scalarintq, '02d') == "01 m"
@@ -1283,6 +1297,27 @@ def test_quantity_from_table():
     assert_array_equal(qbp.value, t['b'])
 
 
+def test_assign_slice_with_quantity_like():
+    # Regression tests for gh-5961
+    from ... table import Table, Column
+    # first check directly that we can use a Column to assign to a slice.
+    c = Column(np.arange(10.), unit=u.mm)
+    q = u.Quantity(c)
+    q[:2] = c[:2]
+    # next check that we do not fail the original problem.
+    t = Table()
+    t['x'] = np.arange(10) * u.mm
+    t['y'] = np.ones(10) * u.mm
+    assert type(t['x']) is Column
+
+    xy = np.vstack([t['x'], t['y']]).T * u.mm
+    ii = [0, 2, 4]
+
+    assert xy[ii, 0].unit == t['x'][ii].unit
+    # should not raise anything
+    xy[ii, 0] = t['x'][ii]
+
+
 def test_insert():
     """
     Test Quantity.insert method.  This does not test the full capabilities
@@ -1332,8 +1367,12 @@ def test_repr_array_of_quantity():
     """
 
     a = np.array([1 * u.m, 2 * u.s], dtype=object)
-    assert repr(a) == 'array([<Quantity 1.0 m>, <Quantity 2.0 s>], dtype=object)'
-    assert str(a) == '[<Quantity 1.0 m> <Quantity 2.0 s>]'
+    if NUMPY_LT_1_14:
+        assert repr(a) == 'array([<Quantity 1.0 m>, <Quantity 2.0 s>], dtype=object)'
+        assert str(a) == '[<Quantity 1.0 m> <Quantity 2.0 s>]'
+    else:
+        assert repr(a) == 'array([<Quantity 1. m>, <Quantity 2. s>], dtype=object)'
+        assert str(a) == '[<Quantity 1. m> <Quantity 2. s>]'
 
 
 class TestSpecificTypeQuantity(object):

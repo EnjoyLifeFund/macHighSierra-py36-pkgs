@@ -62,6 +62,24 @@ else:                            # pragma: no cover
 # ---
 
 
+BACKOFF = 0.001
+
+
+class Backoff(object):
+
+    def __init__(self, seconds=BACKOFF):
+        self.tval = 0.0
+        self.tmax = max(float(seconds), 0.0)
+        self.tmin = self.tmax / (1 << 10)
+
+    def reset(self):
+        self.tval = 0.0
+
+    def sleep(self):
+        time.sleep(self.tval)
+        self.tval = min(self.tmax, max(self.tmin, self.tval * 2))
+
+
 class Queue(collections.deque):
     put = collections.deque.append
     pop = collections.deque.popleft
@@ -90,6 +108,7 @@ atexit.register(join_threads)
 class Pool(object):
 
     def __init__(self, executor, manager, *args):
+        self.size = None
         self.event = threading.Event()
         self.queue = queue = Queue()
         self.exref = weakref.ref(executor, lambda _, q=queue: q.put(None))
@@ -118,10 +137,7 @@ class Pool(object):
 
 
 def setup_pool(pool, num_workers):
-    # pylint: disable=protected-access
-    executor = pool.exref()
-    if executor is not None:
-        executor._num_workers = num_workers
+    pool.size = num_workers
     pool.event.set()
     return pool.queue
 
@@ -130,30 +146,29 @@ def _manager_thread(pool, **options):
     size = options.pop('max_workers', 1)
     queue = setup_pool(pool, size)
 
-    sleep = time.sleep
-    throttle = options.get('throttle', 100e-6)
-    assert throttle >= 0
-
     def worker():
+        backoff = Backoff(options.get('backoff', BACKOFF))
         while True:
             try:
-                task = queue.pop()
+                item = queue.pop()
+                backoff.reset()
             except LookupError:
-                sleep(throttle)
+                backoff.sleep()
                 continue
-            if task is None:
+            if item is None:
                 queue.put(None)
                 break
-            future, work = task
+            future, task = item
             if not future.set_running_or_notify_cancel():
                 continue
-            func, args, kwargs = work
+            func, args, kwargs = task
             try:
                 result = func(*args, **kwargs)
                 future.set_result(result)
             except BaseException:
                 exception = sys_exception()
                 future.set_exception(exception)
+            del item, future
 
     threads = [threading.Thread(target=worker) for _ in range(size - 1)]
     for thread in threads:
@@ -357,12 +372,11 @@ class SharedPoolCtx(object):
 
 def barrier(comm):
     assert comm.Is_inter()
-    sleep = time.sleep
-    throttle = 100e-6
     try:
         request = comm.Ibarrier()
+        backoff = Backoff()
         while not request.Test():
-            sleep(throttle)
+            backoff.sleep()
     except (NotImplementedError, MPI.Exception):  # pragma: no cover
         buf = [None, 0, MPI.BYTE]
         tag = MPI.COMM_WORLD.Get_attr(MPI.TAG_UB)
@@ -370,8 +384,9 @@ def barrier(comm):
         for pid in range(comm.Get_remote_size()):
             recvreqs.append(comm.Irecv(buf, pid, tag))
             sendreqs.append(comm.Issend(buf, pid, tag))
+        backoff = Backoff()
         while not MPI.Request.Testall(recvreqs):
-            sleep(throttle)
+            backoff.sleep()
         MPI.Request.Waitall(sendreqs)
 
 
@@ -396,15 +411,13 @@ def client(comm, tag, worker_pool, task_queue, **options):
     assert comm.Get_size() == 1
     assert tag >= 0
 
+    backoff = Backoff(options.get('backoff', BACKOFF))
+
     status = MPI.Status()
     comm_recv = serialized(comm.recv)
     comm_isend = serialized(comm.issend)
     comm_iprobe = serialized(comm.iprobe)
     request_free = serialized(MPI.Request.Free)
-
-    sleep = time.sleep
-    throttle = options.get('throttle', 100e-6)
-    assert throttle >= 0
 
     pending = {}
 
@@ -414,8 +427,9 @@ def client(comm, tag, worker_pool, task_queue, **options):
 
     def probe():
         pid = MPI.ANY_SOURCE
+        backoff.reset()
         while not comm_iprobe(pid, tag, status):
-            sleep(throttle)
+            backoff.sleep()
 
     def recv():
         pid = MPI.ANY_SOURCE
@@ -434,38 +448,39 @@ def client(comm, tag, worker_pool, task_queue, **options):
         else:
             future.set_exception(exception)
 
-    def send(task):
+    def send():
+        item = task_queue.pop()
+        if item is None:
+            return True
+
         try:
             pid = worker_pool.pop()
         except LookupError:  # pragma: no cover
-            task_queue.add(task)
+            task_queue.add(item)
             return
 
-        future, work = task
+        future, task = item
         if not future.set_running_or_notify_cancel():
             worker_pool.put(pid)
             return
 
         try:
-            request = comm_isend(work, pid, tag)
+            request = comm_isend(task, pid, tag)
             pending[pid] = (future, request)
         except BaseException:
             worker_pool.put(pid)
             future.set_exception(sys_exception())
 
     while True:
-        idle = True
         if task_queue and worker_pool:
-            task = task_queue.pop()
-            if task is None:
+            backoff.reset()
+            stop = send()
+            if stop:
                 break
-            idle = False
-            send(task)
         if pending and iprobe():
-            idle = False
+            backoff.reset()
             recv()
-        if idle:
-            sleep(throttle)
+        backoff.sleep()
     while pending:
         probe()
         recv()
@@ -499,20 +514,19 @@ def server(comm, **options):
     assert comm.Is_inter()
     assert comm.Get_remote_size() == 1
 
+    backoff = Backoff(options.get('backoff', BACKOFF))
+
     status = MPI.Status()
     comm_recv = comm.recv
     comm_isend = comm.issend
     comm_iprobe = comm.iprobe
     request_test = MPI.Request.Test
 
-    sleep = time.sleep
-    throttle = options.get('throttle', 100e-6)
-    assert throttle >= 0
-
     def recv():
         pid, tag = MPI.ANY_SOURCE, MPI.ANY_TAG
+        backoff.reset()
         while not comm_iprobe(pid, tag, status):
-            sleep(throttle)
+            backoff.sleep()
         pid, tag = status.source, status.tag
         try:
             task = comm_recv(None, pid, tag, status)
@@ -537,8 +551,9 @@ def server(comm, **options):
         except BaseException:
             task = (None, sys_exception())
             request = comm_isend(task, pid, tag)
+        backoff.reset()
         while not request_test(request):
-            sleep(throttle)
+            backoff.sleep()
 
     while True:
         task = recv()

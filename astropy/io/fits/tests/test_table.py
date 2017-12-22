@@ -316,7 +316,7 @@ class TestTableFunctions(FitsTestCase):
     def test_column_endianness(self):
         """
         Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/77
-        (PyFITS doesn't preserve byte order of non-native order column arrays)
+        (Astropy doesn't preserve byte order of non-native order column arrays)
         """
 
         a = [1., 2., 3., 4.]
@@ -1785,7 +1785,7 @@ class TestTableFunctions(FitsTestCase):
             raw_bytes = f.read()
 
         # Artificially truncate TDIM in the header; this seems to be the
-        # easiest way to do this while getting around pyfits' insistence on the
+        # easiest way to do this while getting around Astropy's insistence on the
         # data and header matching perfectly; again, we have no interest in
         # making it possible to write files in this format, only read them
         with open(self.temp('test.fits'), 'wb') as f:
@@ -2451,7 +2451,7 @@ class TestTableFunctions(FitsTestCase):
             readfile(self.data('memtest.fits'))
 
     @pytest.mark.skipif(str('not HAVE_OBJGRAPH'))
-    def test_reference_leak(self, tmpdir):
+    def test_reference_leak2(self, tmpdir):
         """
         Regression test for https://github.com/astropy/astropy/pull/4539
 
@@ -3005,3 +3005,15 @@ def test_table_to_hdu():
 
     assert hdu.header['FOO'] == 'bar'
     assert hdu.header['TEST'] == 1
+
+
+def test_regression_scalar_indexing():
+    # Indexing a FITS_rec with a tuple that returns a scalar record
+    # should work
+    x = np.array([(1.0, 2), (3.0, 4)],
+                 dtype=[('x', float), ('y', int)]).view(fits.FITS_rec)
+    x1a = x[1]
+    # this should succeed.
+    x1b = x[(1,)]
+    # FITS_record does not define __eq__; so test elements.
+    assert all(a == b for a, b in zip(x1a, x1b))

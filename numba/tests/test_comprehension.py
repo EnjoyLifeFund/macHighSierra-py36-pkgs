@@ -209,7 +209,7 @@ class TestListComprehension(unittest.TestCase):
                     raise
 
         # test functions that are expected to fail
-        with self.assertRaises(LoweringError) as raises:
+        with self.assertRaises(TypingError) as raises:
             cfunc = jit(nopython=True)(list5)
             cfunc(var)
         # TODO: we can't really assert the error message for the above
@@ -365,17 +365,24 @@ class TestArrayComprehension(unittest.TestCase):
             l = np.array([[i * j for j in range(i+1)] for i in range(n)])
             return l
         # test is expected to fail
-        with self.assertRaises(LoweringError) as raises:
+        with self.assertRaises(TypingError) as raises:
             self.check(comp_nest_with_dependency, 5)
         self.assertIn('Failed', str(raises.exception))
 
     @tag('important')
     def test_no_array_comp(self):
-        def no_array_comp(n):
-            l = np.array([1,2,3,n])
-            return l
-        # no arraycall inline without comprehension
-        self.check(no_array_comp, 10, assert_allocate_list=True)
+        def no_array_comp1(n):
+            l = [1,2,3,4]
+            a = np.array(l)
+            return a
+        # const 1D array is actually inlined
+        self.check(no_array_comp1, 10, assert_allocate_list=False)
+        def no_array_comp2(n):
+            l = [1,2,3,4]
+            a = np.array(l)
+            l.append(5)
+            return a
+        self.check(no_array_comp2, 10, assert_allocate_list=True)
 
     @tag('important')
     def test_nested_array(self):
@@ -384,6 +391,14 @@ class TestArrayComprehension(unittest.TestCase):
             return l
 
         self.check(nested_array, 10)
+
+    @tag('important')
+    def test_nested_array_with_const(self):
+        def nested_array(n):
+            l = np.array([ np.array([x for x in range(3)]) for y in range(4)])
+            return l
+
+        self.check(nested_array, 0)
 
     @tag('important')
     def test_array_comp_with_iter(self):

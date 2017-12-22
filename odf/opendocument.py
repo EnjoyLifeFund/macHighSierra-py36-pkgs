@@ -532,7 +532,7 @@ class OpenDocument:
             self.manifest.addElement(manifest.FileEntry(fullpath=u"%s%s" % ( folder ,arcname), mediatype=mediatype))
             hasPictures = True
             if what_it_is == IS_FILENAME:
-                self._z.write(fileobj, arcname, zipfile.ZIP_STORED)
+                self._z.write(fileobj, folder + arcname, zipfile.ZIP_STORED)
             else:
                 zi = zipfile.ZipInfo(str(arcname), self._now)
                 zi.compress_type = zipfile.ZIP_STORED
@@ -864,7 +864,7 @@ def __loadxmlparts(z, manifest, doc, objectpath):
     assert(isinstance(doc, OpenDocument))
     assert(type(objectpath)==type(u""))
 
-    from load import LoadParser
+    from odf.load import LoadParser
     from xml.sax import make_parser, handler
 
     for xmlfile in (objectpath+u'settings.xml', objectpath+u'meta.xml', objectpath+u'content.xml', objectpath+u'styles.xml'):

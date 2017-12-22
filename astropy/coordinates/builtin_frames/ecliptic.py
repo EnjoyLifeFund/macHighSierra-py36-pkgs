@@ -7,7 +7,7 @@ from ... import units as u
 from .. import representation as r
 from ..baseframe import BaseCoordinateFrame, RepresentationMapping
 from ..attributes import TimeAttribute
-from .utils import EQUINOX_J2000
+from .utils import EQUINOX_J2000, DEFAULT_OBSTIME
 
 __all__ = ['GeocentricTrueEcliptic', 'BarycentricTrueEcliptic',
            'HeliocentricTrueEcliptic', 'BaseEclipticFrame']
@@ -75,7 +75,12 @@ class BaseEclipticFrame(BaseCoordinateFrame):
             RepresentationMapping('d_lon', 'pm_lon', u.mas/u.yr),
             RepresentationMapping('d_lat', 'pm_lat', u.mas/u.yr),
             RepresentationMapping('d_distance', 'radial_velocity', u.km/u.s),
-        ]
+        ],
+        r.CartesianDifferential: [
+            RepresentationMapping('d_x', 'v_x', u.km/u.s),
+            RepresentationMapping('d_y', 'v_y', u.km/u.s),
+            RepresentationMapping('d_z', 'v_z', u.km/u.s),
+        ],
     }
 
     frame_specific_representation_info[r.UnitSphericalCosLatDifferential] = \
@@ -167,6 +172,7 @@ class HeliocentricTrueEcliptic(BaseEclipticFrame):
     """
 
     equinox = TimeAttribute(default=EQUINOX_J2000)
+    obstime = TimeAttribute(default=DEFAULT_OBSTIME)
 
 
 HeliocentricTrueEcliptic.__doc__ = HeliocentricTrueEcliptic.__doc__.format(

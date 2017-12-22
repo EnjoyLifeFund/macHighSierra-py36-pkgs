@@ -110,14 +110,16 @@ def last_restapi_key_transformer(key, attr_desc, value):
     key, value = full_restapi_key_transformer(key, attr_desc, value)
     return (key[-1], value)
 
-def _recursive_validate(attr_type, data):
+def _recursive_validate(attr_name, attr_type, data):
     result = []
     if attr_type.startswith('[') and data is not None:
         for content in data:
-            result += _recursive_validate(attr_type[1:-1], content)
+            result += _recursive_validate(attr_name+" content", attr_type[1:-1], content)
     elif attr_type.startswith('{') and data is not None:
+        if not hasattr(data, 'values'):
+            raise ValidationError("type", attr_name, attr_type)
         for content in data.values():
-            result += _recursive_validate(attr_type[1:-1], content)
+            result += _recursive_validate(attr_name+" content", attr_type[1:-1], content)
     elif hasattr(data, '_validation'):
         return data.validate()
     return result
@@ -132,9 +134,13 @@ class Model(object):
     _attribute_map = {}
     _validation = {}
 
-    def __init__(self, *args, **kwargs):
-        """Allow attribute setting via kwargs on initialization."""
+    def __init__(self, **kwargs):
+        self.additional_properties = {}
         for k in kwargs:
+            if k not in self._attribute_map:
+                raise TypeError("{} is not a known attribute of class {}".format(k, self.__class__))
+            if k in self._validation and self._validation[k].get("readonly", False):
+                _LOGGER.warning("Readonly attribute {} will be ignored in class {}".format(k, self.__class__))
             setattr(self, k, kwargs[k])
 
     def __eq__(self, other):
@@ -150,6 +156,10 @@ class Model(object):
     def __str__(self):
         return str(self.__dict__)
 
+    @classmethod
+    def enable_additional_properties_sending(cls):
+        cls._attribute_map['additional_properties'] = {'key': '', 'type': '{object}'}
+
     def validate(self):
         """Validate this model recursively and return a list of ValidationError.
 
@@ -158,7 +168,11 @@ class Model(object):
         """
         validation_result = []
         for attr_name, value in [(attr, getattr(self, attr)) for attr in self._attribute_map]:
-            attr_type = self._attribute_map[attr_name]['type']
+            attr_desc = self._attribute_map[attr_name]
+            if attr_name == "additional_properties" and attr_desc["key"] == '':
+                # Do NOT validate additional_properties
+                continue
+            attr_type = attr_desc['type']
 
             try:
                 debug_name = "{}.{}".format(self.__class__.__name__, attr_name)
@@ -166,7 +180,7 @@ class Model(object):
             except ValidationError as validation_error:
                 validation_result.append(validation_error)
 
-            validation_result += _recursive_validate(attr_type, value)
+            validation_result += _recursive_validate(attr_name, attr_type, value)
         return validation_result
 
     def serialize(self, keep_readonly=False):
@@ -393,6 +407,9 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
+                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
+                    serialized.update(target_obj.additional_properties)
+                    continue
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
                 try:
@@ -452,7 +469,7 @@ class Serializer(object):
                     SerializationError, "Unable to build a model: "+str(err), err)
 
         if self.client_side_validation:
-            errors = _recursive_validate(data_type, data)
+            errors = _recursive_validate(data_type, data_type, data)
             if errors:
                 raise errors[0]
         return self._serialize(data, data_type, **kwargs)
@@ -990,7 +1007,9 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, attr_desc in attributes.items():
-
+                # Check empty string. If it's not empty, someone has a real "additionalProperties"...
+                if attr == "additional_properties" and attr_desc["key"] == '':
+                    continue
                 raw_value = None
                 for key_extractor in self.key_extractors:
                     found_value = key_extractor(attr, attr_desc, data)
@@ -1005,7 +1024,18 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            return self._instantiate_model(response, d_attrs)
+            additional_properties = self._build_additional_properties(response._attribute_map, data)
+            return self._instantiate_model(response, d_attrs, additional_properties)
+
+    def _build_additional_properties(self, attribute_map, data):
+        if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
+            # Check empty string. If it's not empty, someone has a real "additionalProperties"
+            return None
+        known_json_keys = {_decode_attribute_map_key(_FLATTEN.split(desc['key'])[0])
+                           for desc in attribute_map.values() if desc['key'] != ''}
+        present_json_keys = set(data.keys())
+        missing_keys = present_json_keys - known_json_keys
+        return {key: data[key] for key in missing_keys}
 
     def _classify_target(self, target, data):
         """Check to see whether the deserialization target object can
@@ -1082,7 +1112,7 @@ class Deserializer(object):
             raise DeserializationError("Do not support XML right now")
         return data
 
-    def _instantiate_model(self, response, attrs):
+    def _instantiate_model(self, response, attrs, additional_properties=None):
         """Instantiate a response model passing in deserialized args.
 
         :param response: The response model class.
@@ -1100,6 +1130,8 @@ class Deserializer(object):
                 response_obj = response(**kwargs)
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
+                if additional_properties:
+                    response_obj.additional_properties = additional_properties
                 return response_obj
             except TypeError as err:
                 msg = "Unable to deserialize {} into model {}. ".format(
@@ -1247,7 +1279,8 @@ class Deserializer(object):
             return self.deserialize_unicode(attr)
         return eval(data_type)(attr)
 
-    def deserialize_unicode(self, data):
+    @staticmethod
+    def deserialize_unicode(data):
         """Preserve unicode objects in Python 2, otherwise return data
         as a string.
 
@@ -1268,7 +1301,8 @@ class Deserializer(object):
         else:
             return str(data)
 
-    def deserialize_enum(self, data, enum_obj):
+    @staticmethod
+    def deserialize_enum(data, enum_obj):
         """Deserialize string into enum object.
 
         :param str data: response string to be deserialized.
@@ -1278,6 +1312,8 @@ class Deserializer(object):
         """
         if isinstance(data, enum_obj):
             return data
+        if isinstance(data, Enum):
+            data = data.value
         if isinstance(data, int):
             # Workaround. We might consider remove it in the future.
             # https://github.com/Azure/azure-rest-api-specs/issues/141
@@ -1292,8 +1328,9 @@ class Deserializer(object):
             for enum_value in enum_obj:
                 if enum_value.value.lower() == str(data).lower():
                     return enum_value
-            error = "{!r} is not valid value for enum {!r}"
-            raise DeserializationError(error.format(data, enum_obj))
+            # We don't fail anymore for unknown value, we deserialize as a string
+            _LOGGER.warning("Deserializer is not able to find %s as valid enum in %s", data, enum_obj)
+            return Deserializer.deserialize_unicode(data)
 
     @staticmethod
     def deserialize_bytearray(attr):

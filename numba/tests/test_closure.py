@@ -10,6 +10,7 @@ import numba.unittest_support as unittest
 from numba import njit, jit, testing, utils
 from numba.errors import NotDefinedError, TypingError, LoweringError
 from .support import TestCase, tag
+from numba.six import exec_
 
 
 class TestClosure(TestCase):
@@ -175,7 +176,7 @@ class TestInlinedClosure(TestCase):
                 return inner(x) + inner(x) + z
         """
         ns = {}
-        exec(code.strip(), ns)
+        exec_(code.strip(), ns)
 
         cfunc = njit(ns['outer'])
         self.assertEqual(cfunc(10), ns['outer'](10))
@@ -424,11 +425,10 @@ class TestInlinedClosure(TestCase):
         msg = "Unsupported use of op_LOAD_CLOSURE encountered"
         self.assertIn(msg, str(raises.exception))
 
-        with self.assertRaises(TypingError) as raises:
+        with self.assertRaises(LoweringError) as raises:
             cfunc = jit(nopython=True)(outer11)
             cfunc(var)
-        errcls = "type" if utils.PYVERSION < (3, 0) else "class"
-        msg = "cannot determine Numba type of <" + errcls + " 'code'>"
+        msg = "make_function"
         self.assertIn(msg, str(raises.exception))
 
         with self.assertRaises(TypingError) as raises:

@@ -1,4 +1,4 @@
-# Copyright 2011-2015 MongoDB, Inc.
+# Copyright 2011-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -33,10 +33,11 @@ from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
-from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.common import MAX_MESSAGE_SIZE, ORDERED_TYPES
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
+                            InvalidOperation,
                             DocumentTooLarge,
                             NetworkTimeout,
                             NotMasterError,
@@ -46,7 +47,6 @@ from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              SocketChecker)
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 # Always use our backport so we always have support for IP address matching
@@ -416,6 +416,8 @@ class SocketInfo(object):
             ismaster.max_message_size if ismaster else MAX_MESSAGE_SIZE)
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
+        self.supports_sessions = (
+            ismaster and ismaster.logical_session_timeout_minutes is not None)
 
         self.listeners = pool.opts.event_listeners
 
@@ -432,11 +434,14 @@ class SocketInfo(object):
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None, check_keys=False,
-                read_concern=DEFAULT_READ_CONCERN,
+                read_concern=None,
                 write_concern=None,
                 parse_write_concern_error=False,
-                collation=None):
-        """Execute a command or raise ConnectionFailure or OperationFailure.
+                collation=None,
+                session=None,
+                client=None,
+                retryable_write=False):
+        """Execute a command or raise an error.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
@@ -452,8 +457,13 @@ class SocketInfo(object):
           - `parse_write_concern_error`: Whether to parse the
             ``writeConcernError`` field in the command response.
           - `collation`: The collation for this command.
+          - `session`: optional ClientSession instance.
+          - `client`: optional MongoClient for gossipping $clusterTime.
+          - `retryable_write`: True if this command is a retryable write.
         """
-        if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
+        self.validate_session(client, session)
+        if (read_concern and self.max_wire_version < 4
+                and not read_concern.ok_for_legacy):
             raise ConfigurationError(
                 'read concern level of %s is not valid '
                 'with a max wire version of %d.'
@@ -467,12 +477,21 @@ class SocketInfo(object):
         elif self.max_wire_version < 5 and collation is not None:
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.4+ to use a collation.')
+
+        if (client or session) and not isinstance(spec, ORDERED_TYPES):
+            # Ensure command name remains in first place.
+            spec = SON(spec)
+        if session:
+            spec['lsid'] = session._use_lsid()
+            if retryable_write:
+                spec['txnNumber'] = session._transaction_id()
+        self.send_cluster_time(spec, session, client)
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
-                           check, allowable_errors, self.address,
-                           check_keys, self.listeners, self.max_bson_size,
-                           read_concern,
+                           session, client, check, allowable_errors,
+                           self.address, check_keys, self.listeners,
+                           self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation)
         except OperationFailure:
@@ -498,14 +517,14 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def receive_message(self, operation, request_id):
+    def receive_message(self, request_id):
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
         """
         try:
-            return receive_message(
-                self.sock, operation, request_id, self.max_message_size)
+            return receive_message(self.sock, request_id,
+                                   self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -527,8 +546,8 @@ class SocketInfo(object):
 
         self.send_message(msg, max_doc_size)
         if with_last_error:
-            response = self.receive_message(1, request_id)
-            return helpers._check_gle_response(response)
+            reply = self.receive_message(request_id)
+            return helpers._check_gle_response(reply.command_response())
 
     def write_command(self, request_id, msg):
         """Send "insert" etc. command, returning response as a dict.
@@ -540,9 +559,8 @@ class SocketInfo(object):
           - `msg`: bytes, the command message.
         """
         self.send_message(msg, 0)
-        response = helpers._unpack_response(self.receive_message(1, request_id))
-        assert response['number_returned'] == 1
-        result = response['data'][0]
+        reply = self.receive_message(request_id)
+        result = reply.command_response()
 
         # Raises NotMasterError or OperationFailure.
         helpers._check_command_response(result)
@@ -581,13 +599,34 @@ class SocketInfo(object):
         auth.authenticate(credentials, self)
         self.authset.add(credentials)
 
+    def validate_session(self, client, session):
+        """Validate this session before use with client.
+
+        Raises error if this session is logged in as a different user or
+        the client is not the one that created the session.
+        """
+        if session:
+            if session._client is not client:
+                raise InvalidOperation(
+                    'Can only use session with the MongoClient that'
+                    ' started it')
+            if session._authset != self.authset:
+                raise InvalidOperation(
+                    'Cannot use session after authenticating with different'
+                    ' credentials')
+
     def close(self):
         self.closed = True
         # Avoid exceptions on interpreter shutdown.
         try:
             self.sock.close()
-        except:
+        except Exception:
             pass
+
+    def send_cluster_time(self, command, session, client):
+        """Add cluster time for MongoDB >= 3.6."""
+        if self.max_wire_version >= 6 and client:
+            client._send_cluster_time(command, session)
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
@@ -813,7 +852,9 @@ class Pool:
                             False,
                             False,
                             ReadPreference.PRIMARY,
-                            DEFAULT_CODEC_OPTIONS))
+                            DEFAULT_CODEC_OPTIONS,
+                            None,
+                            None))
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)

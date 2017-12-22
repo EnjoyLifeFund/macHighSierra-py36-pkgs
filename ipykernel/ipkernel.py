@@ -2,22 +2,34 @@
 
 import getpass
 import sys
-import traceback
 
 from IPython.core import release
 from ipython_genutils.py3compat import builtin_mod, PY3, unicode_type, safe_unicode
 from IPython.utils.tokenutil import token_at_cursor, line_at_cursor
-from traitlets import Instance, Type, Any, List
+from traitlets import Instance, Type, Any, List, Bool
 
 from .comm import CommManager
 from .kernelbase import Kernel as KernelBase
 from .zmqshell import ZMQInteractiveShell
 
 
+try:
+    from IPython.core.completer import rectify_completions as _rectify_completions, provisionalcompleter as _provisionalcompleter
+    _use_experimental_60_completion = True
+except ImportError:
+    _use_experimental_60_completion = False
+
+_EXPERIMENTAL_KEY_NAME = '_jupyter_types_experimental'
+
+
 class IPythonKernel(KernelBase):
     shell = Instance('IPython.core.interactiveshell.InteractiveShellABC',
                      allow_none=True)
     shell_class = Type(ZMQInteractiveShell)
+
+    use_experimental_completions = Bool(True,
+        help="Set this flag to False to deactivate the use of experimental IPython completion APIs.",
+    ).tag(config=True)
 
     user_module = Any()
     def _user_module_changed(self, name, old, new):
@@ -60,32 +72,32 @@ class IPythonKernel(KernelBase):
 
     help_links = List([
         {
-            'text': "Python",
-            'url': "http://docs.python.org/%i.%i" % sys.version_info[:2],
+            'text': "Python Reference",
+            'url': "https://docs.python.org/%i.%i" % sys.version_info[:2],
         },
         {
-            'text': "IPython",
-            'url': "http://ipython.org/documentation.html",
+            'text': "IPython Reference",
+            'url': "https://ipython.org/documentation.html",
         },
         {
-            'text': "NumPy",
-            'url': "http://docs.scipy.org/doc/numpy/reference/",
+            'text': "NumPy Reference",
+            'url': "https://docs.scipy.org/doc/numpy/reference/",
         },
         {
-            'text': "SciPy",
-            'url': "http://docs.scipy.org/doc/scipy/reference/",
+            'text': "SciPy Reference",
+            'url': "https://docs.scipy.org/doc/scipy/reference/",
         },
         {
-            'text': "Matplotlib",
-            'url': "http://matplotlib.org/contents.html",
+            'text': "Matplotlib Reference",
+            'url': "https://matplotlib.org/contents.html",
         },
         {
-            'text': "SymPy",
+            'text': "SymPy Reference",
             'url': "http://docs.sympy.org/latest/index.html",
         },
         {
-            'text': "pandas",
-            'url': "http://pandas.pydata.org/pandas-docs/stable/",
+            'text': "pandas Reference",
+            'url': "https://pandas.pydata.org/pandas-docs/stable/",
         },
     ]).tag(config=True)
 
@@ -246,6 +258,9 @@ class IPythonKernel(KernelBase):
         return reply_content
 
     def do_complete(self, code, cursor_pos):
+        if _use_experimental_60_completion and self.use_experimental_completions:
+            return self._experimental_do_complete(code, cursor_pos)
+
         # FIXME: IPython completers currently assume single line,
         # but completion messages give multi-line context
         # For now, extract line from cell, based on cursor_pos:
@@ -260,6 +275,42 @@ class IPythonKernel(KernelBase):
                 'cursor_start' : cursor_pos - len(txt),
                 'metadata' : {},
                 'status' : 'ok'}
+
+    def _experimental_do_complete(self, code, cursor_pos):
+        """
+        Experimental completions from IPython, using Jedi. 
+        """
+        if cursor_pos is None:
+            cursor_pos = len(code)
+        with _provisionalcompleter():
+            raw_completions = self.shell.Completer.completions(code, cursor_pos)
+            completions = list(_rectify_completions(code, raw_completions))
+            
+            comps = []
+            for comp in completions:
+                comps.append(dict(
+                            start=comp.start,
+                            end=comp.end,
+                            text=comp.text,
+                            type=comp.type,
+                ))
+
+        if completions:
+            s = completions[0].start
+            e = completions[0].end
+            matches = [c.text for c in completions]
+        else:
+            s = cursor_pos
+            e = cursor_pos
+            matches = []
+
+        return {'matches': matches,
+                'cursor_end': e,
+                'cursor_start': s,
+                'metadata': {_EXPERIMENTAL_KEY_NAME: comps},
+                'status': 'ok'}
+
+
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         name = token_at_cursor(code, cursor_pos)
@@ -304,7 +355,7 @@ class IPythonKernel(KernelBase):
         return dict(status='ok', restart=restart)
 
     def do_is_complete(self, code):
-        status, indent_spaces = self.shell.input_transformer_manager.check_complete(code)
+        status, indent_spaces = self.shell.input_splitter.check_complete(code)
         r = {'status': status}
         if status == 'incomplete':
             r['indent'] = ' ' * indent_spaces

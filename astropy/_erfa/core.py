@@ -312,7 +312,7 @@ def cal2jd(iy, im, id):
         djm_out = djm_out.reshape(djm_out.shape[1:])
 
     return djm0_out, djm_out
-STATUS_CODES['cal2jd'] = {0: 'OK', -2: 'bad month  (JD not computed)', -1: 'bad year   (Note 3: JD not computed)', -3: 'bad day    (JD computed)'}
+STATUS_CODES['cal2jd'] = {0: 'OK', -1: 'bad year   (Note 3: JD not computed)', -2: 'bad month  (JD not computed)', -3: 'bad day    (JD computed)'}
 
 
 
@@ -820,7 +820,7 @@ def jdcalf(ndp, dj1, dj2):
         iymdf_out = iymdf_out.reshape(iymdf_out.shape[1:])
 
     return iymdf_out
-STATUS_CODES['jdcalf'] = {0: 'OK', 1: 'NDP not 0-9 (interpreted as 0)', -1: 'date out of range'}
+STATUS_CODES['jdcalf'] = {-1: 'date out of range', 0: 'OK', 1: 'NDP not 0-9 (interpreted as 0)'}
 
 
 
@@ -2018,7 +2018,7 @@ def apco13(utc1, utc2, dut1, elong, phi, hm, xp, yp, phpa, tc, rh, wl):
         eo_out = eo_out.reshape(eo_out.shape[1:])
 
     return astrom_out, eo_out
-STATUS_CODES['apco13'] = {0: 'OK', 1: 'dubious year (Note 2)', -1: 'unacceptable date'}
+STATUS_CODES['apco13'] = {1: 'dubious year (Note 2)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -3050,7 +3050,7 @@ def apio13(utc1, utc2, dut1, elong, phi, hm, xp, yp, phpa, tc, rh, wl):
         astrom_out = astrom_out.reshape(astrom_out.shape[1:])
 
     return astrom_out
-STATUS_CODES['apio13'] = {0: 'OK', 1: 'dubious year (Note 2)', -1: 'unacceptable date'}
+STATUS_CODES['apio13'] = {1: 'dubious year (Note 2)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -3834,7 +3834,7 @@ def atco13(rc, dc, pr, pd, px, rv, utc1, utc2, dut1, elong, phi, hm, xp, yp, php
         eo_out = eo_out.reshape(eo_out.shape[1:])
 
     return aob_out, zob_out, hob_out, dob_out, rob_out, eo_out
-STATUS_CODES['atco13'] = {0: 'OK', 1: 'dubious year (Note 4)', -1: 'unacceptable date'}
+STATUS_CODES['atco13'] = {1: 'dubious year (Note 4)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -4441,7 +4441,7 @@ def atio13(ri, di, utc1, utc2, dut1, elong, phi, hm, xp, yp, phpa, tc, rh, wl):
         rob_out = rob_out.reshape(rob_out.shape[1:])
 
     return aob_out, zob_out, hob_out, dob_out, rob_out
-STATUS_CODES['atio13'] = {0: 'OK', 1: 'dubious year (Note 2)', -1: 'unacceptable date'}
+STATUS_CODES['atio13'] = {1: 'dubious year (Note 2)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -4815,7 +4815,7 @@ def atoc13(type, ob1, ob2, utc1, utc2, dut1, elong, phi, hm, xp, yp, phpa, tc, r
         dc_out = dc_out.reshape(dc_out.shape[1:])
 
     return rc_out, dc_out
-STATUS_CODES['atoc13'] = {0: 'OK', 1: 'dubious year (Note 4)', -1: 'unacceptable date'}
+STATUS_CODES['atoc13'] = {1: 'dubious year (Note 4)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -5032,7 +5032,7 @@ def atoi13(type, ob1, ob2, utc1, utc2, dut1, elong, phi, hm, xp, yp, phpa, tc, r
         di_out = di_out.reshape(di_out.shape[1:])
 
     return ri_out, di_out
-STATUS_CODES['atoi13'] = {0: 'OK', 1: 'dubious year (Note 2)', -1: 'unacceptable date'}
+STATUS_CODES['atoi13'] = {1: 'dubious year (Note 2)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -5795,7 +5795,7 @@ def pmsafe(ra1, dec1, pmr1, pmd1, px1, rv1, ep1a, ep1b, ep2a, ep2b):
         rv2_out = rv2_out.reshape(rv2_out.shape[1:])
 
     return ra2_out, dec2_out, pmr2_out, pmd2_out, px2_out, rv2_out
-STATUS_CODES['pmsafe'] = {0: 'no warnings or errors', 1: 'distance overridden (Note 6)', 2: 'excessive velocity (Note 7)', 4: "solution didn't converge (Note 8)", 'else': 'binary logical OR of the above warnings', -1: 'system error (should not occur)'}
+STATUS_CODES['pmsafe'] = {-1: 'system error (should not occur)', 0: 'no warnings or errors', 1: 'distance overridden (Note 6)', 2: 'excessive velocity (Note 7)', 4: "solution didn't converge (Note 8)", 'else': 'binary logical OR of the above warnings'}
 
 
 
@@ -6464,7 +6464,7 @@ def plan94(date1, date2, np):
         pv_out = pv_out.reshape(pv_out.shape[1:])
 
     return pv_out
-STATUS_CODES['plan94'] = {0: 'OK', 1: 'warning: year outside 1000-3000', 2: 'warning: failed to converge', -1: 'illegal NP (outside 1-8)'}
+STATUS_CODES['plan94'] = {-1: 'illegal NP (outside 1-8)', 0: 'OK', 1: 'warning: year outside 1000-3000', 2: 'warning: failed to converge'}
 
 
 
@@ -16630,7 +16630,7 @@ def pvstar(pv):
         rv_out = rv_out.reshape(rv_out.shape[1:])
 
     return ra_out, dec_out, pmr_out, pmd_out, px_out, rv_out
-STATUS_CODES['pvstar'] = {0: 'OK', -2: 'null position vector', -1: 'superluminal speed (Note 5)'}
+STATUS_CODES['pvstar'] = {0: 'OK', -1: 'superluminal speed (Note 5)', -2: 'null position vector'}
 
 
 
@@ -17566,7 +17566,7 @@ def starpm(ra1, dec1, pmr1, pmd1, px1, rv1, ep1a, ep1b, ep2a, ep2b):
         rv2_out = rv2_out.reshape(rv2_out.shape[1:])
 
     return ra2_out, dec2_out, pmr2_out, pmd2_out, px2_out, rv2_out
-STATUS_CODES['starpm'] = {0: 'no warnings or errors', 1: 'distance overridden (Note 6)', 2: 'excessive velocity (Note 7)', 4: "solution didn't converge (Note 8)", 'else': 'binary logical OR of the above warnings', -1: 'system error (should not occur)'}
+STATUS_CODES['starpm'] = {-1: 'system error (should not occur)', 0: 'no warnings or errors', 1: 'distance overridden (Note 6)', 2: 'excessive velocity (Note 7)', 4: "solution didn't converge (Note 8)", 'else': 'binary logical OR of the above warnings'}
 
 
 
@@ -18621,7 +18621,7 @@ def gc2gd(n, xyz):
         height_out = height_out.reshape(height_out.shape[1:])
 
     return elong_out, phi_out, height_out
-STATUS_CODES['gc2gd'] = {0: 'OK', -2: 'internal error (Note 3)', -1: 'illegal identifier (Note 3)'}
+STATUS_CODES['gc2gd'] = {0: 'OK', -1: 'illegal identifier (Note 3)', -2: 'internal error (Note 3)'}
 
 
 
@@ -18738,7 +18738,7 @@ def gc2gde(a, f, xyz):
         height_out = height_out.reshape(height_out.shape[1:])
 
     return elong_out, phi_out, height_out
-STATUS_CODES['gc2gde'] = {0: 'OK', -2: 'illegal a', -1: 'illegal f'}
+STATUS_CODES['gc2gde'] = {0: 'OK', -1: 'illegal f', -2: 'illegal a'}
 
 
 
@@ -18846,7 +18846,7 @@ def gd2gc(n, elong, phi, height):
         xyz_out = xyz_out.reshape(xyz_out.shape[1:])
 
     return xyz_out
-STATUS_CODES['gd2gc'] = {0: 'OK', -2: 'illegal case (Note 3)', -1: 'illegal identifier (Note 3)'}
+STATUS_CODES['gd2gc'] = {0: 'OK', -1: 'illegal identifier (Note 3)', -2: 'illegal case (Note 3)'}
 
 
 
@@ -19093,7 +19093,7 @@ def d2dtf(scale, ndp, d1, d2):
         ihmsf_out = ihmsf_out.reshape(ihmsf_out.shape[1:])
 
     return iy_out, im_out, id_out, ihmsf_out
-STATUS_CODES['d2dtf'] = {0: 'OK', 1: 'dubious year (Note 5)', -1: 'unacceptable date (Note 6)'}
+STATUS_CODES['d2dtf'] = {1: 'dubious year (Note 5)', 0: 'OK', -1: 'unacceptable date (Note 6)'}
 
 
 
@@ -19263,7 +19263,7 @@ def dat(iy, im, id, fd):
         deltat_out = deltat_out.reshape(deltat_out.shape[1:])
 
     return deltat_out
-STATUS_CODES['dat'] = {0: 'OK', 1: 'dubious year (Note 1)', -1: 'bad year', -5: 'internal error (Note 5)', -4: 'bad fraction (Note 4)', -3: 'bad day (Note 3)', -2: 'bad month'}
+STATUS_CODES['dat'] = {1: 'dubious year (Note 1)', 0: 'OK', -1: 'bad year', -2: 'bad month', -3: 'bad day (Note 3)', -4: 'bad fraction (Note 4)', -5: 'internal error (Note 5)'}
 
 
 
@@ -19610,7 +19610,7 @@ def dtf2d(scale, iy, im, id, ihr, imn, sec):
         d2_out = d2_out.reshape(d2_out.shape[1:])
 
     return d1_out, d2_out
-STATUS_CODES['dtf2d'] = {0: 'OK', 1: 'dubious year (Note 6)', 2: 'time is after end of day (Note 5)', 3: 'both of next two', -2: 'bad month', -6: 'bad second (<0)', -5: 'bad minute', -4: 'bad hour', -3: 'bad day', -1: 'bad year'}
+STATUS_CODES['dtf2d'] = {3: 'both of next two', 2: 'time is after end of day (Note 5)', 1: 'dubious year (Note 6)', 0: 'OK', -1: 'bad year', -2: 'bad month', -3: 'bad day', -4: 'bad hour', -5: 'bad minute', -6: 'bad second (<0)'}
 
 
 
@@ -19900,7 +19900,7 @@ def taiutc(tai1, tai2):
         utc2_out = utc2_out.reshape(utc2_out.shape[1:])
 
     return utc1_out, utc2_out
-STATUS_CODES['taiutc'] = {0: 'OK', 1: 'dubious year (Note 4)', -1: 'unacceptable date'}
+STATUS_CODES['taiutc'] = {1: 'dubious year (Note 4)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -20957,7 +20957,7 @@ def ut1utc(ut11, ut12, dut1):
         utc2_out = utc2_out.reshape(utc2_out.shape[1:])
 
     return utc1_out, utc2_out
-STATUS_CODES['ut1utc'] = {0: 'OK', 1: 'dubious year (Note 5)', -1: 'unacceptable date'}
+STATUS_CODES['ut1utc'] = {1: 'dubious year (Note 5)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -21070,7 +21070,7 @@ def utctai(utc1, utc2):
         tai2_out = tai2_out.reshape(tai2_out.shape[1:])
 
     return tai1_out, tai2_out
-STATUS_CODES['utctai'] = {0: 'OK', 1: 'dubious year (Note 3)', -1: 'unacceptable date'}
+STATUS_CODES['utctai'] = {1: 'dubious year (Note 3)', 0: 'OK', -1: 'unacceptable date'}
 
 
 
@@ -21189,7 +21189,7 @@ def utcut1(utc1, utc2, dut1):
         ut12_out = ut12_out.reshape(ut12_out.shape[1:])
 
     return ut11_out, ut12_out
-STATUS_CODES['utcut1'] = {0: 'OK', 1: 'dubious year (Note 3)', -1: 'unacceptable date'}
+STATUS_CODES['utcut1'] = {1: 'dubious year (Note 3)', 0: 'OK', -1: 'unacceptable date'}
 
 
 

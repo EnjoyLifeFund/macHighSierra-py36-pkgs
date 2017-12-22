@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -126,6 +126,14 @@ class IsMaster(object):
     @property
     def election_id(self):
         return self._doc.get('electionId')
+
+    @property
+    def cluster_time(self):
+        return self._doc.get('$clusterTime')
+
+    @property
+    def logical_session_timeout_minutes(self):
+        return self._doc.get('logicalSessionTimeoutMinutes')
 
     @property
     def is_writable(self):

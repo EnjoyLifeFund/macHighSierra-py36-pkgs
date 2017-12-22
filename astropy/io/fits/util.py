@@ -206,7 +206,7 @@ def itersubclasses(cls, _seen=None):
 
     if not isinstance(cls, type):
         raise TypeError('itersubclasses must be called with '
-                        'new-style classes, not {:.100r}'.format(cls))
+                        'new-style classes, not {!r}'.format(cls))
     if _seen is None:
         _seen = set()
     try:
@@ -567,7 +567,7 @@ else:
         return s.translate(table)
 
 
-def fill(text, width, *args, **kwargs):
+def fill(text, width, **kwargs):
     """
     Like :func:`textwrap.wrap` but preserves existing paragraphs which
     :func:`textwrap.wrap` does not otherwise handle well.  Also handles section
@@ -580,7 +580,7 @@ def fill(text, width, *args, **kwargs):
         if all(len(l) < width for l in t.splitlines()):
             return t
         else:
-            return textwrap.fill(t, width, *args, **kwargs)
+            return textwrap.fill(t, width, **kwargs)
 
     return '\n\n'.join(maybe_fill(p) for p in paragraphs)
 
@@ -593,7 +593,7 @@ def fill(text, width, *args, **kwargs):
 CHUNKED_FROMFILE = None
 
 
-def _array_from_file(infile, dtype, count, sep):
+def _array_from_file(infile, dtype, count):
     """Create a numpy array from a file or a file-like object."""
 
     if isfile(infile):
@@ -609,22 +609,26 @@ def _array_from_file(infile, dtype, count, sep):
         if CHUNKED_FROMFILE:
             chunk_size = int(1024 ** 3 / dtype.itemsize)  # 1Gb to be safe
             if count < chunk_size:
-                return np.fromfile(infile, dtype=dtype, count=count, sep=sep)
+                return np.fromfile(infile, dtype=dtype, count=count)
             else:
                 array = np.empty(count, dtype=dtype)
                 for beg in range(0, count, chunk_size):
                     end = min(count, beg + chunk_size)
-                    array[beg:end] = np.fromfile(infile, dtype=dtype, count=end - beg, sep=sep)
+                    array[beg:end] = np.fromfile(infile, dtype=dtype, count=end - beg)
                 return array
         else:
-            return np.fromfile(infile, dtype=dtype, count=count, sep=sep)
+            return np.fromfile(infile, dtype=dtype, count=count)
     else:
         # treat as file-like object with "read" method; this includes gzip file
         # objects, because numpy.fromfile just reads the compressed bytes from
         # their underlying file object, instead of the decompressed bytes
         read_size = np.dtype(dtype).itemsize * count
         s = infile.read(read_size)
-        return np.fromstring(s, dtype=dtype, count=count, sep=sep)
+        array = np.frombuffer(s, dtype=dtype, count=count)
+        # copy is needed because np.frombuffer returns a read-only view of the
+        # underlying buffer
+        array = array.copy()
+        return array
 
 
 _OSX_WRITE_LIMIT = (2 ** 32) - 1
@@ -797,15 +801,15 @@ def _str_to_num(val):
 def _words_group(input, strlen):
     """
     Split a long string into parts where each part is no longer
-    than `strlen` and no word is cut into two pieces.  But if
-    there is one single word which is longer than `strlen`, then
+    than ``strlen`` and no word is cut into two pieces.  But if
+    there is one single word which is longer than ``strlen``, then
     it will be split in the middle of the word.
     """
 
     words = []
     nblanks = input.count(' ')
     nmax = max(nblanks, len(input) // strlen + 1)
-    arr = np.fromstring((input + ' '), dtype=(binary_type, 1))
+    arr = np.frombuffer((input + ' ').encode('utf8'), dtype=(binary_type, 1))
 
     # locations of the blanks
     blank_loc = np.nonzero(arr == b' ')[0]
@@ -897,3 +901,24 @@ def _extract_number(value, default):
         return int(_str_to_num(value))
     except (TypeError, ValueError):
         return default
+
+
+def get_testdata_filepath(filename):
+    """
+    Return a string representing the path to the file requested from the
+    io.fits test data set.
+
+    .. versionadded:: 2.0.3
+
+    Parameters
+    ----------
+    filename : str
+        The filename of the test data file.
+
+    Returns
+    -------
+    filepath : str
+        The path to the requested file.
+    """
+    return data.get_pkg_data_filename(
+        'io/fits/tests/data/{}'.format(filename), 'astropy')

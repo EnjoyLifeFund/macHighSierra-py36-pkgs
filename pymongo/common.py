@@ -1,4 +1,4 @@
-# Copyright 2011-2015 MongoDB, Inc.
+# Copyright 2011-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -19,6 +19,7 @@ import collections
 import datetime
 import warnings
 
+from bson import SON
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.codec_options import CodecOptions
@@ -32,6 +33,13 @@ from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
 
+try:
+    from collections import OrderedDict
+    ORDERED_TYPES = (SON, OrderedDict)
+except ImportError:
+    ORDERED_TYPES = (SON,)
+
+
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
 MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
@@ -40,7 +48,8 @@ MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 1000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_WIRE_VERSION = 0
+MIN_SUPPORTED_SERVER_VERSION = "2.6"
+MIN_SUPPORTED_WIRE_VERSION = 2
 MAX_SUPPORTED_WIRE_VERSION = 5
 
 # Frequency to call ismaster on servers, in seconds.
@@ -76,16 +85,18 @@ MAX_IDLE_TIME_MS = None
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
 
-# mongod/s 2.6 and above return code 59 when a
-# command doesn't exist. mongod versions previous
-# to 2.6 and mongos 2.4.x return no error code
-# when a command does exist. mongos versions previous
-# to 2.4.0 return code 13390 when a command does not
-# exist.
-COMMAND_NOT_FOUND_CODES = (59, 13390, None)
+# Default value for retryWrites.
+RETRY_WRITES = False
+
+# mongod/s 2.6 and above return code 59 when a command doesn't exist.
+COMMAND_NOT_FOUND_CODES = (59,)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
 UNAUTHORIZED_CODES = (13, 16547, 16548)
+
+# Maximum number of sessions to send in a single endSessions command.
+# From the driver sessions spec.
+_MAX_END_SESSIONS = 10000
 
 
 def partition_node(node):
@@ -392,6 +403,20 @@ def validate_document_class(option, value):
     return value
 
 
+def validate_list(option, value):
+    """Validates that 'value' is a list."""
+    if not isinstance(value, list):
+        raise TypeError("%s must be a list" % (option,))
+    return value
+
+
+def validate_list_or_none(option, value):
+    """Validates that 'value' is a list or None."""
+    if value is None:
+        return value
+    return validate_list(option, value)
+
+
 def validate_is_mapping(option, value):
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, collections.Mapping):
@@ -495,7 +520,8 @@ URI_VALIDATORS = {
     'connect': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'retrywrites': validate_boolean_or_string,
 }
 
 TIMEOUT_VALIDATORS = {
@@ -633,7 +659,8 @@ class BaseObject(object):
 
     @property
     def read_concern(self):
-        """Read only access to the read concern of this instance.
+        """Read only access to the :class:`~pymongo.read_concern.ReadConcern`
+        of this instance.
 
         .. versionadded:: 3.2
         """

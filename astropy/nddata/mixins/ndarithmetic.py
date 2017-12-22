@@ -131,12 +131,10 @@ class NDArithmeticMixin(object):
     uncertainty. This behaviour is also explained in the docstring for the
     different arithmetic operations.
 
-    Notes
-    -----
-    1. It is not tried to decompose the units, mainly due to the internal
-       mechanics of `~astropy.units.Quantity`, so the resulting data might have
-       units like ``km/m`` if you divided for example 100km by 5m. So this
-       Mixin has adopted this behaviour.
+    Decomposing the units is not attempted, mainly due to the internal mechanics
+    of `~astropy.units.Quantity`, so the resulting data might have units like
+    ``km/m`` if you divided for example 100km by 5m. So this Mixin has adopted
+    this behaviour.
 
     Examples
     --------
@@ -154,9 +152,9 @@ class NDArithmeticMixin(object):
 
     Using it with two operand on an instance::
 
-        >>> ndd = NDDataWithMath(5)
+        >>> ndd = NDDataWithMath(-4)
         >>> ndd.divide(1, ndd)
-        NDDataWithMath(0.2)
+        NDDataWithMath(-0.25)
 
     Using it as classmethod requires two operands::
 

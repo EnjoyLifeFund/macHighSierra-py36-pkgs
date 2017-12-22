@@ -49,7 +49,7 @@ class Kernel(SingletonConfigurable):
     @observe('eventloop')
     def _update_eventloop(self, change):
         """schedule call to eventloop from IOLoop"""
-        loop = ioloop.IOLoop.instance()
+        loop = ioloop.IOLoop.current()
         loop.add_callback(self.enter_eventloop)
 
     session = Instance(Session, allow_none=True)
@@ -135,7 +135,6 @@ class Kernel(SingletonConfigurable):
 
     def __init__(self, **kwargs):
         super(Kernel, self).__init__(**kwargs)
-
         # Build dict of handlers for message types
         self.shell_handlers = {}
         for msg_type in self.msg_types:
@@ -212,8 +211,6 @@ class Kernel(SingletonConfigurable):
         self.set_parent(idents, msg)
         self._publish_status(u'busy')
 
-        header = msg['header']
-        msg_id = header['msg_id']
         msg_type = msg['header']['msg_type']
 
         # Print some info about this message and leave a '--->' marker, so it's
@@ -275,6 +272,7 @@ class Kernel(SingletonConfigurable):
 
     def start(self):
         """register dispatchers for streams"""
+        self.io_loop = ioloop.IOLoop.current()
         if self.control_stream:
             self.control_stream.on_recv(self.dispatch_control, copy=False)
 
@@ -430,12 +428,11 @@ class Kernel(SingletonConfigurable):
         content = parent['content']
         code = content['code']
         cursor_pos = content['cursor_pos']
-
+        
         matches = self.do_complete(code, cursor_pos)
         matches = json_clean(matches)
         completion_msg = self.session.send(stream, 'complete_reply',
                                            matches, parent, ident)
-        self.log.debug("%s", completion_msg)
 
     def do_complete(self, code, cursor_pos):
         """Override in subclasses to find completions.
@@ -534,7 +531,7 @@ class Kernel(SingletonConfigurable):
 
         self._at_shutdown()
         # call sys.exit after a short delay
-        loop = ioloop.IOLoop.instance()
+        loop = ioloop.IOLoop.current()
         loop.add_timeout(time.time()+0.1, loop.stop)
 
     def do_shutdown(self, restart):

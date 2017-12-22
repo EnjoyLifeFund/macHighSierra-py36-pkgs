@@ -26,6 +26,8 @@ class SkusOperations(object):
     :ivar api_version: Client Api Version. Constant value: "2017-06-01".
     """
 
+    models = models
+
     def __init__(self, client, config, serializer, deserializer):
 
         self._client = client
@@ -45,10 +47,9 @@ class SkusOperations(object):
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
-        :return: An iterator like instance of :class:`Sku
-         <azure.mgmt.storage.v2017_06_01.models.Sku>`
-        :rtype: :class:`SkuPaged
-         <azure.mgmt.storage.v2017_06_01.models.SkuPaged>`
+        :return: An iterator like instance of Sku
+        :rtype:
+         ~azure.mgmt.storage.v2017_06_01.models.SkuPaged[~azure.mgmt.storage.v2017_06_01.models.Sku]
         :raises: :class:`CloudError<msrestazure.azure_exceptions.CloudError>`
         """
         def internal_paging(next_link=None, raw=False):

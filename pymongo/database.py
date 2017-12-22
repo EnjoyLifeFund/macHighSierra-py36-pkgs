@@ -1,4 +1,4 @@
-# Copyright 2009-2015 MongoDB, Inc.
+# Copyright 2009-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,22 +17,25 @@
 import warnings
 
 from bson.code import Code
-from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
-from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common, helpers
+from pymongo import auth, common
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo.helpers import _first_batch
+from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
+
+
+_INDEX_REGEX = {"name": {"$regex": "^(?!.*\$)"}}
+_SYSTEM_FILTER = {"filter": {"name": {"$regex": "^(?!system\.)"}}}
 
 
 def _check_name(name):
@@ -308,7 +311,7 @@ class Database(common.BaseObject):
 
     def create_collection(self, name, codec_options=None,
                           read_preference=None, write_concern=None,
-                          read_concern=None, **kwargs):
+                          read_concern=None, session=None, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -348,8 +351,13 @@ class Database(common.BaseObject):
             used.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Added the collation option.
@@ -360,12 +368,13 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated argument: options
         """
-        if name in self.collection_names():
-            raise CollectionInvalid("collection %s already exists" % name)
+        with self.__client._tmp_session(session) as s:
+            if name in self.collection_names(session=s):
+                raise CollectionInvalid("collection %s already exists" % name)
 
-        return Collection(self, name, True, codec_options,
-                          read_preference, write_concern,
-                          read_concern, **kwargs)
+            return Collection(self, name, True, codec_options,
+                              read_preference, write_concern,
+                              read_concern, session=s, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
         """Apply incoming manipulators to `son`."""
@@ -407,7 +416,7 @@ class Database(common.BaseObject):
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
                  codec_options=DEFAULT_CODEC_OPTIONS,
                  write_concern=None,
-                 parse_write_concern_error=False, **kwargs):
+                 parse_write_concern_error=False, session=None, **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
@@ -416,20 +425,22 @@ class Database(common.BaseObject):
             command['writeConcern'] = write_concern.document
 
         command.update(kwargs)
-
-        return sock_info.command(
-            self.__name,
-            command,
-            slave_ok,
-            read_preference,
-            codec_options,
-            check,
-            allowable_errors,
-            parse_write_concern_error=parse_write_concern_error)
+        with self.__client._tmp_session(session) as s:
+            return sock_info.command(
+                self.__name,
+                command,
+                slave_ok,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                codec_options=DEFAULT_CODEC_OPTIONS, **kwargs):
+                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -476,12 +487,17 @@ class Database(common.BaseObject):
             See :mod:`~pymongo.read_preferences` for options.
           - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
             instance.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
         .. note:: :meth:`command` does **not** obey :attr:`read_preference`
            or :attr:`codec_options`. You must use the `read_preference` and
            `codec_options` parameters instead.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.0
            Removed the `as_class`, `fields`, `uuid_subtype`, `tag_sets`,
@@ -513,71 +529,108 @@ class Database(common.BaseObject):
         with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
-                                 codec_options, **kwargs)
+                                 codec_options, session=session, **kwargs)
 
-    def _list_collections(self, sock_info, slave_okay, criteria=None):
+    def _list_collections(self, sock_info, slave_okay, session=None, **kwargs):
         """Internal listCollections helper."""
-        criteria = criteria or {}
-        cmd = SON([("listCollections", 1), ("cursor", {})])
-        if criteria:
-            cmd["filter"] = criteria
 
+        coll = self["$cmd"]
         if sock_info.max_wire_version > 2:
-            coll = self["$cmd"]
+            cmd = SON([("listCollections", 1),
+                       ("cursor", {})])
+            cmd.update(kwargs)
+            with self.__client._tmp_session(
+                    session, close=False) as tmp_session:
+                cursor = self._command(
+                    sock_info, cmd, slave_okay, session=tmp_session)["cursor"]
+                return CommandCursor(
+                    coll,
+                    cursor,
+                    sock_info.address,
+                    session=tmp_session,
+                    explicit_session=session is not None)
+        else:
+            match = _INDEX_REGEX
+            if "filter" in kwargs:
+                match = {"$and": [_INDEX_REGEX, kwargs["filter"]]}
+            dblen = len(self.name.encode("utf8") + b".")
+            pipeline = [
+                {"$project": {"name": {"$substr": ["$name", dblen, -1]},
+                              "options": 1}},
+                {"$match": match}
+            ]
+            cmd = SON([("aggregate", "system.namespaces"),
+                       ("pipeline", pipeline),
+                       ("cursor", kwargs.get("cursor", {}))])
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
             return CommandCursor(coll, cursor, sock_info.address)
-        else:
-            coll = self["system.namespaces"]
-            res = _first_batch(sock_info, coll.database.name, coll.name,
-                               criteria, 0, slave_okay,
-                               CodecOptions(), ReadPreference.PRIMARY, cmd,
-                               self.client._event_listeners)
-            data = res["data"]
-            cursor = {
-                "id": res["cursor_id"],
-                "firstBatch": data,
-                "ns": coll.full_name,
-            }
-            # Need to tell the cursor how many docs were in the first batch.
-            return CommandCursor(coll, cursor, sock_info.address, len(data))
 
-    def collection_names(self, include_system_collections=True):
+    def list_collections(self, session=None, **kwargs):
+        """Get a cursor over the collectons of this database.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): Optional parameters of the
+            `listCollections command
+            <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
+            can be passed as keyword arguments to this method. The supported
+            options differ by server version.
+
+        :Returns:
+          An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionadded:: 3.6
+        """
+        with self.__client._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+            return self._list_collections(
+                sock_info, slave_okay, session=session, **kwargs)
+
+    def list_collection_names(self, session=None):
+        """Get a list of all the collection names in this database.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionadded:: 3.6
+        """
+        return [result["name"]
+                for result in self.list_collections(session=session)]
+
+    def collection_names(self, include_system_collections=True,
+                         session=None):
         """Get a list of all the collection names in this database.
 
         :Parameters:
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
-        with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+        kws = {} if include_system_collections else _SYSTEM_FILTER
+        return [result["name"]
+                for result in self.list_collections(session=session, **kws)]
 
-            wire_version = sock_info.max_wire_version
-            results = self._list_collections(sock_info, slave_okay)
-
-        # Iterating the cursor to completion may require a socket for getmore.
-        # Ensure we do that outside the "with" block so we don't require more
-        # than one socket at a time.
-        names = [result["name"] for result in results]
-        if wire_version <= 2:
-            # MongoDB 2.4 and older return index namespaces and collection
-            # namespaces prefixed with the database name.
-            names = [n[len(self.__name) + 1:] for n in names
-                     if n.startswith(self.__name + ".") and "$" not in n]
-
-        if not include_system_collections:
-            names = [name for name in names if not name.startswith("system.")]
-        return names
-
-    def drop_collection(self, name_or_collection):
+    def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.
 
         :Parameters:
           - `name_or_collection`: the name of a collection to drop or the
             collection object itself
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
            this database is automatically applied to this operation when using
            MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this database's write concern automatically to this operation
@@ -600,10 +653,11 @@ class Database(common.BaseObject):
                 sock_info, 'drop', slave_ok, _unicode(name),
                 allowable_errors=['ns not found'],
                 write_concern=self.write_concern,
-                parse_write_concern_error=True)
+                parse_write_concern_error=True,
+                session=session)
 
     def validate_collection(self, name_or_collection,
-                            scandata=False, full=False):
+                            scandata=False, full=False, session=None):
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -618,6 +672,11 @@ class Database(common.BaseObject):
             collection. Use with `scandata` for a thorough scan
             of the structure of the collection and the individual
             documents.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -628,7 +687,7 @@ class Database(common.BaseObject):
                             "%s or Collection" % (string_type.__name__,))
 
         result = self.command("validate", _unicode(name),
-                              scandata=scandata, full=full)
+                              scandata=scandata, full=full, session=session)
 
         valid = True
         # Pre 1.9 results
@@ -657,38 +716,52 @@ class Database(common.BaseObject):
 
         return result
 
-    def current_op(self, include_all=False):
+    def current_op(self, include_all=False, session=None):
         """Get information on operations currently running.
 
         :Parameters:
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
         cmd = SON([("currentOp", 1), ("$all", include_all)])
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
-                return sock_info.command("admin", cmd)
+                with self.__client._tmp_session(session) as s:
+                    return sock_info.command("admin", cmd, session=s,
+                                             client=self.__client)
             else:
                 spec = {"$all": True} if include_all else {}
-                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                    spec, -1, True, self.codec_options,
-                    ReadPreference.PRIMARY, cmd, self.client._event_listeners)
-                return x.get('data', [None])[0]
+                return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                                    spec, -1, True, self.codec_options,
+                                    ReadPreference.PRIMARY, cmd,
+                                    self.client._event_listeners)
 
-    def profiling_level(self):
+    def profiling_level(self, session=None):
         """Get the database's current profiling level.
 
         Returns one of (:data:`~pymongo.OFF`,
         :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
 
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
         .. mongodoc:: profiling
         """
-        result = self.command("profile", -1)
+        result = self.command("profile", -1, session=session)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
 
-    def set_profiling_level(self, level, slow_ms=None):
+    def set_profiling_level(self, level, slow_ms=None, session=None):
         """Set the database's profiling level.
 
         :Parameters:
@@ -697,6 +770,8 @@ class Database(common.BaseObject):
           - `slow_ms`: Optionally modify the threshold for the profile to
             consider a query or operation.  Even if the profiler is off queries
             slower than the `slow_ms` level will get written to the logs.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         Possible `level` values:
 
@@ -714,6 +789,9 @@ class Database(common.BaseObject):
         (:data:`~pymongo.OFF`, :data:`~pymongo.SLOW_ONLY`,
         :data:`~pymongo.ALL`).
 
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
         .. mongodoc:: profiling
         """
         if not isinstance(level, int) or level < 0 or level > 2:
@@ -723,16 +801,23 @@ class Database(common.BaseObject):
             raise TypeError("slow_ms must be an integer")
 
         if slow_ms is not None:
-            self.command("profile", level, slowms=slow_ms)
+            self.command("profile", level, slowms=slow_ms, session=session)
         else:
-            self.command("profile", level)
+            self.command("profile", level, session=session)
 
-    def profiling_info(self):
+    def profiling_info(self, session=None):
         """Returns a list containing current profiling information.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. mongodoc:: profiling
         """
-        return list(self["system.profile"].find())
+        return list(self["system.profile"].find(session=session))
 
     def error(self):
         """**DEPRECATED**: Get the error if one occurred on the last operation.
@@ -838,7 +923,7 @@ class Database(common.BaseObject):
                 return "dbOwner"
 
     def _create_or_update_user(
-            self, create, name, password, read_only, **kwargs):
+            self, create, name, password, read_only, session=None, **kwargs):
         """Use a command to create (if create=True) or modify a user.
         """
         opts = {}
@@ -873,44 +958,41 @@ class Database(common.BaseObject):
         else:
             command_name = "updateUser"
 
-        self.command(command_name, name, **opts)
+        self.command(command_name, name, session=session, **opts)
 
-    def _legacy_add_user(self, name, password, read_only, **kwargs):
-        """Uses v1 system to add users, i.e. saving to system.users.
-        """
-        # Use a Collection with the default codec_options.
-        system_users = self._collection_default_options('system.users')
-        user = system_users.find_one({"user": name}) or {"user": name}
-        if password is not None:
-            user["pwd"] = auth._password_digest(name, password)
-        if read_only is not None:
-            user["readOnly"] = read_only
-        user.update(kwargs)
-
-        # We don't care what the _id is, only that it has one
-        # for the replace_one call below.
-        user.setdefault("_id", ObjectId())
-        try:
-            system_users.replace_one({"_id": user["_id"]}, user, True)
-        except OperationFailure as exc:
-            # First admin user add fails gle in MongoDB >= 2.1.2
-            # See SERVER-4225 for more information.
-            if 'login' in str(exc):
-                pass
-            # First admin user add fails gle from mongos 2.0.x
-            # and 2.2.x.
-            elif (exc.details and
-                  'getlasterror' in exc.details.get('note', '')):
-                pass
-            else:
-                raise
-
-    def add_user(self, name, password=None, read_only=None, **kwargs):
-        """Create user `name` with password `password`.
+    def add_user(self, name, password=None, read_only=None, session=None,
+                 **kwargs):
+        """**DEPRECATED**: Create user `name` with password `password`.
 
         Add a new user with permissions for this :class:`Database`.
 
         .. note:: Will change the password if user `name` already exists.
+
+        .. note:: add_user is deprecated and will be removed in PyMongo
+          4.0. Starting with MongoDB 2.6 user management is handled with four
+          database commands, createUser_, usersInfo_, updateUser_, and
+          dropUser_.
+
+          To create a user::
+
+            db.command("createUser", "admin", pwd="password", roles=["root"])
+
+          To create a read-only user::
+
+            db.command("createUser", "user", pwd="password", roles=["read"])
+
+          To change a password::
+
+            db.command("updateUser", "user", pwd="newpassword")
+
+          Or change roles::
+
+            db.command("updateUser", "user", roles=["readWrite"])
+
+        .. _createUser: https://docs.mongodb.com/manual/reference/command/createUser/
+        .. _usersInfo: https://docs.mongodb.com/manual/reference/command/usersInfo/
+        .. _updateUser: https://docs.mongodb.com/manual/reference/command/updateUser/
+        .. _dropUser: https://docs.mongodb.com/manual/reference/command/createUser/
 
         :Parameters:
           - `name`: the name of the user to create
@@ -921,9 +1003,11 @@ class Database(common.BaseObject):
             (e.g. ``userSource``, ``otherDBRoles``, or ``roles``). See
             `<http://docs.mongodb.org/manual/reference/privilege-documents>`_
             for more information.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
-        .. note:: The use of optional keyword arguments like ``userSource``,
-           ``otherDBRoles``, or ``roles`` requires MongoDB >= 2.4.0
+        .. versionchanged:: 3.6
+           Added ``session`` parameter. Deprecated add_user.
 
         .. versionchanged:: 2.5
            Added kwargs support for optional fields introduced in MongoDB 2.4
@@ -931,6 +1015,9 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Added support for read only users
         """
+        warnings.warn("add_user is deprecated and will be removed in PyMongo "
+                      "4.0. Use db.command with createUser or updateUser "
+                      "instead", DeprecationWarning, stacklevel=2)
         if not isinstance(name, string_type):
             raise TypeError("name must be an "
                             "instance of %s" % (string_type.__name__,))
@@ -947,50 +1034,55 @@ class Database(common.BaseObject):
                                          "read_only and roles together")
 
         try:
-            uinfo = self.command("usersInfo", name)
+            uinfo = self.command("usersInfo", name, session=session)
             # Create the user if not found in uinfo, otherwise update one.
             self._create_or_update_user(
-                (not uinfo["users"]), name, password, read_only, **kwargs)
+                (not uinfo["users"]), name, password, read_only,
+                session=session, **kwargs)
         except OperationFailure as exc:
-            # MongoDB >= 2.5.3 requires the use of commands to manage
-            # users.
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                self._legacy_add_user(name, password, read_only, **kwargs)
-                return
             # Unauthorized. Attempt to create the user in case of
             # localhost exception.
-            elif exc.code == 13:
+            if exc.code == 13:
                 self._create_or_update_user(
-                    True, name, password, read_only, **kwargs)
+                    True, name, password, read_only, session=session, **kwargs)
             else:
                 raise
 
-    def remove_user(self, name):
-        """Remove user `name` from this :class:`Database`.
+    def remove_user(self, name, session=None):
+        """**DEPRECATED**: Remove user `name` from this :class:`Database`.
 
         User `name` will no longer have permissions to access this
         :class:`Database`.
 
+        .. note:: remove_user is deprecated and will be removed in PyMongo
+          4.0. Use the dropUser command instead::
+
+            db.command("dropUser", "user")
+
         :Parameters:
           - `name`: the name of the user to remove
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter. Deprecated remove_user.
         """
-        try:
-            cmd = SON([("dropUser", name)])
-            # Don't send {} as writeConcern.
-            if self.write_concern.acknowledged and self.write_concern.document:
-                cmd["writeConcern"] = self.write_concern.document
-            self.command(cmd)
-        except OperationFailure as exc:
-            # See comment in add_user try / except above.
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                coll = self._collection_default_options('system.users')
-                coll.delete_one({"user": name})
-                return
-            raise
+        warnings.warn("remove_user is deprecated and will be removed in "
+                      "PyMongo 4.0. Use db.command with dropUser "
+                      "instead", DeprecationWarning, stacklevel=2)
+        cmd = SON([("dropUser", name)])
+        # Don't send {} as writeConcern.
+        if self.write_concern.acknowledged and self.write_concern.document:
+            cmd["writeConcern"] = self.write_concern.document
+        self.command(cmd, session=session)
 
     def authenticate(self, name=None, password=None,
                      source=None, mechanism='DEFAULT', **kwargs):
         """**DEPRECATED**: Authenticate to use this database.
+
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`authenticate`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
 
         Authentication lasts for the life of the underlying client
         instance, or until :meth:`logout` is called.
@@ -1077,14 +1169,19 @@ class Database(common.BaseObject):
         return True
 
     def logout(self):
-        """**DEPRECATED**: Deauthorize use of this database."""
+        """**DEPRECATED**: Deauthorize use of this database.
+
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`logout`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
+        """
         warnings.warn("Database.logout() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
         # Sockets will be deauthenticated as they are used.
         self.client._purge_credentials(self.name)
 
-    def dereference(self, dbref, **kwargs):
+    def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 
@@ -1096,9 +1193,14 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `dbref`: the reference
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to
             :meth:`~pymongo.collection.Collection.find`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
@@ -1106,7 +1208,8 @@ class Database(common.BaseObject):
             raise ValueError("trying to dereference a DBRef that points to "
                              "another database (%r not %r)" % (dbref.database,
                                                                self.__name))
-        return self[dbref.collection].find_one({"_id": dbref.id}, **kwargs)
+        return self[dbref.collection].find_one(
+            {"_id": dbref.id}, session=session, **kwargs)
 
     def eval(self, code, *args):
         """**DEPRECATED**: Evaluate a JavaScript expression in MongoDB.

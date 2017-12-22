@@ -399,14 +399,14 @@ def get_module_hash(src_code, key):
     # Currently, in order to catch potential bugs early, we are very
     # convervative about the structure of the key and raise an exception
     # if it does not match exactly what we expect. In the future we may
-    # modify this behavior to be less strict and be able to accomodate
+    # modify this behavior to be less strict and be able to accommodate
     # changes to the key in an automatic way.
-    # Note that if the key structure changes, the `get_safe_part` fucntion
+    # Note that if the key structure changes, the `get_safe_part` function
     # below may also need to be modified.
     error_msg = ("This should not happen unless someone modified the code "
                  "that defines the CLinker key, in which case you should "
                  "ensure this piece of code is still valid (and this "
-                 "AssertionError may be removed or modified to accomodate "
+                 "AssertionError may be removed or modified to accommodate "
                  "this change)")
     assert c_link_key[0] == 'CLinker.cmodule_key', error_msg
     for key_element in c_link_key[1:]:
@@ -1782,6 +1782,9 @@ class Compiler(object):
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
+            if os.name == 'nt':
+                path = "\"" + path + "\""
+                exe_path = "\"" + exe_path + "\""
             try:
                 # Python3 compatibility: try to cast Py3 strings as Py2 strings
                 try:

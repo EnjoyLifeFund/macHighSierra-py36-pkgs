@@ -242,9 +242,10 @@ class PytestPluginManager(PluginManager):
         return opts
 
     def register(self, plugin, name=None):
-        if name == 'pytest_catchlog':
-            self._warn('pytest-catchlog plugin has been merged into the core, '
-                       'please remove it from your requirements.')
+        if name in ['pytest_catchlog', 'pytest_capturelog']:
+            self._warn('{0} plugin has been merged into the core, '
+                       'please remove it from your requirements.'.format(
+                           name.replace('_', '-')))
             return
         ret = super(PytestPluginManager, self).register(plugin, name)
         if ret:
@@ -417,7 +418,7 @@ class PytestPluginManager(PluginManager):
         # _pytest prefix.
         assert isinstance(modname, (six.text_type, str)), "module name as text required, got %r" % modname
         modname = str(modname)
-        if self.get_plugin(modname) is not None:
+        if self.is_blocked(modname) or self.get_plugin(modname) is not None:
             return
         if modname in builtin_plugins:
             importspec = "_pytest." + modname
@@ -999,10 +1000,10 @@ class Config(object):
         self._override_ini = ns.override_ini or ()
 
     def _consider_importhook(self, args):
-        """Install the PEP 302 import hook if using assertion re-writing.
+        """Install the PEP 302 import hook if using assertion rewriting.
 
         Needs to parse the --assert=<mode> option from the commandline
-        and find all the installed plugins to mark them for re-writing
+        and find all the installed plugins to mark them for rewriting
         by the importhook.
         """
         ns, unknown_args = self._parser.parse_known_and_unknown_args(args)

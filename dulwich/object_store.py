@@ -435,7 +435,7 @@ class PackBasedObjectStore(BaseObjectStore):
         f, commit, abort = self.add_pack()
         try:
             write_pack_objects(f, objects)
-        except:
+        except BaseException:
             abort()
             raise
         else:
@@ -477,14 +477,14 @@ class DiskObjectStore(PackBasedObjectStore):
                 return
             raise
         with f:
-            for l in f.readlines():
-                l = l.rstrip(b"\n")
-                if l[0] == b"#":
+            for line in f.readlines():
+                line = line.rstrip(b"\n")
+                if line[0] == b"#":
                     continue
-                if os.path.isabs(l):
-                    yield l.decode(sys.getfilesystemencoding())
+                if os.path.isabs(line):
+                    yield line.decode(sys.getfilesystemencoding())
                 else:
-                    yield os.path.join(self.path, l).decode(
+                    yield os.path.join(self.path, line).decode(
                         sys.getfilesystemencoding())
 
     def add_alternate_path(self, path):
@@ -679,6 +679,14 @@ class DiskObjectStore(PackBasedObjectStore):
             basename = self._get_pack_basepath(entries)
             with GitFile(basename+".idx", "wb") as f:
                 write_pack_index_v2(f, entries, p.get_stored_checksum())
+        if self._pack_cache is None or self._pack_cache_stale():
+            self._update_pack_cache()
+        try:
+            return self._pack_cache[basename]
+        except KeyError:
+            pass
+        else:
+            os.unlink(path)
         os.rename(path, basename + ".pack")
         final_pack = Pack(basename)
         self._add_known_pack(basename, final_pack)
@@ -863,7 +871,7 @@ class MemoryObjectStore(BaseObjectStore):
                                       delta_iter=indexer)
             copier.verify()
             self._complete_thin_pack(f, indexer)
-        except:
+        except BaseException:
             abort()
             raise
         else:

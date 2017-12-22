@@ -54,7 +54,7 @@ class Conf(_config.ConfigNamespace):
         'http://data.astropy.org/',
         'Primary URL for astropy remote data site.')
     dataurl_mirror = _config.ConfigItem(
-        'http://astropy.org/astropy-data/',
+        'http://www.astropy.org/astropy-data/',
         'Mirror URL for astropy remote data site.')
     remote_timeout = _config.ConfigItem(
         10.,
@@ -378,6 +378,7 @@ def get_file_contents(*args, **kwargs):
         return f.read()
 
 
+@contextlib.contextmanager
 def get_pkg_data_fileobj(data_name, package=None, encoding=None, cache=True):
     """
     Retrieves a data file from the standard locations for the package and
@@ -487,18 +488,25 @@ def get_pkg_data_fileobj(data_name, package=None, encoding=None, cache=True):
         raise IOError("Tried to access a data file that's actually "
                       "a package data directory")
     elif os.path.isfile(datafn):  # local file
-        return get_readable_fileobj(datafn, encoding=encoding)
+        with get_readable_fileobj(datafn, encoding=encoding) as fileobj:
+            yield fileobj
     else:  # remote file
         all_urls = (conf.dataurl, conf.dataurl_mirror)
         for url in all_urls:
             try:
-                return get_readable_fileobj(url + datafn, encoding=encoding,
-                                            cache=cache)
-            except urllib.error.URLError as e:
+                with get_readable_fileobj(url + data_name, encoding=encoding,
+                                          cache=cache) as fileobj:
+                    # We read a byte to trigger any URLErrors
+                    fileobj.read(1)
+                    fileobj.seek(0)
+                    yield fileobj
+                    break
+            except urllib.error.URLError:
                 pass
-        urls = '\n'.join('  - {0}'.format(url) for url in all_urls)
-        raise urllib.error.URLError("Failed to download {0} from the following "
-                                    "repositories:\n\n{1}".format(datafn, urls))
+        else:
+            urls = '\n'.join('  - {0}'.format(url) for url in all_urls)
+            raise urllib.error.URLError("Failed to download {0} from the following "
+                                        "repositories:\n\n{1}".format(data_name, urls))
 
 
 def get_pkg_data_filename(data_name, package=None, show_progress=True,
@@ -586,8 +594,6 @@ def get_pkg_data_filename(data_name, package=None, show_progress=True,
     get_pkg_data_fileobj : returns a file-like object with the data
     """
 
-    data_name = os.path.normpath(data_name)
-
     if remote_timeout is None:
         # use configfile default
         remote_timeout = conf.remote_timeout
@@ -612,7 +618,8 @@ def get_pkg_data_filename(data_name, package=None, show_progress=True,
         else:
             return hashfn
     else:
-        datafn = _find_pkg_data_path(data_name, package=package)
+        fs_path = os.path.normpath(data_name)
+        datafn = _find_pkg_data_path(fs_path, package=package)
         if os.path.isdir(datafn):
             raise IOError("Tried to access a data file that's actually "
                           "a package data directory")
@@ -876,8 +883,7 @@ def _find_pkg_data_path(data_name, package=None):
     """
 
     if package is None:
-        module = find_current_module(1, True)
-
+        module = find_current_module(1, finddiff=['astropy.utils.data', 'contextlib'])
         if module is None:
             # not called from inside an astropy package.  So just pass name
             # through
@@ -1028,10 +1034,6 @@ def download_file(remote_url, cache=False, show_progress=True, timeout=None):
 
     missing_cache = False
 
-    if timeout is None:
-        # use configfile default
-        timeout = conf.remote_timeout()
-
     if cache:
         try:
             dldir, urlmapfn = _get_download_cache_locs()
@@ -1168,7 +1170,7 @@ def is_url_in_cache(url_key):
 
 
 def _do_download_files_in_parallel(args):
-    return download_file(*args, show_progress=False)
+    return download_file(*args)
 
 
 def download_files_in_parallel(urls, cache=False, show_progress=True,
@@ -1191,7 +1193,7 @@ def download_files_in_parallel(urls, cache=False, show_progress=True,
         is `True`)
 
     timeout : float, optional
-        Timeout for the requests in seconds (default is the
+        Timeout for each individual requests in seconds (default is the
         configurable `astropy.utils.data.Conf.remote_timeout`).
 
     Returns
@@ -1209,15 +1211,11 @@ def download_files_in_parallel(urls, cache=False, show_progress=True,
     else:
         progress = io.BytesIO()
 
-    if timeout is None:
-        # use configfile default
-        timeout = REMOTE_TIMEOUT()
-
     # Combine duplicate URLs
     combined_urls = list(set(urls))
     combined_paths = ProgressBar.map(
         _do_download_files_in_parallel,
-        [(x, cache) for x in combined_urls],
+        [(x, cache, False, timeout) for x in combined_urls],
         file=progress,
         multiprocess=True)
     paths = []

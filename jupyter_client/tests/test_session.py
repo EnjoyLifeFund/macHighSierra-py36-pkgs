@@ -5,8 +5,13 @@
 
 import hmac
 import os
+import sys
 import uuid
 from datetime import datetime
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import pytest
 
@@ -33,6 +38,14 @@ class SessionTestCase(BaseZMQTestCase):
         self.session = ss.Session()
 
 
+@pytest.fixture
+def no_copy_threshold():
+    """Disable zero-copy optimizations in pyzmq >= 17"""
+    with mock.patch.object(zmq, 'COPY_THRESHOLD', 1):
+        yield
+
+
+@pytest.mark.usefixtures('no_copy_threshold')
 class TestSession(SessionTestCase):
 
     def test_msg(self):
@@ -123,8 +136,14 @@ class TestSession(SessionTestCase):
         self.assertEqual(new_msg['buffers'],[b'bar'])
 
         # buffers must support the buffer protocol
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             self.session.send(A, msg, ident=b'foo', buffers=[1])
+
+        # buffers must be contiguous
+        buf = memoryview(os.urandom(16))
+        if sys.version_info >= (3,3):
+            with self.assertRaises(ValueError):
+                self.session.send(A, msg, ident=b'foo', buffers=[buf[::2]])
 
         A.close()
         B.close()

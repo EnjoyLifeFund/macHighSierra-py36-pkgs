@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -18,7 +18,7 @@ import weakref
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import common, helpers, message, periodic_executor
+from pymongo import common, message, periodic_executor
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -137,6 +137,7 @@ class Monitor(object):
                 return default
 
             # Try a second and final time. If it fails return original error.
+            # Always send metadata: this is a new connection.
             start = _time()
             try:
                 return self._check_once(metadata=self._pool.opts.metadata)
@@ -180,6 +181,10 @@ class Monitor(object):
         cmd = SON([('ismaster', 1)])
         if metadata is not None:
             cmd['client'] = metadata
+        if self._server_description.max_wire_version >= 6:
+            cluster_time = self._topology.max_cluster_time()
+            if cluster_time is not None:
+                cmd['$clusterTime'] = cluster_time
         start = _time()
         request_id, msg, max_doc_size = message.query(
             0, 'admin.$cmd', 0, -1, cmd,
@@ -187,6 +192,5 @@ class Monitor(object):
 
         # TODO: use sock_info.command()
         sock_info.send_message(msg, max_doc_size)
-        raw_response = sock_info.receive_message(1, request_id)
-        result = helpers._unpack_response(raw_response)
-        return IsMaster(result['data'][0]), _time() - start
+        reply = sock_info.receive_message(request_id)
+        return IsMaster(reply.command_response()), _time() - start

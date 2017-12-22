@@ -122,21 +122,26 @@ def check_backward(func, x_data, y_grad, params=(),
                    eps=1e-3, atol=1e-5, rtol=1e-4, no_grads=None, dtype=None):
     """Test backward procedure of a given function.
 
-    This function automatically checks backward-process of a given function.
-    For example, when you have a :class:`~chainer.Function` class ``MyFunc``,
-    that gets two arguments and returns one value, you can make its test like
-    this::
+    This function automatically checks the backward-process of a given function
+    to ensure that the computed gradients are approximately correct.
+    For example, assuming you've defined a :class:`~chainer.FunctionNode` class
+    ``MyFunc``, that takes two arguments and returns one value, you can wrap
+    it in a ordinary function and check its gradient computations as follows::
 
     >> def test_my_func(self):
-    >>   func = MyFunc()
+    >>
+    >>     def func(xs):
+    >>         y, = MyFunc().apply(xs)
+    >>         return y
+    >>
     >>   x1_data = xp.array(...)
     >>   x2_data = xp.array(...)
     >>   gy_data = xp.array(...)
     >>   check_backward(func, (x1_data, x2_data), gy_data)
 
     This method creates :class:`~chainer.Variable` objects with ``x_data``
-    and calls ``func`` with the :class:`~chainer.Variable` s to get its result
-    as :class:`~chainer.Variable`.
+    and calls ``func`` with the :class:`~chainer.Variable`\\ s to get its
+    result as :class:`~chainer.Variable`.
     Then, it sets ``y_grad`` array to ``grad`` attribute of the result and
     calls ``backward`` method to get gradients of the inputs.
     To check correctness of the gradients, the function calls
@@ -189,8 +194,8 @@ def check_backward(func, x_data, y_grad, params=(),
     >>   check_backward(my_link, (x1_data, x2_data), gy_data,
     >>                  (my_link.W, my_link.b))
 
-    Note that ``params`` are not ``ndarray`` s,
-    but :class:`~chainer.Variables` s.
+    Note that ``params`` are not ``ndarray``\\ s,
+    but :class:`~chainer.Variables`\\ s.
 
     Function objects are acceptable as ``func`` argument::
 
@@ -205,23 +210,24 @@ def check_backward(func, x_data, y_grad, params=(),
 
 
     Args:
-        func (callable): A function which gets :class:`~chainer.Variable` s
-            and returns :class:`~chainer.Variable` s. ``func`` must returns
-            a tuple of :class:`~chainer.Variable` s or one
-            :class:`~chainer.Variable`. You can use :class:`~chainer.Function`
-            object, :class:`~chainer.Link` object or a function satisfying the
+        func (callable): A function which gets :class:`~chainer.Variable`\\ s
+            and returns :class:`~chainer.Variable`\\ s. ``func`` must returns
+            a tuple of :class:`~chainer.Variable`\\ s or one
+            :class:`~chainer.Variable`. You can use a
+            :class:`~chainer.Function`, :class:`~chainer.FunctionNode` or a
+            :class:`~chainer.Link` object or any other function satisfying the
             condition.
-        x_data (ndarray or tuple of ndarrays): A set of ``ndarray`` s to be
+        x_data (ndarray or tuple of ndarrays): A set of ``ndarray``\\ s to be
             passed to ``func``. If ``x_data`` is one ``ndarray`` object, it is
             treated as ``(x_data,)``.
         y_grad (ndarray or tuple of ndarrays or None):
-            A set of ``ndarray`` s representing gradients of return-values of
+            A set of ``ndarray``\\ s representing gradients of return-values of
             ``func``. If ``y_grad`` is one ``ndarray`` object, it is
             treated as ``(y_grad,)``. If ``func`` is a loss-function,
             ``y_grad`` should be set to ``None``.
         params (~chainer.Variable or tuple of ~chainder.Variable):
-            A set of :class:`~chainer.Variable` s whose gradients are checked.
-            When ``func`` is a :class:`~chainer.Link` object,
+            A set of :class:`~chainer.Variable`\\ s whose gradients are
+            checked. When ``func`` is a :class:`~chainer.Link` object,
             set its parameters as ``params``.
             If ``params`` is one :class:`~chainer.Variable` object,
             it is treated as ``(params,)``.
@@ -451,7 +457,9 @@ def _set_y_grad(y, y_grad):
     if y_grad is not None:
         if len(y) != len(y_grad):
             raise ValueError(
-                '`y_grad` must have the same length of output values')
+                'Upstream gradients must contain equally many elements as '
+                'number of output elements.\n'
+                'Actual: {} != {}'.format(len(y), len(y_grad)))
         for iy, igy in six.moves.zip(y, y_grad):
             if isinstance(igy, variable.Variable):
                 iy.grad_var = igy
@@ -460,8 +468,9 @@ def _set_y_grad(y, y_grad):
     else:
         if len(y) != 1:
             raise ValueError(
-                'When `y_grad` is `None`, the function must return a'
-                'zero-dimentional array')
+                'Function must return a zero-dimensional array of length 1 '
+                'if the upstream gradient is `None`.\n'
+                'Actual: {} != 1'.format(len(y)))
         y_grad = (1,)
     return y_grad
 

@@ -79,9 +79,9 @@ of 'Error'.
 _DOC_ERRORS = ['enchnt','enchnt','incant','fr']
 
 # Make version info available
-__ver_major__ = 1
-__ver_minor__ = 6
-__ver_patch__ = 11
+__ver_major__ = 2
+__ver_minor__ = 0
+__ver_patch__ = 0
 __ver_sub__ = ""
 __version__ = "%d.%d.%d%s" % (__ver_major__,__ver_minor__,
                               __ver_patch__,__ver_sub__)
@@ -714,15 +714,6 @@ class Dict(_EnchantObject):
         self._check_this()
         word = self._StringClass(word)
         return _e.dict_is_removed(self._this,word.encode())
-
-    def is_in_session(self,word):
-        """Check whether a word is in the session list."""
-        warnings.warn("Dict.is_in_session is deprecated, "\
-                      "please use Dict.is_added",
-                      category=DeprecationWarning,stacklevel=2)
-        self._check_this()
-        word = self._StringClass(word)
-        return _e.dict_is_in_session(self._this,word.encode())
 
     def store_replacement(self,mis,cor):
         """Store a replacement spelling for a miss-spelled word.

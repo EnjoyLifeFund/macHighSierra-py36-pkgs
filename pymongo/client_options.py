@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -147,6 +147,7 @@ class ClientOptions(object):
         self.__connect = options.get('connect')
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
+        self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
 
     @property
     def _options(self):
@@ -207,3 +208,8 @@ class ClientOptions(object):
     def read_concern(self):
         """A :class:`~pymongo.read_concern.ReadConcern` instance."""
         return self.__read_concern
+
+    @property
+    def retry_writes(self):
+        """If this instance should retry supported write operations."""
+        return self.__retry_writes

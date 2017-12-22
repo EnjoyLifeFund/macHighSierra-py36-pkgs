@@ -1,4 +1,4 @@
-# Copyright 2015 MongoDB, Inc.
+# Copyright 2015-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import collections
 from bson import _UNPACK_INT, _iterate_elements
 from bson.py3compat import iteritems
 from bson.codec_options import (
-    CodecOptions, DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
+    DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
 from bson.errors import InvalidBSON
 
 

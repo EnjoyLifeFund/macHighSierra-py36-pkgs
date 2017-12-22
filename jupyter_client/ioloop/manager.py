@@ -1,15 +1,7 @@
 """A kernel manager with a tornado IOLoop"""
 
-#-----------------------------------------------------------------------------
-#  Copyright (c) The Jupyter Development Team
-#
-#  Distributed under the terms of the BSD License.  The full license is in
-#  the file COPYING, distributed as part of this software.
-#-----------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------
-# Imports
-#-----------------------------------------------------------------------------
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
 
 from __future__ import absolute_import
 
@@ -17,15 +9,12 @@ from zmq.eventloop import ioloop
 from zmq.eventloop.zmqstream import ZMQStream
 
 from traitlets import (
-    Instance
+    Instance,
+    Type,
 )
 
 from jupyter_client.manager import KernelManager
 from .restarter import IOLoopKernelRestarter
-
-#-----------------------------------------------------------------------------
-# Code
-#-----------------------------------------------------------------------------
 
 
 def as_zmqstream(f):
@@ -36,16 +25,26 @@ def as_zmqstream(f):
 
 class IOLoopKernelManager(KernelManager):
 
-    loop = Instance('zmq.eventloop.ioloop.IOLoop')
+    loop = Instance('tornado.ioloop.IOLoop')
     def _loop_default(self):
-        return ioloop.IOLoop.instance()
+        return ioloop.IOLoop.current()
 
+    restarter_class = Type(
+        default_value=IOLoopKernelRestarter,
+        klass=IOLoopKernelRestarter,
+        help=(
+            'Type of KernelRestarter to use. '
+            'Must be a subclass of IOLoopKernelRestarter.\n'
+            'Override this to customize how kernel restarts are managed.'
+        ),
+        config=True,
+    )
     _restarter = Instance('jupyter_client.ioloop.IOLoopKernelRestarter', allow_none=True)
 
     def start_restarter(self):
         if self.autorestart and self.has_kernel:
             if self._restarter is None:
-                self._restarter = IOLoopKernelRestarter(
+                self._restarter = self.restarter_class(
                     kernel_manager=self, loop=self.loop,
                     parent=self, log=self.log
                 )

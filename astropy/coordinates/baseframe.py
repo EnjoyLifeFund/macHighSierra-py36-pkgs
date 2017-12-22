@@ -767,14 +767,14 @@ class BaseCoordinateFrame(ShapedLikeNDArray):
         >>> from astropy import units as u
         >>> from astropy.coordinates import SkyCoord, CartesianRepresentation
         >>> coord = SkyCoord(0*u.deg, 0*u.deg)
-        >>> coord.represent_as(CartesianRepresentation)
+        >>> coord.represent_as(CartesianRepresentation)  # doctest: +FLOAT_CMP
         <CartesianRepresentation (x, y, z) [dimensionless]
-                ( 1.,  0.,  0.)>
+                (1., 0., 0.)>
 
         >>> coord.representation = CartesianRepresentation
-        >>> coord
+        >>> coord  # doctest: +FLOAT_CMP
         <SkyCoord (ICRS): (x, y, z) [dimensionless]
-            ( 1.,  0.,  0.)>
+            (1., 0., 0.)>
         """
 
         # For backwards compatibility (because in_frame_units used to be the
@@ -1139,6 +1139,16 @@ class BaseCoordinateFrame(ShapedLikeNDArray):
         else:
             data = self.data if self.has_data else None
 
+        # This is to provide a slightly nicer error message if the user tries to
+        # use frame_obj.representation instead of frame_obj.data to get the
+        # underlying representation object [e.g., #2890]
+        if inspect.isclass(data):
+            raise TypeError('Class passed as data instead of a representation '
+                            'instance. If you called frame.representation, this'
+                            ' returns the representation class. frame.data '
+                            'returns the instantiated object - you may want to '
+                            ' use this instead.')
+
         # TODO: expose this trickery in docstring?
         representation_cls = kwargs.pop('representation_cls',
                                         self.representation)
@@ -1255,6 +1265,14 @@ class BaseCoordinateFrame(ShapedLikeNDArray):
     def separation(self, other):
         """
         Computes on-sky separation between this coordinate and another.
+
+        .. note::
+
+            If the ``other`` coordinate object is in a different frame, it is
+            first transformed to the frame of this object. This can lead to
+            unintutive behavior if not accounted for. Particularly of note is
+            that ``self.separation(other)`` and ``other.separation(self)`` may
+            not give the same answer in this case.
 
         Parameters
         ----------

@@ -48,6 +48,7 @@ loop_map = {
     'nbagg': None,
     'notebook': None,
     'ipympl': None,
+    'widget': None,
     None : None,
 }
 
@@ -290,6 +291,34 @@ def loop_cocoa(kernel):
             sys.excepthook = real_excepthook
 
 
+@register_integration('asyncio')
+def loop_asyncio(kernel):
+    '''Start a kernel with asyncio event loop support.'''
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    def kernel_handler():
+        loop.call_soon(kernel.do_one_iteration)
+        loop.call_later(kernel._poll_interval, kernel_handler)
+
+    loop.call_soon(kernel_handler)
+    # loop is already running (e.g. tornado 5), nothing left to do
+    if loop.is_running():
+        return
+    while True:
+        error = None
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            continue
+        except Exception as e:
+            error = e
+        if hasattr(loop, 'shutdown_asyncgens'):
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
+        if error is not None:
+            raise error
+        break
 
 def enable_gui(gui, kernel=None):
     """Enable integration with a given GUI"""

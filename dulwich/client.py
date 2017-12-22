@@ -203,7 +203,7 @@ def read_pkt_refs(proto):
         refs[ref] = sha
 
     if len(refs) == 0:
-        return None, set([])
+        return {}, set([])
     if refs == {CAPABILITIES_REF: ZERO_SHA}:
         refs = {}
     return refs, set(server_capabilities)
@@ -361,7 +361,7 @@ class GitClient(object):
             result = self.fetch_pack(
                 path, determine_wants, target.get_graph_walker(), f.write,
                 progress)
-        except:
+        except BaseException:
             abort()
             raise
         else:
@@ -666,7 +666,7 @@ class TraditionalGitClient(GitClient):
 
             try:
                 new_refs = orig_new_refs = update_refs(dict(old_refs))
-            except:
+            except BaseException:
                 proto.write_pkt_line(None)
                 raise
 
@@ -737,7 +737,7 @@ class TraditionalGitClient(GitClient):
 
             try:
                 wants = determine_wants(refs)
-            except:
+            except BaseException:
                 proto.write_pkt_line(None)
                 raise
             if wants is not None:
