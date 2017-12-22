@@ -74,15 +74,19 @@ delim_whitespace : boolean, default False
     .. versionadded:: 0.18.1 support for the Python parser.
 
 header : int or list of ints, default 'infer'
-    Row number(s) to use as the column names, and the start of the data.
-    Default behavior is as if set to 0 if no ``names`` passed, otherwise
-    ``None``. Explicitly pass ``header=0`` to be able to replace existing
-    names. The header can be a list of integers that specify row locations for
-    a multi-index on the columns e.g. [0,1,3]. Intervening rows that are not
-    specified will be skipped (e.g. 2 in this example is skipped). Note that
-    this parameter ignores commented lines and empty lines if
-    ``skip_blank_lines=True``, so header=0 denotes the first line of data
-    rather than the first line of the file.
+    Row number(s) to use as the column names, and the start of the
+    data.  Default behavior is to infer the column names: if no names
+    are passed the behavior is identical to ``header=0`` and column
+    names are inferred from the first line of the file, if column
+    names are passed explicitly then the behavior is identical to
+    ``header=None``. Explicitly pass ``header=0`` to be able to
+    replace existing names. The header can be a list of integers that
+    specify row locations for a multi-index on the columns
+    e.g. [0,1,3]. Intervening rows that are not specified will be
+    skipped (e.g. 2 in this example is skipped). Note that this
+    parameter ignores commented lines and empty lines if
+    ``skip_blank_lines=True``, so header=0 denotes the first line of
+    data rather than the first line of the file.
 names : array-like, default None
     List of column names to use. If file contains no header row, then you
     should explicitly pass header=None. Duplicates in this list will cause
@@ -1231,6 +1235,8 @@ class ParserBase(object):
 
         self.na_values = kwds.get('na_values')
         self.na_fvalues = kwds.get('na_fvalues')
+        self.na_filter = kwds.get('na_filter', False)
+
         self.true_values = kwds.get('true_values')
         self.false_values = kwds.get('false_values')
         self.as_recarray = kwds.get('as_recarray', False)
@@ -1404,7 +1410,6 @@ class ParserBase(object):
         elif not self._has_complex_date_col:
             index = self._get_simple_index(alldata, columns)
             index = self._agg_index(index)
-
         elif self._has_complex_date_col:
             if not self._name_processed:
                 (self.index_names, _,
@@ -1487,8 +1492,12 @@ class ParserBase(object):
             if (try_parse_dates and self._should_parse_dates(i)):
                 arr = self._date_conv(arr)
 
-            col_na_values = self.na_values
-            col_na_fvalues = self.na_fvalues
+            if self.na_filter:
+                col_na_values = self.na_values
+                col_na_fvalues = self.na_fvalues
+            else:
+                col_na_values = set()
+                col_na_fvalues = set()
 
             if isinstance(self.na_values, dict):
                 col_name = self.index_names[i]
@@ -1671,7 +1680,9 @@ class CParserWrapper(ParserBase):
 
         ParserBase.__init__(self, kwds)
 
-        if 'utf-16' in (kwds.get('encoding') or ''):
+        if (kwds.get('compression') is None and
+           'utf-16' in (kwds.get('encoding') or '')):
+            # if source is utf-16 plain text, convert source to utf-8
             if isinstance(src, compat.string_types):
                 src = open(src, 'rb')
                 self.handles.append(src)
@@ -2040,8 +2051,6 @@ class PythonParser(ParserBase):
         self.error_bad_lines = kwds['error_bad_lines']
 
         self.names_passed = kwds['names'] or None
-
-        self.na_filter = kwds['na_filter']
 
         self.has_index_names = False
         if 'has_index_names' in kwds:

@@ -2491,6 +2491,14 @@ class TestMomentsConsistency(Base):
         self._check_pairwise_moment('rolling', 'corr', window=10,
                                     min_periods=5)
 
+    @pytest.mark.parametrize('window', range(7))
+    def test_rolling_corr_with_zero_variance(self, window):
+        # GH 18430
+        s = pd.Series(np.zeros(20))
+        other = pd.Series(np.arange(20))
+
+        assert s.rolling(window=window).corr(other=other).isna().all()
+
     def _check_pairwise_moment(self, dispatch, name, **kwargs):
         def get_result(obj, obj2=None):
             return getattr(getattr(obj, dispatch)(**kwargs), name)(obj2)
@@ -2978,6 +2986,16 @@ class TestMomentsConsistency(Base):
         expected = Series([np.NaN, np.NaN, np.NaN, 1.224307, 2.671499])
         x = d.rolling(window=4).kurt()
         tm.assert_series_equal(expected, x)
+
+    def test_rolling_skew_eq_value_fperr(self):
+        # #18804 all rolling skew for all equal values should return Nan
+        a = pd.Series([1.1] * 15).rolling(window=10).skew()
+        assert np.isnan(a).all()
+
+    def test_rolling_kurt_eq_value_fperr(self):
+        # #18804 all rolling kurt for all equal values should return Nan
+        a = pd.Series([1.1] * 15).rolling(window=10).kurt()
+        assert np.isnan(a).all()
 
     def _check_expanding_ndarray(self, func, static_comp, has_min_periods=True,
                                  has_time_rule=True, preserve_nan=True):

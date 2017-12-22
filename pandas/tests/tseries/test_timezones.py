@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, tzinfo, date
 
 import pandas.util.testing as tm
 import pandas.tseries.offsets as offsets
-from pandas.compat import lrange, zip
+from pandas.compat import lrange, zip, PY3
 from pandas.core.indexes.datetimes import bdate_range, date_range
 from pandas.core.dtypes.dtypes import DatetimeTZDtype
 from pandas._libs import tslib
@@ -70,7 +70,7 @@ class TestTimeZoneSupportPytz(object):
         rng_eastern = rng.tz_convert(self.tzstr('US/Eastern'))
 
         # Values are unmodified
-        assert np.array_equal(rng.asi8, rng_eastern.asi8)
+        tm.assert_numpy_array_equal(rng.asi8, rng_eastern.asi8)
 
         assert self.cmptz(rng_eastern.tz, self.tz('US/Eastern'))
 
@@ -108,7 +108,7 @@ class TestTimeZoneSupportPytz(object):
         rng = date_range('3/10/2012', '3/11/2012', freq='30T')
         converted = rng.tz_localize(self.tz('US/Eastern'))
         expected_naive = rng + offsets.Hour(5)
-        assert np.array_equal(converted.asi8, expected_naive.asi8)
+        tm.assert_numpy_array_equal(converted.asi8, expected_naive.asi8)
 
         # DST ambiguity, this should fail
         rng = date_range('3/11/2012', '3/12/2012', freq='30T')
@@ -424,7 +424,7 @@ class TestTimeZoneSupportPytz(object):
 
         # datetimes with tzinfo set
         dr = bdate_range(datetime(2005, 1, 1, tzinfo=pytz.utc),
-                         '1/1/2009', tz=pytz.utc)
+                         datetime(2009, 1, 1, tzinfo=pytz.utc))
 
         pytest.raises(Exception, bdate_range,
                       datetime(2005, 1, 1, tzinfo=pytz.utc), '1/1/2009',
@@ -1278,16 +1278,22 @@ class TestTimeZones(object):
         result_dt = dt.replace(tzinfo=tzinfo)
         result_pd = Timestamp(dt).replace(tzinfo=tzinfo)
 
-        if hasattr(result_dt, 'timestamp'):  # New method in Py 3.3
-            assert result_dt.timestamp() == result_pd.timestamp()
+        if PY3:
+            # datetime.timestamp() converts in the local timezone
+            with tm.set_timezone('UTC'):
+                assert result_dt.timestamp() == result_pd.timestamp()
+
         assert result_dt == result_pd
         assert result_dt == result_pd.to_pydatetime()
 
         result_dt = dt.replace(tzinfo=tzinfo).replace(tzinfo=None)
         result_pd = Timestamp(dt).replace(tzinfo=tzinfo).replace(tzinfo=None)
 
-        if hasattr(result_dt, 'timestamp'):  # New method in Py 3.3
-            assert result_dt.timestamp() == result_pd.timestamp()
+        if PY3:
+            # datetime.timestamp() converts in the local timezone
+            with tm.set_timezone('UTC'):
+                assert result_dt.timestamp() == result_pd.timestamp()
+
         assert result_dt == result_pd
         assert result_dt == result_pd.to_pydatetime()
 

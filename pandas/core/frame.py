@@ -997,7 +997,7 @@ class DataFrame(NDFrame):
                           for k, v in compat.iteritems(self))
         elif orient.lower().startswith('r'):
             return [into_c((k, _maybe_box_datetimelike(v))
-                           for k, v in zip(self.columns, row))
+                           for k, v in zip(self.columns, np.atleast_1d(row)))
                     for row in self.values]
         elif orient.lower().startswith('i'):
             return into_c((k, v.to_dict(into)) for k, v in self.iterrows())
@@ -3751,7 +3751,7 @@ class DataFrame(NDFrame):
             Number of items to retrieve
         columns : list or str
             Column name or names to order by
-        keep : {'first', 'last', False}, default 'first'
+        keep : {'first', 'last'}, default 'first'
             Where there are duplicate values:
             - ``first`` : take the first occurrence.
             - ``last`` : take the last occurrence.
@@ -3788,7 +3788,7 @@ class DataFrame(NDFrame):
             Number of items to retrieve
         columns : list or str
             Column name or names to order by
-        keep : {'first', 'last', False}, default 'first'
+        keep : {'first', 'last'}, default 'first'
             Where there are duplicate values:
             - ``first`` : take the first occurrence.
             - ``last`` : take the last occurrence.
@@ -4035,6 +4035,8 @@ class DataFrame(NDFrame):
         ----------
         other : DataFrame
         func : function
+            Function that takes two series as inputs and return a Series or a
+            scalar
         fill_value : scalar value
         overwrite : boolean, default True
             If True then overwrite values for common keys in the calling frame
@@ -4042,8 +4044,21 @@ class DataFrame(NDFrame):
         Returns
         -------
         result : DataFrame
-        """
 
+        Examples
+        --------
+        >>> df1 = DataFrame({'A': [0, 0], 'B': [4, 4]})
+        >>> df2 = DataFrame({'A': [1, 1], 'B': [3, 3]})
+        >>> df1.combine(df2, lambda s1, s2: s1 if s1.sum() < s2.sum() else s2)
+           A  B
+        0  0  3
+        1  0  3
+
+        See Also
+        --------
+        DataFrame.combine_first : Combine two DataFrame objects and default to
+            non-null values in frame calling the method
+        """
         other_idxlen = len(other.index)  # save for compare
 
         this, other = self.align(other, copy=False)
@@ -4131,16 +4146,24 @@ class DataFrame(NDFrame):
         ----------
         other : DataFrame
 
-        Examples
-        --------
-        a's values prioritized, use values from b to fill holes:
-
-        >>> a.combine_first(b)
-
-
         Returns
         -------
         combined : DataFrame
+
+        Examples
+        --------
+        df1's values prioritized, use values from df2 to fill holes:
+
+        >>> df1 = pd.DataFrame([[1, np.nan]])
+        >>> df2 = pd.DataFrame([[3, 4]])
+        >>> df1.combine_first(df2)
+           0    1
+        0  1  4.0
+
+        See Also
+        --------
+        DataFrame.combine : Perform series-wise operation on two DataFrames
+            using a given function
         """
         import pandas.core.computation.expressions as expressions
 
@@ -4283,7 +4306,7 @@ class DataFrame(NDFrame):
         return valid_indices[0] if len(valid_indices) else None
 
     @Appender(_shared_docs['valid_index'] % {
-        'position': 'first', 'klass': 'DataFrame'})
+        'position': 'last', 'klass': 'DataFrame'})
     def last_valid_index(self):
         if len(self) == 0:
             return None
@@ -5113,7 +5136,7 @@ class DataFrame(NDFrame):
 
         >>> df = pd.DataFrame(columns=['A'])
         >>> for i in range(5):
-        ...     df = df.append({'A'}: i}, ignore_index=True)
+        ...     df = df.append({'A': i}, ignore_index=True)
         >>> df
            A
         0  0
@@ -5790,7 +5813,12 @@ class DataFrame(NDFrame):
             0 or 'index' for row-wise, 1 or 'columns' for column-wise
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result
-            will be NA
+            will be NA.
+
+        Raises
+        ------
+        ValueError
+            * If the row/column is empty
 
         Returns
         -------
@@ -5821,7 +5849,12 @@ class DataFrame(NDFrame):
             0 or 'index' for row-wise, 1 or 'columns' for column-wise
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result
-            will be first index.
+            will be NA.
+
+        Raises
+        ------
+        ValueError
+            * If the row/column is empty
 
         Returns
         -------

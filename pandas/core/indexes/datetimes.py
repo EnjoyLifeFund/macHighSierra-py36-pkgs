@@ -2,9 +2,11 @@
 from __future__ import division
 import operator
 import warnings
-from datetime import time, datetime
-from datetime import timedelta
+from datetime import time, datetime, timedelta
+
 import numpy as np
+from pytz import utc
+
 from pandas.core.base import _shared_docs
 
 from pandas.core.dtypes.common import (
@@ -29,6 +31,7 @@ from pandas.core.dtypes.missing import isna
 import pandas.core.dtypes.concat as _concat
 from pandas.errors import PerformanceWarning
 from pandas.core.common import _values_from_object, _maybe_box
+from pandas.core.algorithms import checked_add_with_arr
 
 from pandas.core.indexes.base import Index, _index_shared_docs
 from pandas.core.indexes.numeric import Int64Index, Float64Index
@@ -55,10 +58,6 @@ from pandas._libs import (lib, index as libindex, tslib as libts,
 from pandas._libs.tslibs import timezones
 
 
-def _utc():
-    import pytz
-    return pytz.utc
-
 # -------- some conversion wrapper functions
 
 
@@ -66,7 +65,6 @@ def _field_accessor(name, field, docstring=None):
     def f(self):
         values = self.asi8
         if self.tz is not None:
-            utc = _utc()
             if self.tz is not utc:
                 values = self._local_timestamps()
 
@@ -451,7 +449,7 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
 
         try:
             inferred_tz = timezones.infer_tzinfo(start, end)
-        except:
+        except Exception:
             raise TypeError('Start and end cannot both be tz-aware with '
                             'different timezones')
 
@@ -562,8 +560,6 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
         raise ValueError('Passed item and index have different timezone')
 
     def _local_timestamps(self):
-        utc = _utc()
-
         if self.is_monotonic:
             return libts.tz_convert(self.asi8, utc, self.tz)
         else:
@@ -767,7 +763,7 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
                 raise TypeError("DatetimeIndex subtraction must have the same "
                                 "timezones or no timezones")
             result = self._sub_datelike_dti(other)
-        elif isinstance(other, datetime):
+        elif isinstance(other, (datetime, np.datetime64)):
             other = Timestamp(other)
             if other is libts.NaT:
                 result = self._nat_new(box=False)
@@ -777,7 +773,8 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
                                 "timezones or no timezones")
             else:
                 i8 = self.asi8
-                result = i8 - other.value
+                result = checked_add_with_arr(i8, -other.value,
+                                              arr_mask=self._isnan)
                 result = self._maybe_mask_results(result,
                                                   fill_value=libts.iNaT)
         else:
@@ -823,7 +820,6 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
 
         tz = 'UTC' if self.tz is not None else None
         result = DatetimeIndex(new_values, tz=tz, name=name, freq='infer')
-        utc = _utc()
         if self.tz is not None and self.tz is not utc:
             result = result.tz_convert(self.tz)
         return result
@@ -877,7 +873,6 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
         raise ValueError('Cannot cast DatetimeIndex to dtype %s' % dtype)
 
     def _get_time_micros(self):
-        utc = _utc()
         values = self.asi8
         if self.tz is not None and self.tz is not utc:
             values = self._local_timestamps()
@@ -1183,12 +1178,12 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
 
         # convert in chunks of 10k for efficiency
         data = self.asi8
-        l = len(self)
+        length = len(self)
         chunksize = 10000
-        chunks = int(l / chunksize) + 1
+        chunks = int(length / chunksize) + 1
         for i in range(chunks):
             start_i = i * chunksize
-            end_i = min((i + 1) * chunksize, l)
+            end_i = min((i + 1) * chunksize, length)
             converted = libts.ints_to_pydatetime(data[start_i:end_i],
                                                  tz=self.tz, freq=self.freq,
                                                  box=True)

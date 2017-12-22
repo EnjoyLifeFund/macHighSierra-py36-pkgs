@@ -10,7 +10,7 @@ from numpy import nan
 
 from pandas import (date_range, bdate_range, Timestamp,
                     Index, MultiIndex, DataFrame, Series,
-                    concat, Panel, DatetimeIndex)
+                    concat, Panel, DatetimeIndex, CategoricalIndex)
 from pandas.errors import UnsupportedFunctionCall, PerformanceWarning
 from pandas.util.testing import (assert_panel_equal, assert_frame_equal,
                                  assert_series_equal, assert_almost_equal,
@@ -26,6 +26,15 @@ import pandas.core.nanops as nanops
 import pandas.util.testing as tm
 import pandas as pd
 from .common import MixIn
+
+
+class TestGrouper(object):
+
+    def test_repr(self):
+        # GH18203
+        result = repr(pd.Grouper(key='A', level='B'))
+        expected = "Grouper(key='A', level='B', axis=0, sort=False)"
+        assert result == expected
 
 
 class TestGroupBy(MixIn):
@@ -251,6 +260,29 @@ class TestGroupBy(MixIn):
         # Test the reverse grouping order
         result = df_single.groupby([pd.Grouper(level='inner'), 'B']).mean()
         expected = df_single.reset_index().groupby(['inner', 'B']).mean()
+        assert_frame_equal(result, expected)
+
+    def test_groupby_categorical_index_and_columns(self):
+        # GH18432
+        columns = ['A', 'B', 'A', 'B']
+        categories = ['B', 'A']
+        data = np.ones((5, 4), int)
+        cat_columns = CategoricalIndex(columns,
+                                       categories=categories,
+                                       ordered=True)
+        df = DataFrame(data=data, columns=cat_columns)
+        result = df.groupby(axis=1, level=0).sum()
+        expected_data = 2 * np.ones((5, 2), int)
+        expected_columns = CategoricalIndex(categories,
+                                            categories=categories,
+                                            ordered=True)
+        expected = DataFrame(data=expected_data, columns=expected_columns)
+        assert_frame_equal(result, expected)
+
+        # test transposed version
+        df = DataFrame(data.T, index=cat_columns)
+        result = df.groupby(axis=0, level=0).sum()
+        expected = DataFrame(data=expected_data.T, index=expected_columns)
         assert_frame_equal(result, expected)
 
     def test_grouper_getting_correct_binner(self):

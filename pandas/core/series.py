@@ -597,7 +597,7 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
                 return values[i]
         except IndexError:
             raise
-        except:
+        except Exception:
             if isinstance(i, slice):
                 indexer = self.index._convert_slice_indexer(i, kind='iloc')
                 return self._get_values(indexer)
@@ -675,7 +675,7 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
             if isinstance(key, tuple):
                 try:
                     return self._get_values_tuple(key)
-                except:
+                except Exception:
                     if len(key) == 1:
                         key = key[0]
                         if isinstance(key, slice):
@@ -818,7 +818,7 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
             if not isinstance(key, (list, Series, np.ndarray, Series)):
                 try:
                     key = list(key)
-                except:
+                except Exception:
                     key = [key]
 
             if isinstance(key, Index):
@@ -1306,7 +1306,13 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         Parameters
         ----------
         skipna : boolean, default True
-            Exclude NA/null values
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Raises
+        ------
+        ValueError
+            * If the Series is empty
 
         Returns
         -------
@@ -1336,7 +1342,13 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         Parameters
         ----------
         skipna : boolean, default True
-            Exclude NA/null values
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Raises
+        ------
+        ValueError
+            * If the Series is empty
 
         Returns
         -------
@@ -1731,11 +1743,26 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         ----------
         other : Series or scalar value
         func : function
+            Function that takes two scalars as inputs and return a scalar
         fill_value : scalar value
 
         Returns
         -------
         result : Series
+
+        Examples
+        --------
+        >>> s1 = Series([1, 2])
+        >>> s2 = Series([0, 3])
+        >>> s1.combine(s2, lambda x1, x2: x1 if x1 < x2 else x2)
+        0    0
+        1    2
+        dtype: int64
+
+        See Also
+        --------
+        Series.combine_first : Combine Series values, choosing the calling
+            Series's values first
         """
         if isinstance(other, Series):
             new_index = self.index.union(other.index)
@@ -1764,7 +1791,21 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
 
         Returns
         -------
-        y : Series
+        combined : Series
+
+        Examples
+        --------
+        >>> s1 = pd.Series([1, np.nan])
+        >>> s2 = pd.Series([3, 4])
+        >>> s1.combine_first(s2)
+        0    1.0
+        1    4.0
+        dtype: float64
+
+        See Also
+        --------
+        Series.combine : Perform elementwise operation on two Series
+            using a given function
         """
         new_index = self.index.union(other.index)
         this = self.reindex(new_index, copy=False)
@@ -1982,7 +2023,7 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         ----------
         n : int
             Return this many descending sorted values
-        keep : {'first', 'last', False}, default 'first'
+        keep : {'first', 'last'}, default 'first'
             Where there are duplicate values:
             - ``first`` : take the first occurrence.
             - ``last`` : take the last occurrence.
@@ -2029,7 +2070,7 @@ class Series(base.IndexOpsMixin, generic.NDFrame):
         ----------
         n : int
             Return this many ascending sorted values
-        keep : {'first', 'last', False}, default 'first'
+        keep : {'first', 'last'}, default 'first'
             Where there are duplicate values:
             - ``first`` : take the first occurrence.
             - ``last`` : take the last occurrence.

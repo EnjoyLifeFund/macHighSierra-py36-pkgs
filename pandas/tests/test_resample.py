@@ -2729,6 +2729,34 @@ class TestPeriodIndex(Base):
         # it works!
         df.resample('W-MON', closed='left', label='left').first()
 
+    def test_resample_with_dst_time_change(self):
+        # GH 15549
+        index = pd.DatetimeIndex([1457537600000000000, 1458059600000000000],
+                                 tz='UTC').tz_convert('America/Chicago')
+        df = pd.DataFrame([1, 2], index=index)
+        result = df.resample('12h', closed='right',
+                             label='right').last().ffill()
+
+        expected_index_values = ['2016-03-09 12:00:00-06:00',
+                                 '2016-03-10 00:00:00-06:00',
+                                 '2016-03-10 12:00:00-06:00',
+                                 '2016-03-11 00:00:00-06:00',
+                                 '2016-03-11 12:00:00-06:00',
+                                 '2016-03-12 00:00:00-06:00',
+                                 '2016-03-12 12:00:00-06:00',
+                                 '2016-03-13 00:00:00-06:00',
+                                 '2016-03-13 13:00:00-05:00',
+                                 '2016-03-14 01:00:00-05:00',
+                                 '2016-03-14 13:00:00-05:00',
+                                 '2016-03-15 01:00:00-05:00',
+                                 '2016-03-15 13:00:00-05:00']
+        index = pd.DatetimeIndex(expected_index_values,
+                                 tz='UTC').tz_convert('America/Chicago')
+        expected = pd.DataFrame([1.0, 1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 1.0, 1.0, 1.0,
+                                 1.0, 1.0, 2.0], index=index)
+        assert_frame_equal(result, expected)
+
     def test_resample_bms_2752(self):
         # GH2753
         foo = pd.Series(index=pd.bdate_range('20000101', '20000201'))
@@ -3103,6 +3131,26 @@ class TestResamplerGrouper(object):
         result = g.apply(f)
         assert_frame_equal(result, expected)
 
+    def test_apply_with_mutated_index(self):
+        # GH 15169
+        index = pd.date_range('1-1-2015', '12-31-15', freq='D')
+        df = pd.DataFrame(data={'col1': np.random.rand(len(index))},
+                          index=index)
+
+        def f(x):
+            s = pd.Series([1, 2], index=['a', 'b'])
+            return s
+
+        expected = df.groupby(pd.Grouper(freq='M')).apply(f)
+
+        result = df.resample('M').apply(f)
+        assert_frame_equal(result, expected)
+
+        # A case for series
+        expected = df['col1'].groupby(pd.Grouper(freq='M')).apply(f)
+        result = df['col1'].resample('M').apply(f)
+        assert_series_equal(result, expected)
+
     def test_resample_groupby_with_label(self):
         # GH 13235
         index = date_range('2000-01-01', freq='2D', periods=5)
@@ -3380,3 +3428,11 @@ class TestTimeGrouper(object):
 
             # if NaT is included, 'var', 'std', 'mean', 'first','last'
             # and 'nth' doesn't work yet
+
+    def test_repr(self):
+        # GH18203
+        result = repr(TimeGrouper(key='A', freq='H'))
+        expected = ("TimeGrouper(key='A', freq=<Hour>, axis=0, sort=True, "
+                    "closed='left', label='left', how='mean', "
+                    "convention='e', base=0)")
+        assert result == expected
