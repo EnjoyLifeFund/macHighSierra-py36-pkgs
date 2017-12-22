@@ -22,7 +22,7 @@ import time
 import uuid
 
 __author__ = "Anthony Zhang (Uberi)"
-__version__ = "3.7.1"
+__version__ = "3.8.1"
 __license__ = "BSD"
 
 try:  # attempt to use the Python 2 modules
@@ -86,7 +86,7 @@ class Microphone(AudioSource):
                 device_info = audio.get_device_info_by_index(device_index) if device_index is not None else audio.get_default_input_device_info()
                 assert isinstance(device_info.get("defaultSampleRate"), (float, int)) and device_info["defaultSampleRate"] > 0, "Invalid device info returned from PyAudio: {}".format(device_info)
                 sample_rate = int(device_info["defaultSampleRate"])
-        except:
+        except Exception:
             audio.terminate()
             raise
 
@@ -141,7 +141,7 @@ class Microphone(AudioSource):
                     input=True,  # stream is an input stream
                 )
             )
-        except:
+        except Exception:
             self.audio.terminate()
             raise
         return self
@@ -303,6 +303,24 @@ class AudioData(object):
         self.frame_data = frame_data
         self.sample_rate = sample_rate
         self.sample_width = int(sample_width)
+
+    def get_segment(self, start_ms=None, end_ms=None):
+        """
+        Returns a new ``AudioData`` instance, trimmed to a given time interval. In other words, an ``AudioData`` instance with the same audio data except starting at ``start_ms`` milliseconds in and ending ``end_ms`` milliseconds in.
+
+        If not specified, ``start_ms`` defaults to the beginning of the audio, and ``end_ms`` defaults to the end.
+        """
+        assert start_ms is None or start_ms >= 0, "``start_ms`` must be a non-negative number"
+        assert end_ms is None or end_ms >= (0 if start_ms is None else start_ms), "``end_ms`` must be a non-negative number greater or equal to ``start_ms``"
+        if start_ms is None:
+            start_byte = 0
+        else:
+            start_byte = int((start_ms * self.sample_rate * self.sample_width) // 1000)
+        if end_ms is None:
+            end_byte = len(self.frame_data)
+        else:
+            end_byte = int((end_ms * self.sample_rate * self.sample_width) // 1000)
+        return AudioData(self.frame_data[start_byte:end_byte], self.sample_rate, self.sample_width)
 
     def get_raw_data(self, convert_rate=None, convert_width=None):
         """
@@ -516,7 +534,49 @@ class Recognizer(AudioSource):
             target_energy = energy * self.dynamic_energy_ratio
             self.energy_threshold = self.energy_threshold * damping + target_energy * (1 - damping)
 
-    def listen(self, source, timeout=None, phrase_time_limit=None):
+    def snowboy_wait_for_hot_word(self, snowboy_location, snowboy_hot_word_files, source, timeout=None):
+        # load snowboy library (NOT THREAD SAFE)
+        sys.path.append(snowboy_location)
+        import snowboydetect
+        sys.path.pop()
+
+        detector = snowboydetect.SnowboyDetect(
+            resource_filename=os.path.join(snowboy_location, "resources", "common.res").encode(),
+            model_str=",".join(snowboy_hot_word_files).encode()
+        )
+        detector.SetAudioGain(1.0)
+        detector.SetSensitivity(",".join(["0.4"] * len(snowboy_hot_word_files)).encode())
+        snowboy_sample_rate = detector.SampleRate()
+
+        elapsed_time = 0
+        seconds_per_buffer = float(source.CHUNK) / source.SAMPLE_RATE
+        resampling_state = None
+
+        # buffers capable of holding 5 seconds of original and resampled audio
+        five_seconds_buffer_count = int(math.ceil(5 / seconds_per_buffer))
+        frames = collections.deque(maxlen=five_seconds_buffer_count)
+        resampled_frames = collections.deque(maxlen=five_seconds_buffer_count)
+        while True:
+            elapsed_time += seconds_per_buffer
+            if timeout and elapsed_time > timeout:
+                raise WaitTimeoutError("listening timed out while waiting for hotword to be said")
+
+            buffer = source.stream.read(source.CHUNK)
+            if len(buffer) == 0: break  # reached end of the stream
+            frames.append(buffer)
+
+            # resample audio to the required sample rate
+            resampled_buffer, resampling_state = audioop.ratecv(buffer, source.SAMPLE_WIDTH, 1, source.SAMPLE_RATE, snowboy_sample_rate, resampling_state)
+            resampled_frames.append(resampled_buffer)
+
+            # run Snowboy on the resampled audio
+            snowboy_result = detector.RunDetection(b"".join(resampled_frames))
+            assert snowboy_result != -1, "Error initializing streams or reading audio data"
+            if snowboy_result > 0: break  # wake word found
+
+        return b"".join(frames), elapsed_time
+
+    def listen(self, source, timeout=None, phrase_time_limit=None, snowboy_configuration=None):
         """
         Records a single phrase from ``source`` (an ``AudioSource`` instance) into an ``AudioData`` instance, which it returns.
 
@@ -526,13 +586,19 @@ class Recognizer(AudioSource):
 
         The ``phrase_time_limit`` parameter is the maximum number of seconds that this will allow a phrase to continue before stopping and returning the part of the phrase processed before the time limit was reached. The resulting audio will be the phrase cut off at the time limit. If ``phrase_timeout`` is ``None``, there will be no phrase time limit.
 
-        This operation will always complete within ``timeout + phrase_timeout`` seconds if both are numbers, either by returning the audio data, or by raising an exception.
+        The ``snowboy_configuration`` parameter allows integration with `Snowboy <https://snowboy.kitt.ai/>`__, an offline, high-accuracy, power-efficient hotword recognition engine. When used, this function will pause until Snowboy detects a hotword, after which it will unpause. This parameter should either be ``None`` to turn off Snowboy support, or a tuple of the form ``(SNOWBOY_LOCATION, LIST_OF_HOT_WORD_FILES)``, where ``SNOWBOY_LOCATION`` is the path to the Snowboy root directory, and ``LIST_OF_HOT_WORD_FILES`` is a list of paths to Snowboy hotword configuration files (`*.pmdl` or `*.umdl` format).
+
+        This operation will always complete within ``timeout + phrase_timeout`` seconds if both are numbers, either by returning the audio data, or by raising a ``speech_recognition.WaitTimeoutError`` exception.
         """
         assert isinstance(source, AudioSource), "Source must be an audio source"
         assert source.stream is not None, "Audio source must be entered before listening, see documentation for ``AudioSource``; are you using ``source`` outside of a ``with`` statement?"
         assert self.pause_threshold >= self.non_speaking_duration >= 0
+        if snowboy_configuration is not None:
+            assert os.path.isfile(os.path.join(snowboy_configuration[0], "snowboydetect.py")), "``snowboy_configuration[0]`` must be a Snowboy root directory containing ``snowboydetect.py``"
+            for hot_word_file in snowboy_configuration[1]:
+                assert os.path.isfile(hot_word_file), "``snowboy_configuration[1]`` must be a list of Snowboy hot word configuration files"
 
-        seconds_per_buffer = (source.CHUNK + 0.0) / source.SAMPLE_RATE
+        seconds_per_buffer = float(source.CHUNK) / source.SAMPLE_RATE
         pause_buffer_count = int(math.ceil(self.pause_threshold / seconds_per_buffer))  # number of buffers of non-speaking audio during a phrase, before the phrase should be considered complete
         phrase_buffer_count = int(math.ceil(self.phrase_threshold / seconds_per_buffer))  # minimum number of buffers of speaking audio before we consider the speaking audio a phrase
         non_speaking_buffer_count = int(math.ceil(self.non_speaking_duration / seconds_per_buffer))  # maximum number of buffers of non-speaking audio to retain before and after a phrase
@@ -543,28 +609,36 @@ class Recognizer(AudioSource):
         while True:
             frames = collections.deque()
 
-            # store audio input until the phrase starts
-            while True:
-                # handle waiting too long for phrase by raising an exception
-                elapsed_time += seconds_per_buffer
-                if timeout and elapsed_time > timeout:
-                    raise WaitTimeoutError("listening timed out while waiting for phrase to start")
+            if snowboy_configuration is None:
+                # store audio input until the phrase starts
+                while True:
+                    # handle waiting too long for phrase by raising an exception
+                    elapsed_time += seconds_per_buffer
+                    if timeout and elapsed_time > timeout:
+                        raise WaitTimeoutError("listening timed out while waiting for phrase to start")
 
-                buffer = source.stream.read(source.CHUNK)
+                    buffer = source.stream.read(source.CHUNK)
+                    if len(buffer) == 0: break  # reached end of the stream
+                    frames.append(buffer)
+                    if len(frames) > non_speaking_buffer_count:  # ensure we only keep the needed amount of non-speaking buffers
+                        frames.popleft()
+
+                    # detect whether speaking has started on audio input
+                    energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # energy of the audio signal
+                    if energy > self.energy_threshold: break
+
+                    # dynamically adjust the energy threshold using asymmetric weighted average
+                    if self.dynamic_energy_threshold:
+                        damping = self.dynamic_energy_adjustment_damping ** seconds_per_buffer  # account for different chunk sizes and rates
+                        target_energy = energy * self.dynamic_energy_ratio
+                        self.energy_threshold = self.energy_threshold * damping + target_energy * (1 - damping)
+            else:
+                # read audio input until the hotword is said
+                snowboy_location, snowboy_hot_word_files = snowboy_configuration
+                buffer, delta_time = self.snowboy_wait_for_hot_word(snowboy_location, snowboy_hot_word_files, source, timeout)
+                elapsed_time += delta_time
                 if len(buffer) == 0: break  # reached end of the stream
                 frames.append(buffer)
-                if len(frames) > non_speaking_buffer_count:  # ensure we only keep the needed amount of non-speaking buffers
-                    frames.popleft()
-
-                # detect whether speaking has started on audio input
-                energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # energy of the audio signal
-                if energy > self.energy_threshold: break
-
-                # dynamically adjust the energy threshold using asymmetric weighted average
-                if self.dynamic_energy_threshold:
-                    damping = self.dynamic_energy_adjustment_damping ** seconds_per_buffer  # account for different chunk sizes and rates
-                    target_energy = energy * self.dynamic_energy_ratio
-                    self.energy_threshold = self.energy_threshold * damping + target_energy * (1 - damping)
 
             # read audio input until the phrase ends
             pause_count, phrase_count = 0, 0
@@ -595,7 +669,7 @@ class Recognizer(AudioSource):
 
         # obtain frame data
         for i in range(pause_count - non_speaking_buffer_count): frames.pop()  # remove extra non-speaking frames at the end
-        frame_data = b"".join(list(frames))
+        frame_data = b"".join(frames)
 
         return AudioData(frame_data, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
 
@@ -603,7 +677,7 @@ class Recognizer(AudioSource):
         """
         Spawns a thread to repeatedly record phrases from ``source`` (an ``AudioSource`` instance) into an ``AudioData`` instance and call ``callback`` with that ``AudioData`` instance as soon as each phrase are detected.
 
-        Returns a function object that, when called, requests that the background listener thread stop, and waits until it does before returning. The background thread is a daemon and will not stop the program from exiting if there are no other non-daemon threads.
+        Returns a function object that, when called, requests that the background listener thread stop. The background thread is a daemon and will not stop the program from exiting if there are no other non-daemon threads. The function accepts one parameter, ``wait_for_stop``: if truthy, the function will wait for the background listener to stop before returning, otherwise it will return immediately and the background listener thread might still be running for a second or two afterwards. Additionally, if you are using a truthy value for ``wait_for_stop``, you must call the function from the same thread you originally called ``listen_in_background`` from.
 
         Phrase recognition uses the exact same mechanism as ``recognizer_instance.listen(source)``. The ``phrase_time_limit`` parameter works in the same way as the ``phrase_time_limit`` parameter for ``recognizer_instance.listen(source)``, as well.
 
@@ -622,9 +696,10 @@ class Recognizer(AudioSource):
                     else:
                         if running[0]: callback(self, audio)
 
-        def stopper():
+        def stopper(wait_for_stop=True):
             running[0] = False
-            listener_thread.join()  # block until the background thread is done, which can be up to 1 second
+            if wait_for_stop:
+                listener_thread.join()  # block until the background thread is done, which can take around 1 second
 
         listener_thread = threading.Thread(target=threaded_listen)
         listener_thread.daemon = True
@@ -635,7 +710,7 @@ class Recognizer(AudioSource):
         """
         Performs speech recognition on ``audio_data`` (an ``AudioData`` instance), using CMU Sphinx.
 
-        The recognition language is determined by ``language``, an RFC5646 language tag like ``"en-US"`` or ``"en-GB"``, defaulting to US English. Out of the box, only ``en-US`` is supported. See `Notes on using `PocketSphinx <https://github.com/Uberi/speech_recognition/blob/master/reference/pocketsphinx.rst>`__ for information about installing other languages. This document is also included under ``reference/pocketsphinx.rst``.
+        The recognition language is determined by ``language``, an RFC5646 language tag like ``"en-US"`` or ``"en-GB"``, defaulting to US English. Out of the box, only ``en-US`` is supported. See `Notes on using `PocketSphinx <https://github.com/Uberi/speech_recognition/blob/master/reference/pocketsphinx.rst>`__ for information about installing other languages. This document is also included under ``reference/pocketsphinx.rst``. The ``language`` parameter can also be a tuple of filesystem paths, of the form ``(acoustic_parameters_directory, language_model_file, phoneme_dictionary_file)`` - this allows you to load arbitrary Sphinx models.
 
         If specified, the keywords to search for are determined by ``keyword_entries``, an iterable of tuples of the form ``(keyword, sensitivity)``, where ``keyword`` is a phrase, and ``sensitivity`` is how sensitive to this phrase the recognizer should be, on a scale of 0 (very insensitive, more false negatives) to 1 (very sensitive, more false positives) inclusive. If not specified or ``None``, no keywords are used and Sphinx will simply transcribe whatever words it recognizes. Specifying ``keyword_entries`` is more accurate than just looking for those same keywords in non-keyword-based transcriptions, because Sphinx knows specifically what sounds to look for.
 
@@ -646,7 +721,7 @@ class Recognizer(AudioSource):
         Raises a ``speech_recognition.UnknownValueError`` exception if the speech is unintelligible. Raises a ``speech_recognition.RequestError`` exception if there are any issues with the Sphinx installation.
         """
         assert isinstance(audio_data, AudioData), "``audio_data`` must be audio data"
-        assert isinstance(language, str), "``language`` must be a string"
+        assert isinstance(language, str) or (isinstance(language, tuple) and len(language) == 3), "``language`` must be a string or 3-tuple of Sphinx data file paths of the form ``(acoustic_parameters, language_model, phoneme_dictionary)``"
         assert keyword_entries is None or all(isinstance(keyword, (type(""), type(u""))) and 0 <= sensitivity <= 1 for keyword, sensitivity in keyword_entries), "``keyword_entries`` must be ``None`` or a list of pairs of strings and numbers between 0 and 1"
 
         # import the PocketSphinx speech recognition module
@@ -660,16 +735,19 @@ class Recognizer(AudioSource):
         if not hasattr(pocketsphinx, "Decoder") or not hasattr(pocketsphinx.Decoder, "default_config"):
             raise RequestError("outdated PocketSphinx installation; ensure you have PocketSphinx version 0.0.9 or better.")
 
-        language_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pocketsphinx-data", language)
-        if not os.path.isdir(language_directory):
-            raise RequestError("missing PocketSphinx language data directory: \"{}\"".format(language_directory))
-        acoustic_parameters_directory = os.path.join(language_directory, "acoustic-model")
+        if isinstance(language, str):  # directory containing language data
+            language_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pocketsphinx-data", language)
+            if not os.path.isdir(language_directory):
+                raise RequestError("missing PocketSphinx language data directory: \"{}\"".format(language_directory))
+            acoustic_parameters_directory = os.path.join(language_directory, "acoustic-model")
+            language_model_file = os.path.join(language_directory, "language-model.lm.bin")
+            phoneme_dictionary_file = os.path.join(language_directory, "pronounciation-dictionary.dict")
+        else:  # 3-tuple of Sphinx data file paths
+            acoustic_parameters_directory, language_model_file, phoneme_dictionary_file = language
         if not os.path.isdir(acoustic_parameters_directory):
             raise RequestError("missing PocketSphinx language model parameters directory: \"{}\"".format(acoustic_parameters_directory))
-        language_model_file = os.path.join(language_directory, "language-model.lm.bin")
         if not os.path.isfile(language_model_file):
             raise RequestError("missing PocketSphinx language model file: \"{}\"".format(language_model_file))
-        phoneme_dictionary_file = os.path.join(language_directory, "pronounciation-dictionary.dict")
         if not os.path.isfile(phoneme_dictionary_file):
             raise RequestError("missing PocketSphinx phoneme dictionary file: \"{}\"".format(phoneme_dictionary_file))
 
@@ -796,7 +874,7 @@ class Recognizer(AudioSource):
 
         The recognition language is determined by ``language``, which is a BCP-47 language tag like ``"en-US"`` (US English). A list of supported language tags can be found in the `Google Cloud Speech API documentation <https://cloud.google.com/speech/docs/languages>`__.
 
-        If ``preferred_phrases`` is a list of phrase strings, those given phrases will be more likely to be recognized over similar-sounding alternatives. This is useful for things like keyword/command recognition or adding new phrases that aren't in Google's vocabulary. Note that the API imposes certain `restrictions on the list of phrase strings <https://cloud.google.com/speech/limits#content>`__.
+        If ``preferred_phrases`` is an iterable of phrase strings, those given phrases will be more likely to be recognized over similar-sounding alternatives. This is useful for things like keyword/command recognition or adding new phrases that aren't in Google's vocabulary. Note that the API imposes certain `restrictions on the list of phrase strings <https://cloud.google.com/speech/limits#content>`__.
 
         Returns the most likely transcription if ``show_all`` is False (the default). Otherwise, returns the raw API response as a JSON dictionary.
 
@@ -805,11 +883,11 @@ class Recognizer(AudioSource):
         assert isinstance(audio_data, AudioData), "``audio_data`` must be audio data"
         if credentials_json is not None:
             try: json.loads(credentials_json)
-            except: raise AssertionError("``credentials_json`` must be ``None`` or a valid JSON string")
+            except Exception: raise AssertionError("``credentials_json`` must be ``None`` or a valid JSON string")
         assert isinstance(language, str), "``language`` must be a string"
         assert preferred_phrases is None or all(isinstance(preferred_phrases, (type(""), type(u""))) for preferred_phrases in preferred_phrases), "``preferred_phrases`` must be a list of strings"
 
-        # See https://cloud.google.com/speech/reference/rest/v1beta1/RecognitionConfig
+        # See https://cloud.google.com/speech/reference/rest/v1/RecognitionConfig
         flac_data = audio_data.get_flac_data(
             convert_rate=None if 8000 <= audio_data.sample_rate <= 48000 else max(8000, min(audio_data.sample_rate, 48000)),  # audio sample rate must be between 8 kHz and 48 kHz inclusive - clamp sample rate into this range
             convert_width=2  # audio samples must be 16-bit
@@ -820,6 +898,14 @@ class Recognizer(AudioSource):
             from googleapiclient.discovery import build
             import googleapiclient.errors
 
+            # cannot simply use 'http = httplib2.Http(timeout=self.operation_timeout)'
+            # because discovery.build() says 'Arguments http and credentials are mutually exclusive'
+            import socket
+            import googleapiclient.http
+            if self.operation_timeout and socket.getdefaulttimeout() is None:
+                # override constant (used by googleapiclient.http.build_http())
+                googleapiclient.http.DEFAULT_HTTP_TIMEOUT_SEC = self.operation_timeout
+
             if credentials_json is None:
                 api_credentials = GoogleCredentials.get_application_default()
             else:
@@ -829,15 +915,16 @@ class Recognizer(AudioSource):
                     f.flush()
                     api_credentials = GoogleCredentials.from_stream(f.name)
 
-            speech_service = build("speech", "v1beta1", credentials=api_credentials, cache_discovery=False)
+            speech_service = build("speech", "v1", credentials=api_credentials, cache_discovery=False)
         except ImportError:
             raise RequestError("missing google-api-python-client module: ensure that google-api-python-client is set up correctly.")
 
-        if preferred_phrases is None:
-            speech_config = {"encoding": "FLAC", "sampleRate": audio_data.sample_rate, "languageCode": language}
-        else:
-            speech_config = {"encoding": "FLAC", "sampleRate": audio_data.sample_rate, "languageCode": language, "speechContext": {"phrases": preferred_phrases}}
-        request = speech_service.speech().syncrecognize(body={"audio": {"content": base64.b64encode(flac_data).decode("utf8")}, "config": speech_config})
+        speech_config = {"encoding": "FLAC", "sampleRateHertz": audio_data.sample_rate, "languageCode": language}
+        if preferred_phrases is not None:
+            speech_config["speechContext"] = {"phrases": preferred_phrases}
+        if show_all:
+            speech_config["enableWordTimeOffsets"] = True  # some useful extra options for when we want all the output
+        request = speech_service.speech().recognize(body={"audio": {"content": base64.b64encode(flac_data).decode("utf8")}, "config": speech_config})
 
         try:
             response = request.execute()
@@ -932,11 +1019,11 @@ class Recognizer(AudioSource):
                 start_time = monotonic()
 
             try:
-                credential_response = urlopen(credential_request, timeout=self.operation_timeout)
+                credential_response = urlopen(credential_request, timeout=60)  # credential response can take longer, use longer timeout instead of default one
             except HTTPError as e:
-                raise RequestError("recognition request failed: {}".format(e.reason))
+                raise RequestError("credential request failed: {}".format(e.reason))
             except URLError as e:
-                raise RequestError("recognition connection failed: {}".format(e.reason))
+                raise RequestError("credential connection failed: {}".format(e.reason))
             access_token = credential_response.read().decode("utf-8")
 
             if allow_caching:
@@ -994,7 +1081,7 @@ class Recognizer(AudioSource):
 
         Currently, only English is supported as a recognition language.
 
-        Returns the most likely transcription if ``show_all`` is false (the default). Otherwise, returns a JSON dictionary.
+        Returns the most likely transcription if ``show_all`` is false (the default). Otherwise, returns the raw API response as a JSON dictionary.
 
         Raises a ``speech_recognition.UnknownValueError`` exception if the speech is unintelligible. Raises a ``speech_recognition.RequestError`` exception if the speech recognition operation failed, if the key isn't valid, or if there is no internet connection.
         """
@@ -1110,8 +1197,15 @@ def get_flac_converter():
 
     # mark FLAC converter as executable if possible
     try:
-        stat_info = os.stat(flac_converter)
-        os.chmod(flac_converter, stat_info.st_mode | stat.S_IEXEC)
+        # handle known issue when running on docker:
+        # run executable right after chmod() may result in OSError "Text file busy"
+        # fix: flush FS with sync
+        if not os.access(flac_converter, os.X_OK):
+            stat_info = os.stat(flac_converter)
+            os.chmod(flac_converter, stat_info.st_mode | stat.S_IEXEC)
+            if 'Linux' in platform.system():
+                os.sync() if sys.version_info >= (3, 3) else os.system('sync')
+
     except OSError: pass
 
     return flac_converter

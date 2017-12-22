@@ -239,7 +239,7 @@ __all__ = ["compile", "escape", "findall", "finditer", "fullmatch", "match",
   "U", "UNICODE", "V0", "VERSION0", "V1", "VERSION1", "X", "VERBOSE", "W",
   "WORD", "error", "Regex"]
 
-__version__ = "2.4.130"
+__version__ = "2.4.135"
 
 # --------------------------------------------------------------------
 # Public interface.
@@ -354,7 +354,9 @@ def template(pattern, flags=0):
     return _compile(pattern, flags | TEMPLATE)
 
 def escape(pattern, special_only=True, literal_spaces=False):
-    "Escape all non-alphanumeric characters or special characters in pattern."
+    """Escape a string for use as a literal in a pattern. If special_only is
+    True, escape only special characters, else escape all non-alphanumeric
+    characters. If literal_spaces is True, don't escape spaces."""
     # Convert it to Unicode.
     if isinstance(pattern, bytes):
         p = pattern.decode("latin-1")

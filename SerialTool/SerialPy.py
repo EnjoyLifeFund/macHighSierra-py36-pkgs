@@ -50,7 +50,7 @@ def PrintHelp():
         ====\r\n
         Project main page: https://pypi.python.org/pypi/SerialTool
     """
-    print HelpStr
+    print (HelpStr)
 
 def LoadConfig():
     if len(sys.argv) < 6 and os.path.isfile('/.SerialTool.conf') == False:
@@ -108,16 +108,16 @@ def LoadConfig():
         ConfigArgs["Txtypes"] = sys.argv[6]
         ConfigArgs["Rxtypes"] = sys.argv[7]
 
-    print "Port Info"
-    print "--------"
-    print "Port:" + ConfigArgs["Port"]
-    print "Baudrate:" + ConfigArgs["Baudrate"]
-    print "Databits:" + ConfigArgs["Databits"]
-    print "Parity:" + ConfigArgs["Parity"]
-    print "Stopbits:" + ConfigArgs["Stopbits"]
-    print "Txtypes:" + ConfigArgs["Txtypes"]
-    print "Rxtypes:" + ConfigArgs["Rxtypes"]
-    print "--------"
+    print ("Port Info")
+    print ("--------")
+    print ("Port:" + ConfigArgs["Port"])
+    print ("Baudrate:" + ConfigArgs["Baudrate"])
+    print ("Databits:" + ConfigArgs["Databits"])
+    print ("Parity:" + ConfigArgs["Parity"])
+    print ("Stopbits:" + ConfigArgs["Stopbits"])
+    print ("Txtypes:" + ConfigArgs["Txtypes"])
+    print ("Rxtypes:" + ConfigArgs["Rxtypes"])
+    print ("--------")
 
 def main():
     LoadConfig()
