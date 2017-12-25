@@ -27,3 +27,8 @@
 ./bleach-1.5.0-py3.6.egg
 ./html5lib-0.9999999-py3.6.egg
 ./pysam-0.13-py3.6-macosx-10.13-x86_64.egg
+./quora-0.1.22-py3.6.egg
+./requests-2.5.0-py3.6.egg
+./feedparser-5.1.3-py3.6.egg
+./beautifulsoup4-4.3.2-py3.6.egg
+./wsgiref-0.1.2-py3.6.egg
